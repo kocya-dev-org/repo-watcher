@@ -17,6 +17,15 @@ export type SanitizedErrorLog = {
   graphQLErrors?: SanitizedGraphQLError[];
 };
 
+export type EncryptedPatPayload = {
+  version: 1;
+  ciphertext: string;
+  iv: string;
+  salt: string;
+  iterations: number;
+  encryptedAt: string;
+};
+
 const TOKEN_PATTERNS = [
   /github_pat_[A-Za-z0-9_]+/g,
   /gh[pousr]_[A-Za-z0-9_]+/g,
@@ -24,6 +33,64 @@ const TOKEN_PATTERNS = [
   /(token\s+)[A-Za-z0-9_]+/gi,
   /(bearer\s+)[A-Za-z0-9_]+/gi,
 ];
+const PAT_ENCRYPTION_ITERATIONS = 120_000;
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function derivePatEncryptionKey(
+  startupTime: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(startupTime),
+    'PBKDF2',
+    false,
+    ['deriveKey'],
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: toArrayBuffer(salt),
+      iterations,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    {
+      name: 'AES-GCM',
+      length: 256,
+    },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
 
 /**
  * PAT 全体をハッシュ化し、保存しても断片が漏れない比較キーを作る。
@@ -40,6 +107,61 @@ export async function buildPatCacheKey(pat: string): Promise<string> {
 }
 
 /**
+ * PAT を起動時刻ベースの鍵で暗号化して保存用 payload へ変換する。
+ * @param pat GitHub Personal Access Token
+ * @param startupTime 鍵導出に使う起動時刻
+ * @returns 永続化可能な暗号化 payload
+ */
+export async function encryptPat(pat: string, startupTime: string): Promise<EncryptedPatPayload> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await derivePatEncryptionKey(startupTime, salt, PAT_ENCRYPTION_ITERATIONS);
+  const ciphertextBuffer = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: toArrayBuffer(iv),
+    },
+    key,
+    new TextEncoder().encode(pat),
+  );
+
+  return {
+    version: 1,
+    ciphertext: bytesToBase64(new Uint8Array(ciphertextBuffer)),
+    iv: bytesToBase64(iv),
+    salt: bytesToBase64(salt),
+    iterations: PAT_ENCRYPTION_ITERATIONS,
+    encryptedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 保存済みの暗号化 payload を起動時刻ベースの鍵で複号する。
+ * @param payload 暗号化済み PAT
+ * @param startupTime 鍵導出に使う起動時刻
+ * @returns 複号した PAT
+ */
+export async function decryptPat(
+  payload: EncryptedPatPayload,
+  startupTime: string,
+): Promise<string> {
+  const salt = base64ToBytes(payload.salt);
+  const iv = base64ToBytes(payload.iv);
+  const ciphertext = base64ToBytes(payload.ciphertext);
+  const key = await derivePatEncryptionKey(startupTime, salt, payload.iterations);
+  const plainBuffer = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv: toArrayBuffer(iv),
+    },
+    key,
+    toArrayBuffer(ciphertext),
+  );
+
+  return new TextDecoder().decode(plainBuffer);
+}
+
+/**
  * ログ文字列に含まれる認証情報らしき文字列を伏せる。
  * @param text 元の文字列
  * @returns 機微情報を伏せた文字列
@@ -48,7 +170,7 @@ export function redactSensitiveText(text: string): string {
   let redacted = text;
 
   for (const pattern of TOKEN_PATTERNS) {
-    redacted = redacted.replace(pattern, (match, prefix?: string) => {
+    redacted = redacted.replace(pattern, (_match, prefix?: string) => {
       if (typeof prefix === 'string') {
         return `${prefix}[REDACTED]`;
       }

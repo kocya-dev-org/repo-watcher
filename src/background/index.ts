@@ -1,20 +1,24 @@
 import { graphql } from '@octokit/graphql';
 
 import { buildPatCacheKey, sanitizeError } from './security';
+import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
 
 export type WatchTargetRepo = {
   owner: string;
   name: string;
 };
 
-type Settings = {
-  pat: string;
+type SyncSettings = {
   repos: WatchTargetRepo[];
   intervalMinutes: number;
   enableNewItems: boolean;
   enableMentions: boolean;
   enableMentionThreads: boolean;
   enableAssigneeComments: boolean;
+};
+
+type Settings = SyncSettings & {
+  pat: string;
 };
 
 type RuntimeState = {
@@ -144,11 +148,10 @@ async function hydrateRuntimeState() {
  * PAT またはリポジトリ一覧が未設定の場合は null を返す。
  * @returns 設定オブジェクト、または未設定時は null
  */
-async function loadSettings(): Promise<Settings | null> {
+async function loadSyncSettings(): Promise<SyncSettings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(
       {
-        pat: '',
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         enableNewItems: true,
@@ -157,13 +160,7 @@ async function loadSettings(): Promise<Settings | null> {
         enableAssigneeComments: true,
       },
       (items: any) => {
-        if (!items.pat || !Array.isArray(items.repos)) {
-          resolve(null);
-          return;
-        }
-
-        const settings: Settings = {
-          pat: String(items.pat),
+        const settings: SyncSettings = {
           repos: items.repos,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           enableNewItems: Boolean(items.enableNewItems),
@@ -176,6 +173,24 @@ async function loadSettings(): Promise<Settings | null> {
       },
     );
   });
+}
+
+/**
+ * 設定ストレージと暗号化済み PAT を読み込み、監視実行に必要な設定を返す。
+ * @returns 設定オブジェクト、または未設定時は null
+ */
+async function loadSettings(): Promise<Settings | null> {
+  const syncSettings = await loadSyncSettings();
+  const pat = await loadDecryptedPat();
+
+  if (!pat || !Array.isArray(syncSettings.repos) || syncSettings.repos.length === 0) {
+    return null;
+  }
+
+  return {
+    ...syncSettings,
+    pat,
+  };
 }
 
 /**
@@ -616,7 +631,7 @@ async function runWatchCycle() {
  * sync storage の設定を読み込み、`chrome.alarms` に周期アラームを登録し直す。
  */
 function setupAlarms() {
-  loadSettings().then((settings) => {
+  loadSyncSettings().then((settings) => {
     const intervalMinutes = settings?.intervalMinutes ?? DEFAULT_INTERVAL_MINUTES;
 
     chrome.alarms.clear(WATCH_ALARM_NAME, () => {
@@ -640,6 +655,13 @@ chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
 });
 
+// ブラウザ起動時に PAT を前回起動時刻で複号し、今回起動時刻で再暗号化する
+chrome.runtime.onStartup.addListener(() => {
+  void rotateEncryptedPatForStartup().catch((err) => {
+    console.error('pat rotation failed', sanitizeError(err));
+  });
+});
+
 // 設定変更時にアラームや viewer キャッシュを再評価する
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') {
@@ -655,15 +677,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     changes.enableAssigneeComments
   ) {
     setupAlarms();
-  }
-
-  if (changes.pat) {
-    runtimeState.viewerLogin = null;
-    runtimeState.viewerLoginPatKey = null;
-    void saveLocalRuntimeStorage({
-      viewerLogin: null,
-      viewerLoginPatKey: null,
-    });
   }
 });
 

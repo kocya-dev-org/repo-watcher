@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { WatchTargetRepo } from '../src/background/index';
-import { buildPatCacheKey, redactSensitiveText, sanitizeError } from '../src/background/security';
+import {
+  buildPatCacheKey,
+  decryptPat,
+  encryptPat,
+  redactSensitiveText,
+  sanitizeError,
+} from '../src/background/security';
 
 // jsdom 環境では chrome API が存在しないため、最低限のモックを構成する
 declare const global: any;
@@ -9,6 +15,7 @@ declare const global: any;
 function setupChromeMock() {
   const alarmsListeners: Array<(alarm: { name: string }) => void> = [];
   const runtimeInstalledListeners: Array<() => void> = [];
+  const runtimeStartupListeners: Array<() => void> = [];
   const storageChangedListeners: Array<
     (changes: Record<string, unknown>, areaName: string) => void
   > = [];
@@ -75,6 +82,11 @@ function setupChromeMock() {
           runtimeInstalledListeners.push(fn);
         }),
       },
+      onStartup: {
+        addListener: vi.fn((fn: () => void) => {
+          runtimeStartupListeners.push(fn);
+        }),
+      },
     },
   } as any;
 
@@ -110,6 +122,7 @@ describe('background watch logic (sanity)', () => {
 
     // onInstalled リスナー登録確認
     expect(chromeMock.runtime.onInstalled.addListener).toHaveBeenCalledTimes(1);
+    expect(chromeMock.runtime.onStartup.addListener).toHaveBeenCalledTimes(1);
     // onAlarm リスナー登録確認
     expect(chromeMock.alarms.onAlarm.addListener).toHaveBeenCalledTimes(1);
     // storage.onChanged / notifications.onClicked も購読される
@@ -145,6 +158,26 @@ describe('background security helpers', () => {
     const second = await buildPatCacheKey('github_pat_second_value');
 
     expect(first).not.toBe(second);
+  });
+
+  it('PAT は起動時刻ベースで暗号化して複号できる', async () => {
+    const startupAt = '2026-03-21T10:00:00.000Z';
+    const pat = 'github_pat_example_secret_value';
+
+    const encrypted = await encryptPat(pat, startupAt);
+    const decrypted = await decryptPat(encrypted, startupAt);
+
+    expect(JSON.stringify(encrypted)).not.toContain(pat);
+    expect(decrypted).toBe(pat);
+  });
+
+  it('異なる起動時刻では PAT を複号できない', async () => {
+    const encrypted = await encryptPat(
+      'github_pat_example_secret_value',
+      '2026-03-21T10:00:00.000Z',
+    );
+
+    await expect(decryptPat(encrypted, '2026-03-21T11:00:00.000Z')).rejects.toThrowError();
   });
 
   it('認証情報を含む文字列をログ出力前に伏せる', () => {
