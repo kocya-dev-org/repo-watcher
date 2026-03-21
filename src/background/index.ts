@@ -1,5 +1,7 @@
 import { graphql } from '@octokit/graphql';
 
+import { buildPatCacheKey, sanitizeError } from './security';
+
 export type WatchTargetRepo = {
   owner: string;
   name: string;
@@ -137,15 +139,6 @@ async function hydrateRuntimeState() {
 }
 
 /**
- * PAT が変わったときにキャッシュを識別するための簡易キーを作る。
- * @param pat GitHub Personal Access Token
- * @returns PAT 変化判定用のキー
- */
-function buildPatCacheKey(pat: string): string {
-  return `${pat.length}:${pat.slice(-6)}`;
-}
-
-/**
  * 設定ストレージから PAT / 監視対象リポジトリ / 各種フラグを読み込む。
  *
  * PAT またはリポジトリ一覧が未設定の場合は null を返す。
@@ -216,7 +209,7 @@ function setBadge(count: number) {
  * @returns ログイン中ユーザーのログイン ID
  */
 async function ensureViewerLogin(client: any, pat: string): Promise<string> {
-  const patCacheKey = buildPatCacheKey(pat);
+  const patCacheKey = await buildPatCacheKey(pat);
   if (runtimeState.viewerLogin && runtimeState.viewerLoginPatKey === patCacheKey) {
     return runtimeState.viewerLogin as string;
   }
@@ -678,7 +671,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WATCH_ALARM_NAME) {
     runWatchCycle().catch((err) => {
-      console.error('watch cycle failed', err);
+      console.error('watch cycle failed', sanitizeError(err));
     });
   }
 });
