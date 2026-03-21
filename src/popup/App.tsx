@@ -85,6 +85,9 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<PopupSettings | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const manifestVersion = chrome.runtime.getManifest().version;
 
   useEffect(() => {
     chrome.storage.local.get(
@@ -206,6 +209,11 @@ const App: React.FC = () => {
   const visibleNotifications = notifications.filter((n) => isKindEnabled(n.kind));
   const { prs, issues } = groupByType(visibleNotifications);
 
+  const openOptions = () => {
+    chrome.runtime.openOptionsPage();
+    setIsMenuOpen(false);
+  };
+
   return (
     <div
       style={{
@@ -221,9 +229,68 @@ const App: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: '8px',
+          position: 'relative',
         }}
       >
         <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
+        <button
+          type="button"
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+          style={{
+            border: '1px solid #d0d7de',
+            background: '#fff',
+            borderRadius: '6px',
+            padding: '4px 8px',
+            fontSize: '11px',
+            cursor: 'pointer',
+          }}
+        >
+          メニュー
+        </button>
+        {isMenuOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '28px',
+              right: 0,
+              width: '180px',
+              backgroundColor: '#fff',
+              border: '1px solid #d0d7de',
+              borderRadius: '8px',
+              boxShadow: '0 8px 24px rgba(140,149,159,0.2)',
+              padding: '8px',
+              zIndex: 10,
+            }}
+          >
+            <button
+              type="button"
+              onClick={openOptions}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                border: 'none',
+                background: 'transparent',
+                padding: '6px 4px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                color: '#24292f',
+              }}
+            >
+              設定を開く
+            </button>
+            <div
+              style={{
+                marginTop: '6px',
+                paddingTop: '6px',
+                borderTop: '1px solid #d8dee4',
+                fontSize: '11px',
+                color: '#57606a',
+              }}
+            >
+              バージョン: {manifestVersion}
+            </div>
+          </div>
+        )}
       </header>
 
       {isLoading ? (

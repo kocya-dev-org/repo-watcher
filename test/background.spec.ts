@@ -8,6 +8,10 @@ declare const global: any;
 function setupChromeMock() {
   const alarmsListeners: Array<(alarm: { name: string }) => void> = [];
   const runtimeInstalledListeners: Array<() => void> = [];
+  const storageChangedListeners: Array<
+    (changes: Record<string, unknown>, areaName: string) => void
+  > = [];
+  const notificationClickedListeners: Array<(notificationId: string) => void> = [];
 
   const chromeMock = {
     storage: {
@@ -25,10 +29,18 @@ function setupChromeMock() {
           cb?.();
         }),
       },
+      onChanged: {
+        addListener: vi.fn((fn: (changes: Record<string, unknown>, areaName: string) => void) => {
+          storageChangedListeners.push(fn);
+        }),
+      },
     },
     action: {
       setBadgeText: vi.fn(),
       setBadgeBackgroundColor: vi.fn(),
+    },
+    tabs: {
+      create: vi.fn(),
     },
     alarms: {
       clear: vi.fn((name: string, cb: () => void) => cb()),
@@ -41,6 +53,19 @@ function setupChromeMock() {
       // テスト用にリスナー呼び出しを行うヘルパー
       __trigger(name: string) {
         for (const l of alarmsListeners) l({ name });
+      },
+    },
+    notifications: {
+      create: vi.fn((notificationId: string, options: unknown, cb?: () => void) => {
+        cb?.();
+      }),
+      clear: vi.fn((notificationId: string, cb?: (wasCleared: boolean) => void) => {
+        cb?.(true);
+      }),
+      onClicked: {
+        addListener: vi.fn((fn: (notificationId: string) => void) => {
+          notificationClickedListeners.push(fn);
+        }),
       },
     },
     runtime: {
@@ -86,6 +111,9 @@ describe('background watch logic (sanity)', () => {
     expect(chromeMock.runtime.onInstalled.addListener).toHaveBeenCalledTimes(1);
     // onAlarm リスナー登録確認
     expect(chromeMock.alarms.onAlarm.addListener).toHaveBeenCalledTimes(1);
+    // storage.onChanged / notifications.onClicked も購読される
+    expect(chromeMock.storage.onChanged.addListener).toHaveBeenCalledTimes(1);
+    expect(chromeMock.notifications.onClicked.addListener).toHaveBeenCalledTimes(1);
   });
 
   it('アラーム発火時にストレージへアクセスしようとする', async () => {

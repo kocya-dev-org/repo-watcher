@@ -1,6 +1,6 @@
 import { graphql } from '@octokit/graphql';
 
-type WatchTargetRepo = {
+export type WatchTargetRepo = {
   owner: string;
   name: string;
 };
@@ -17,6 +17,7 @@ type Settings = {
 
 type RuntimeState = {
   viewerLogin: string | null;
+  viewerLoginPatKey: string | null;
   lastCheckedAt: string | null;
 };
 
@@ -24,6 +25,7 @@ const DEFAULT_INTERVAL_MINUTES = 5;
 
 let runtimeState: RuntimeState = {
   viewerLogin: null,
+  viewerLoginPatKey: null,
   lastCheckedAt: null,
 };
 
@@ -40,6 +42,31 @@ type StoredNotification = {
   url: string;
   detectedAt: string; // ISO8601
 };
+
+type LocalRuntimeStorage = {
+  lastCheckedAt: string | null;
+  viewerLogin: string | null;
+  viewerLoginPatKey: string | null;
+  notifications: StoredNotification[];
+  readNotificationIds: string[];
+  badgeCount: number;
+  notificationClickTargets: Record<string, string>;
+};
+
+const WATCH_ALARM_NAME = 'github-notify-watch';
+const NOTIFICATION_ID_PREFIX = 'github-notify:';
+const NOTIFICATION_ICON_DATA_URL =
+  "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
+
+const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
+  lastCheckedAt: null,
+  viewerLogin: null,
+  viewerLoginPatKey: null,
+  notifications: [],
+  readNotificationIds: [],
+  badgeCount: 0,
+  notificationClickTargets: {},
+};
 /**
  * GitHub GraphQL クライアントを生成する。
  *
@@ -53,6 +80,69 @@ function createGithubClient(pat: string) {
       authorization: `token ${pat}`,
     },
   });
+}
+
+/**
+ * local storage からランタイム用の永続データを読み込む。
+ * @returns ローカルストレージ上のランタイムデータ
+ */
+function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(LOCAL_RUNTIME_DEFAULTS, (items) => {
+      resolve({
+        lastCheckedAt: typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null,
+        viewerLogin: typeof items.viewerLogin === 'string' ? items.viewerLogin : null,
+        viewerLoginPatKey:
+          typeof items.viewerLoginPatKey === 'string' ? items.viewerLoginPatKey : null,
+        notifications: Array.isArray(items.notifications)
+          ? (items.notifications as StoredNotification[])
+          : [],
+        readNotificationIds: Array.isArray(items.readNotificationIds)
+          ? (items.readNotificationIds as string[])
+          : [],
+        badgeCount: Number(items.badgeCount ?? 0),
+        notificationClickTargets:
+          items.notificationClickTargets &&
+          typeof items.notificationClickTargets === 'object' &&
+          !Array.isArray(items.notificationClickTargets)
+            ? (items.notificationClickTargets as Record<string, string>)
+            : {},
+      });
+    });
+  });
+}
+
+/**
+ * local storage にランタイム用のデータを書き込む。
+ * @param items 保存する項目
+ */
+function saveLocalRuntimeStorage(items: Partial<LocalRuntimeStorage>): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set(items, () => resolve());
+  });
+}
+
+/**
+ * 永続化されているランタイム状態をメモリへ読み戻す。
+ */
+async function hydrateRuntimeState() {
+  if (runtimeState.lastCheckedAt && runtimeState.viewerLogin) {
+    return;
+  }
+
+  const localState = await loadLocalRuntimeStorage();
+  runtimeState.lastCheckedAt ??= localState.lastCheckedAt;
+  runtimeState.viewerLogin ??= localState.viewerLogin;
+  runtimeState.viewerLoginPatKey ??= localState.viewerLoginPatKey;
+}
+
+/**
+ * PAT が変わったときにキャッシュを識別するための簡易キーを作る。
+ * @param pat GitHub Personal Access Token
+ * @returns PAT 変化判定用のキー
+ */
+function buildPatCacheKey(pat: string): string {
+  return `${pat.length}:${pat.slice(-6)}`;
 }
 
 /**
@@ -101,11 +191,7 @@ async function loadSettings(): Promise<Settings | null> {
  */
 async function saveLastCheckedAt(iso: string) {
   runtimeState.lastCheckedAt = iso;
-  return new Promise<void>((resolve) => {
-    chrome.storage.local.set({ lastCheckedAt: iso }, () => {
-      resolve();
-    });
-  });
+  await saveLocalRuntimeStorage({ lastCheckedAt: iso });
 }
 
 /**
@@ -129,14 +215,73 @@ function setBadge(count: number) {
  * @param client GraphQL クライアント
  * @returns ログイン中ユーザーのログイン ID
  */
-async function ensureViewerLogin(client: any): Promise<string> {
-  if (runtimeState.viewerLogin) {
+async function ensureViewerLogin(client: any, pat: string): Promise<string> {
+  const patCacheKey = buildPatCacheKey(pat);
+  if (runtimeState.viewerLogin && runtimeState.viewerLoginPatKey === patCacheKey) {
     return runtimeState.viewerLogin as string;
+  }
+
+  const localState = await loadLocalRuntimeStorage();
+  if (localState.viewerLogin && localState.viewerLoginPatKey === patCacheKey) {
+    runtimeState.viewerLogin = localState.viewerLogin;
+    runtimeState.viewerLoginPatKey = localState.viewerLoginPatKey;
+    return localState.viewerLogin;
   }
 
   const result = await client(`query GetViewer { viewer { login } }`);
   runtimeState.viewerLogin = (result as any).viewer.login;
+  runtimeState.viewerLoginPatKey = patCacheKey;
+  await saveLocalRuntimeStorage({
+    viewerLogin: runtimeState.viewerLogin,
+    viewerLoginPatKey: runtimeState.viewerLoginPatKey,
+  });
   return runtimeState.viewerLogin as string;
+}
+
+/**
+ * 通知クリック時に遷移する URL の対応表を保存する。
+ * @param pairs 通知 ID と URL の組
+ */
+async function saveNotificationClickTargets(pairs: Record<string, string>) {
+  if (Object.keys(pairs).length === 0) {
+    return;
+  }
+
+  const localState = await loadLocalRuntimeStorage();
+  await saveLocalRuntimeStorage({
+    notificationClickTargets: {
+      ...localState.notificationClickTargets,
+      ...pairs,
+    },
+  });
+}
+
+/**
+ * 新規通知に対して OS 通知を発行する。
+ * @param notifications 新規追加された通知一覧
+ */
+async function showOSNotifications(notifications: StoredNotification[]) {
+  const clickTargets: Record<string, string> = {};
+
+  for (const notification of notifications) {
+    const notificationId = `${NOTIFICATION_ID_PREFIX}${notification.id}:${notification.detectedAt}`;
+    clickTargets[notificationId] = notification.url;
+
+    await new Promise<void>((resolve) => {
+      chrome.notifications.create(
+        notificationId,
+        {
+          type: 'basic',
+          iconUrl: NOTIFICATION_ICON_DATA_URL,
+          title: `${notification.owner}/${notification.repo} #${notification.number}`,
+          message: `[${notification.kind}] ${notification.title}`,
+        },
+        () => resolve(),
+      );
+    });
+  }
+
+  await saveNotificationClickTargets(clickTargets);
 }
 
 /**
@@ -181,11 +326,12 @@ async function runWatchCycle() {
     return;
   }
 
+  await hydrateRuntimeState();
   const client = createGithubClient(settings.pat);
 
   const nowIso = new Date().toISOString();
   const lastCheckedAt = runtimeState.lastCheckedAt ?? new Date(0).toISOString();
-  const viewerLogin = await ensureViewerLogin(client as any);
+  const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
 
   const repoQuery = buildRepoQuery(settings.repos, lastCheckedAt, viewerLogin);
 
@@ -433,6 +579,7 @@ async function runWatchCycle() {
   if (collected.length > 0) {
     // 既存通知と突き合わせて重複を排除しつつ追加し、
     // 追加件数分だけバッジカウントを増やす
+    let addedNotifications: StoredNotification[] = [];
     await new Promise<void>((resolve) => {
       chrome.storage.local.get({ notifications: [], badgeCount: 0 }, (items: any) => {
         const existing: StoredNotification[] = Array.isArray(items.notifications)
@@ -440,16 +587,16 @@ async function runWatchCycle() {
           : [];
         const existingIds = new Set(existing.map((n) => n.id));
         const merged = existing.slice();
-        let addedCount = 0;
+        addedNotifications = [];
 
         for (const n of collected) {
           if (!existingIds.has(n.id)) {
             merged.push(n);
-            addedCount += 1;
+            addedNotifications.push(n);
           }
         }
 
-        const newBadgeCount = (items.badgeCount ?? 0) + addedCount;
+        const newBadgeCount = (items.badgeCount ?? 0) + addedNotifications.length;
 
         chrome.storage.local.set(
           {
@@ -463,6 +610,8 @@ async function runWatchCycle() {
         );
       });
     });
+
+    await showOSNotifications(addedNotifications);
   }
 
   await saveLastCheckedAt(nowIso);
@@ -477,12 +626,20 @@ function setupAlarms() {
   loadSettings().then((settings) => {
     const intervalMinutes = settings?.intervalMinutes ?? DEFAULT_INTERVAL_MINUTES;
 
-    chrome.alarms.clear('github-notify-watch', () => {
-      chrome.alarms.create('github-notify-watch', {
+    chrome.alarms.clear(WATCH_ALARM_NAME, () => {
+      chrome.alarms.create(WATCH_ALARM_NAME, {
         periodInMinutes: intervalMinutes,
       });
     });
   });
+}
+
+/**
+ * 起動時にストレージ上のバッジ数を復元する。
+ */
+async function restoreBadge() {
+  const localState = await loadLocalRuntimeStorage();
+  setBadge(localState.badgeCount);
 }
 
 // 拡張機能インストール時にアラームを初期化
@@ -490,11 +647,56 @@ chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
 });
 
+// 設定変更時にアラームや viewer キャッシュを再評価する
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'sync') {
+    return;
+  }
+
+  if (
+    changes.intervalMinutes ||
+    changes.repos ||
+    changes.enableNewItems ||
+    changes.enableMentions ||
+    changes.enableMentionThreads ||
+    changes.enableAssigneeComments
+  ) {
+    setupAlarms();
+  }
+
+  if (changes.pat) {
+    runtimeState.viewerLogin = null;
+    runtimeState.viewerLoginPatKey = null;
+    void saveLocalRuntimeStorage({
+      viewerLogin: null,
+      viewerLoginPatKey: null,
+    });
+  }
+});
+
 // アラーム発火時に監視サイクルを実行する
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'github-notify-watch') {
+  if (alarm.name === WATCH_ALARM_NAME) {
     runWatchCycle().catch((err) => {
       console.error('watch cycle failed', err);
     });
   }
 });
+
+// OS 通知クリック時に対象の PR / Issue を開く
+chrome.notifications.onClicked.addListener((notificationId) => {
+  void (async () => {
+    const localState = await loadLocalRuntimeStorage();
+    const url = localState.notificationClickTargets[notificationId];
+    if (url) {
+      chrome.tabs.create({ url });
+    }
+
+    const nextTargets = { ...localState.notificationClickTargets };
+    delete nextTargets[notificationId];
+    await saveLocalRuntimeStorage({ notificationClickTargets: nextTargets });
+    chrome.notifications.clear(notificationId);
+  })();
+});
+
+void restoreBadge();
