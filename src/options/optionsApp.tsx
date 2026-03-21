@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
+import { clearEncryptedPat, hasEncryptedPat, saveEncryptedPat } from '../shared/patStorage';
+
 type WatchTargetRepo = {
   owner: string;
   name: string;
@@ -20,8 +22,8 @@ const DEFAULT_INTERVAL_MINUTES = 5;
 /**
  * オプションページのルートコンポーネント。
  *
- * - sync storage から設定値を読み込みフォームへ反映
- * - フォーム入力を sync storage へ保存
+ * - sync storage から通常設定を読み込みフォームへ反映
+ * - PAT は local storage へ暗号化して保存
  * - 監視対象リポジトリの owner/repo 形式テキストを配列に変換
  */
 const OptionsApp: React.FC = () => {
@@ -36,11 +38,17 @@ const OptionsApp: React.FC = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [hasSavedPat, setHasSavedPat] = useState(false);
+
+  const refreshPatStatus = async () => {
+    setHasSavedPat(await hasEncryptedPat());
+  };
 
   useEffect(() => {
+    void refreshPatStatus();
+
     chrome.storage.sync.get(
       {
-        pat: '',
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         enableNewItems: true,
@@ -52,7 +60,7 @@ const OptionsApp: React.FC = () => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
         const reposText = repos.map((r) => `${r.owner}/${r.name}`).join('\n');
         setForm({
-          pat: String(items.pat ?? ''),
+          pat: '',
           reposText,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           enableNewItems: Boolean(items.enableNewItems),
@@ -98,32 +106,55 @@ const OptionsApp: React.FC = () => {
    * 設定フォームの送信ハンドラ。
    *
    * - テキストからリポジトリ一覧を解析
-   * - sync storage にすべての設定値を保存
+   * - 通常設定を sync storage に保存
+   * - 入力された PAT があれば暗号化して local storage に保存
    * - 保存完了メッセージを一時的に表示
    */
   const handleSubmit: React.FormEventHandler = (e) => {
     e.preventDefault();
-    setIsSaving(true);
-    setSaveMessage(null);
+    void (async () => {
+      setIsSaving(true);
+      setSaveMessage(null);
 
-    const repos = parseRepos(form.reposText);
+      const repos = parseRepos(form.reposText);
 
-    chrome.storage.sync.set(
-      {
-        pat: form.pat,
-        repos,
-        intervalMinutes: form.intervalMinutes,
-        enableNewItems: form.enableNewItems,
-        enableMentions: form.enableMentions,
-        enableMentionThreads: form.enableMentionThreads,
-        enableAssigneeComments: form.enableAssigneeComments,
-      },
-      () => {
-        setIsSaving(false);
-        setSaveMessage('保存しました');
-        setTimeout(() => setSaveMessage(null), 2000);
-      },
-    );
+      await new Promise<void>((resolve) => {
+        chrome.storage.sync.set(
+          {
+            repos,
+            intervalMinutes: form.intervalMinutes,
+            enableNewItems: form.enableNewItems,
+            enableMentions: form.enableMentions,
+            enableMentionThreads: form.enableMentionThreads,
+            enableAssigneeComments: form.enableAssigneeComments,
+          },
+          () => resolve(),
+        );
+      });
+
+      if (form.pat.trim().length > 0) {
+        await saveEncryptedPat(form.pat.trim());
+      }
+
+      await refreshPatStatus();
+      setForm((prev) => ({ ...prev, pat: '' }));
+      setIsSaving(false);
+      setSaveMessage('保存しました');
+      setTimeout(() => setSaveMessage(null), 2000);
+    })();
+  };
+
+  const handleClearPat = () => {
+    void (async () => {
+      setIsSaving(true);
+      setSaveMessage(null);
+      await clearEncryptedPat();
+      await refreshPatStatus();
+      setForm((prev) => ({ ...prev, pat: '' }));
+      setIsSaving(false);
+      setSaveMessage('PAT を削除しました');
+      setTimeout(() => setSaveMessage(null), 2000);
+    })();
   };
 
   return (
@@ -141,14 +172,43 @@ const OptionsApp: React.FC = () => {
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>API キー (PAT)</h2>
           <p style={{ margin: '4px 0', color: '#555' }}>
-            GitHub Personal Access Token を入力してください。
+            GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。
+          </p>
+          <p style={{ margin: '4px 0', color: '#555' }}>
+            対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues:
+            Read-only`、`Pull requests: Read-only` のみにしてください。
+          </p>
+          <p style={{ margin: '4px 0', color: '#555' }}>
+            `Contents` の write、`Administration`、`Actions`、`Webhooks` など、この拡張で使わない
+            権限は付与しないでください。
+          </p>
+          <p style={{ margin: '4px 0', color: hasSavedPat ? '#1a7f37' : '#57606a' }}>
+            現在の状態: {hasSavedPat ? 'PAT 設定済み' : 'PAT 未設定'}
           </p>
           <input
             type="password"
             value={form.pat}
             onChange={(e) => handleChange({ pat: e.target.value })}
             style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
+            placeholder={hasSavedPat ? '変更する場合のみ新しい PAT を入力' : 'PAT を入力'}
           />
+          <div style={{ marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={handleClearPat}
+              disabled={isSaving || !hasSavedPat}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: '1px solid #d0d7de',
+                backgroundColor: '#fff',
+                color: '#24292f',
+                cursor: hasSavedPat ? 'pointer' : 'not-allowed',
+              }}
+            >
+              保存済み PAT を削除
+            </button>
+          </div>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
