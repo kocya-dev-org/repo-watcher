@@ -116,31 +116,38 @@ const OptionsApp: React.FC = () => {
       setIsSaving(true);
       setSaveMessage(null);
 
-      const repos = parseRepos(form.reposText);
+      try {
+        const repos = parseRepos(form.reposText);
 
-      await new Promise<void>((resolve) => {
-        chrome.storage.sync.set(
-          {
-            repos,
-            intervalMinutes: form.intervalMinutes,
-            enableNewItems: form.enableNewItems,
-            enableMentions: form.enableMentions,
-            enableMentionThreads: form.enableMentionThreads,
-            enableAssigneeComments: form.enableAssigneeComments,
-          },
-          () => resolve(),
-        );
-      });
+        await new Promise<void>((resolve) => {
+          chrome.storage.sync.set(
+            {
+              repos,
+              intervalMinutes: form.intervalMinutes,
+              enableNewItems: form.enableNewItems,
+              enableMentions: form.enableMentions,
+              enableMentionThreads: form.enableMentionThreads,
+              enableAssigneeComments: form.enableAssigneeComments,
+            },
+            () => resolve(),
+          );
+        });
 
-      if (form.pat.trim().length > 0) {
-        await saveEncryptedPat(form.pat.trim());
+        if (form.pat.trim().length > 0) {
+          await saveEncryptedPat(form.pat.trim());
+        }
+
+        await refreshPatStatus();
+        setForm((prev) => ({ ...prev, pat: '' }));
+        setSaveMessage('保存しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } catch (error) {
+        console.error('設定保存エラー:', error);
+        setSaveMessage('保存に失敗しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } finally {
+        setIsSaving(false);
       }
-
-      await refreshPatStatus();
-      setForm((prev) => ({ ...prev, pat: '' }));
-      setIsSaving(false);
-      setSaveMessage('保存しました');
-      setTimeout(() => setSaveMessage(null), 2000);
     })();
   };
 
@@ -148,12 +155,19 @@ const OptionsApp: React.FC = () => {
     void (async () => {
       setIsSaving(true);
       setSaveMessage(null);
-      await clearEncryptedPat();
-      await refreshPatStatus();
-      setForm((prev) => ({ ...prev, pat: '' }));
-      setIsSaving(false);
-      setSaveMessage('PAT を削除しました');
-      setTimeout(() => setSaveMessage(null), 2000);
+      try {
+        await clearEncryptedPat();
+        await refreshPatStatus();
+        setForm((prev) => ({ ...prev, pat: '' }));
+        setSaveMessage('PAT を削除しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } catch (error) {
+        console.error('PAT削除エラー:', error);
+        setSaveMessage('PAT の削除に失敗しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } finally {
+        setIsSaving(false);
+      }
     })();
   };
 
