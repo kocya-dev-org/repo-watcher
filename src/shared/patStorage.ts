@@ -89,12 +89,18 @@ export async function loadDecryptedPat(): Promise<string | null> {
   }
 
   if (state.patPreviousStartupAt) {
-    const pat = await decryptPat(state.encryptedPat, state.patPreviousStartupAt);
-    if (state.patCurrentStartupAt && state.patCurrentStartupAt !== state.patPreviousStartupAt) {
-      const encryptedPat = await encryptPat(pat, state.patCurrentStartupAt);
-      await saveStoredPatState({ encryptedPat });
+    try {
+      const pat = await decryptPat(state.encryptedPat, state.patPreviousStartupAt);
+      if (state.patCurrentStartupAt && state.patCurrentStartupAt !== state.patPreviousStartupAt) {
+        const encryptedPat = await encryptPat(pat, state.patCurrentStartupAt);
+        await saveStoredPatState({ encryptedPat });
+      }
+      return pat;
+    } catch {
+      // 前回の起動時刻でも複号できない場合は、保存されている PAT を破棄して再入力させる。
+      await clearEncryptedPat();
+      return null;
     }
-    return pat;
   }
 
   return null;
