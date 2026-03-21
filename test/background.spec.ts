@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { WatchTargetRepo } from '../src/background/index';
+import { buildPatCacheKey, redactSensitiveText, sanitizeError } from '../src/background/security';
 
 // jsdom 環境では chrome API が存在しないため、最低限のモックを構成する
 declare const global: any;
@@ -124,5 +125,67 @@ describe('background watch logic (sanity)', () => {
 
     // runWatchCycle 内で storage.sync.get が 1 回以上呼ばれていることをざっくり確認
     expect(chromeMock.storage.sync.get).toHaveBeenCalled();
+  });
+});
+
+describe('background security helpers', () => {
+  it('PAT キャッシュキーは同じ入力から同じ SHA-256 ハッシュを返す', async () => {
+    const pat = 'github_pat_example_secret_value';
+
+    const first = await buildPatCacheKey(pat);
+    const second = await buildPatCacheKey(pat);
+
+    expect(first).toBe(second);
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(first).not.toContain('secret');
+  });
+
+  it('PAT キャッシュキーは異なる入力で変わる', async () => {
+    const first = await buildPatCacheKey('github_pat_first_value');
+    const second = await buildPatCacheKey('github_pat_second_value');
+
+    expect(first).not.toBe(second);
+  });
+
+  it('認証情報を含む文字列をログ出力前に伏せる', () => {
+    const text =
+      'authorization: token github_pat_abcdefghijklmnopqrstuvwxyz bearer ghp_exampletoken';
+
+    const redacted = redactSensitiveText(text);
+
+    expect(redacted).not.toContain('github_pat_abcdefghijklmnopqrstuvwxyz');
+    expect(redacted).not.toContain('ghp_exampletoken');
+    expect(redacted).toContain('[REDACTED]');
+  });
+
+  it('例外オブジェクトから安全な最小情報だけを返す', () => {
+    const sanitized = sanitizeError({
+      name: 'GraphqlResponseError',
+      message: 'authorization: token github_pat_abcdefghijklmnopqrstuvwxyz failed',
+      status: 401,
+      errors: [
+        {
+          message: 'bearer ghp_exampletoken is invalid',
+          type: 'FORBIDDEN',
+          request: {
+            headers: {
+              authorization: 'token github_pat_abcdefghijklmnopqrstuvwxyz',
+            },
+          },
+        },
+      ],
+    });
+
+    expect(sanitized).toEqual({
+      name: 'GraphqlResponseError',
+      message: 'authorization: [REDACTED] failed',
+      status: 401,
+      graphQLErrors: [
+        {
+          message: 'bearer [REDACTED] is invalid',
+          type: 'FORBIDDEN',
+        },
+      ],
+    });
   });
 });
