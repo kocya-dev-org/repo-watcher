@@ -6,7 +6,8 @@
   "permissions": ["storage", "notifications", "alarms", "activeTab"],
   "host_permissions": ["https://api.github.com/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "options_page": "src/options/index.html",
   "action": {
