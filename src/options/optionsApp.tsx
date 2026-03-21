@@ -38,6 +38,7 @@ const OptionsApp: React.FC = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [hasSavedPat, setHasSavedPat] = useState(false);
 
   const refreshPatStatus = async () => {
@@ -115,32 +116,39 @@ const OptionsApp: React.FC = () => {
     void (async () => {
       setIsSaving(true);
       setSaveMessage(null);
+      setSaveError(null);
+      try {
+        const repos = parseRepos(form.reposText);
 
-      const repos = parseRepos(form.reposText);
+        await new Promise<void>((resolve) => {
+          chrome.storage.sync.set(
+            {
+              repos,
+              intervalMinutes: form.intervalMinutes,
+              enableNewItems: form.enableNewItems,
+              enableMentions: form.enableMentions,
+              enableMentionThreads: form.enableMentionThreads,
+              enableAssigneeComments: form.enableAssigneeComments,
+            },
+            () => resolve(),
+          );
+        });
 
-      await new Promise<void>((resolve) => {
-        chrome.storage.sync.set(
-          {
-            repos,
-            intervalMinutes: form.intervalMinutes,
-            enableNewItems: form.enableNewItems,
-            enableMentions: form.enableMentions,
-            enableMentionThreads: form.enableMentionThreads,
-            enableAssigneeComments: form.enableAssigneeComments,
-          },
-          () => resolve(),
-        );
-      });
+        if (form.pat.trim().length > 0) {
+          await saveEncryptedPat(form.pat.trim());
+        }
 
-      if (form.pat.trim().length > 0) {
-        await saveEncryptedPat(form.pat.trim());
+        await refreshPatStatus();
+        setForm((prev) => ({ ...prev, pat: '' }));
+        setSaveMessage('保存しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } catch (error) {
+        console.error('保存に失敗しました:', error);
+        setSaveError('保存に失敗しました');
+        setTimeout(() => setSaveError(null), 4000);
+      } finally {
+        setIsSaving(false);
       }
-
-      await refreshPatStatus();
-      setForm((prev) => ({ ...prev, pat: '' }));
-      setIsSaving(false);
-      setSaveMessage('保存しました');
-      setTimeout(() => setSaveMessage(null), 2000);
     })();
   };
 
@@ -148,12 +156,20 @@ const OptionsApp: React.FC = () => {
     void (async () => {
       setIsSaving(true);
       setSaveMessage(null);
-      await clearEncryptedPat();
-      await refreshPatStatus();
-      setForm((prev) => ({ ...prev, pat: '' }));
-      setIsSaving(false);
-      setSaveMessage('PAT を削除しました');
-      setTimeout(() => setSaveMessage(null), 2000);
+      setSaveError(null);
+      try {
+        await clearEncryptedPat();
+        await refreshPatStatus();
+        setForm((prev) => ({ ...prev, pat: '' }));
+        setSaveMessage('PAT を削除しました');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } catch (error) {
+        console.error('PAT の削除に失敗しました:', error);
+        setSaveError('PAT の削除に失敗しました');
+        setTimeout(() => setSaveError(null), 4000);
+      } finally {
+        setIsSaving(false);
+      }
     })();
   };
 
@@ -289,6 +305,7 @@ const OptionsApp: React.FC = () => {
             {isSaving ? '保存中...' : '保存'}
           </button>
           {saveMessage && <span style={{ color: '#1a7f37' }}>{saveMessage}</span>}
+          {saveError && <span style={{ color: '#cf222e' }}>{saveError}</span>}
         </div>
       </form>
     </div>
