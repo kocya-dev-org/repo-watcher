@@ -308,15 +308,15 @@ function buildRepoQuery(
   viewerLogin: string,
 ): string {
   const repoPart =
-    repos.length === 0 ? '' : `(${repos.map((r) => `repo:${r.owner}/${r.name}`).join(' OR ')})`;
+    repos.length === 0 ? '' : `${repos.map((r) => `repo:${r.owner}/${r.name}`).join(' OR ')}`;
 
   const conditionPart = [
     `created:>${lastCheckedAt}`,
-    `mentions:${viewerLogin}`,
+    //`mentions:${viewerLogin}`,
     `assignee:${viewerLogin}`,
-  ].join(' OR ');
+  ].join(' ');
 
-  return `${repoPart} is:open (${conditionPart})`.trim();
+  return `${repoPart} is:open ${conditionPart}`.trim();
 }
 
 /**
@@ -346,13 +346,12 @@ async function runWatchCycle() {
   const searchResult = await (client as any)(
     `
     query WatchIssuesAndPRs(
-      $repoQuery: String!,
-      $lastCheckedAt: DateTime!,
-      $viewerLogin: String!
+      $repoQuery: String!
     ) {
       search(query: $repoQuery, type: ISSUE, first: 50) {
         issueCount
         nodes {
+          __typename
           ... on Issue {
             id
             number
@@ -409,8 +408,6 @@ async function runWatchCycle() {
     `,
     {
       repoQuery,
-      lastCheckedAt,
-      viewerLogin,
     },
   );
 
@@ -463,11 +460,10 @@ async function runWatchCycle() {
     const reviewResult = await (client as any)(
       `
       query WatchReviewThreads(
-        $prIds: [ID!]!,
-        $lastCheckedAt: DateTime!,
-        $viewerLogin: String!
+        $prIds: [ID!]!
       ) {
         nodes(ids: $prIds) {
+          __typename
           ... on PullRequest {
             id
             number
@@ -497,8 +493,6 @@ async function runWatchCycle() {
       `,
       {
         prIds: updatedPrIds,
-        lastCheckedAt,
-        viewerLogin,
       },
     );
 
