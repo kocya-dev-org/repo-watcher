@@ -83,11 +83,11 @@
 ## 実装上の制約と注意点
 
 - 実質的な主要ロジックは `src/background/index.ts` に集中しています。ここへの変更は、ポーリング、storage 形式、バッジ挙動、popup 挙動へ同時に影響します。
-- popup と background は、明示的に共有型がない storage 契約に依存しています。通知データ形状を変える場合は両方を一緒に更新してください。
+- popup と background は storage 契約に依存しており、通知関連の共有型と状態更新ヘルパーは `src/shared/notifications.ts` にあります。通知データ形状や既読・バッジ計算を変える場合は background / popup / shared helper を一緒に更新してください。
 - 設定データ形状を変える場合は、options UI と background の設定読み込みロジックを一緒に更新してください。
-- PAT は現状では平文に近い形で保存されています。`spec.md` に暗号化の記述があっても、それは将来課題であり、実装済みとみなしてはいけません。
-- OS 通知はドキュメント上の計画に含まれていますが、現在の background 実装は主にバッジ状態更新と local storage 更新を担っています。
-- テストは最小限で、動作レベルの十分な網羅ではなくスモークテスト寄りです。
+- PAT は `src/shared/patStorage.ts` と `src/background/security.ts` で暗号化済み payload として扱われ、起動時刻ベースの再暗号化も実装されています。完全な秘密保護ではない前提は維持しつつ、平文保存前提で設計しないでください。
+- OS 通知は `chrome.notifications` を使って新規追加分のみ表示し、クリック時の遷移先は `notificationClickTargets` で管理されています。
+- テストは依然として UI の網羅は薄いものの、`test/background.spec.ts` にスモークテストに加えて検索クエリ構築、通知判定、既読/バッジ再計算の単体テストがあります。
 - `tsconfig.json` は `src` のみを含んでいるため、テストファイルは TypeScript コンパイル対象外です。
 - `public/manifest.json` の `options_page` と `default_popup` は `src/.../*.html` を指しています。エントリーポイントやファイル名、バンドル設定を触るときは `vite.config.ts` と合わせて確認してください。
 
