@@ -1,5 +1,7 @@
 node_modules
 dist
+codex
 
 spec.md
 tasks.md
+fix-plan.md
