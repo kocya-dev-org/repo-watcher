@@ -1,19 +1,10 @@
 import React, { useEffect, useState } from 'react';
-
-type NotificationKind = 'new' | 'mention' | 'thread' | 'assignee';
-
-type StoredNotification = {
-  id: string;
-  kind: NotificationKind;
-  isPullRequest: boolean;
-  owner: string;
-  repo: string;
-  number: number;
-  title: string;
-  url: string;
-  detectedAt: string;
-  // 既読状態は別ストアで管理するため、この型自体は変更しない
-};
+import {
+  calculateUnreadCount,
+  markNotificationAsRead,
+  type NotificationKind,
+  type StoredNotification,
+} from '../shared/notifications';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -78,7 +69,7 @@ function formatKind(kind: NotificationKind): string {
  *
  * - local storage から通知一覧と既読 ID を読み込む
  * - sync storage から通知の有効/無効設定を読み込む
- * - クリックした通知を既読にし、バッジ数を減算する
+ * - クリックした通知を既読にする
  */
 const App: React.FC = () => {
   const [notifications, setNotifications] = useState<StoredNotification[]>([]);
@@ -124,11 +115,8 @@ const App: React.FC = () => {
   }, []);
 
   /**
-   * 通知を既読にし、
-   * - 通知一覧から既読項目を除外
-   * - readNotificationIds を更新
-   * - バッジカウントを 1 減算
-   * を行う。
+   * 通知を既読にし、readNotificationIds とバッジを更新する。
+   * 実際の通知一覧からの除去は background の次回監視周期で行う。
    * @param id 既読にする通知 ID
    */
   const markAsReadAndUpdate = (id: string) => {
@@ -141,29 +129,16 @@ const App: React.FC = () => {
         const readList: string[] = Array.isArray(items.readNotificationIds)
           ? (items.readNotificationIds as string[])
           : [];
-        const readSet = new Set(readList);
-
-        if (!readSet.has(id)) {
-          readSet.add(id);
-        }
-
-        // 既読になったものは一覧から削除
-        const remaining = notificationsInStore.filter((n) => !readSet.has(n.id));
-
-        // バッジは 0 未満にならないように減算
-        const newBadgeCount = Math.max(0, Number(items.badgeCount ?? 0) - 1);
+        const nextReadIds = markNotificationAsRead(readList, id);
+        const newBadgeCount = calculateUnreadCount(notificationsInStore, nextReadIds);
 
         chrome.storage.local.set(
           {
-            notifications: remaining,
-            readNotificationIds: Array.from(readSet),
+            readNotificationIds: nextReadIds,
             badgeCount: newBadgeCount,
           },
           () => {
-            // ポップアップ表示中の state も同期
-            setNotifications(remaining);
-            setReadIds(readSet);
-            // バッジの見た目更新は background 側のロジックに合わせておく
+            setReadIds(new Set(nextReadIds));
             chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
           },
         );
@@ -180,7 +155,6 @@ const App: React.FC = () => {
     if (n.url) {
       chrome.tabs.create({ url: n.url });
     }
-    // クリック時に既読として扱い、ストアとバッジを更新
     markAsReadAndUpdate(n.id);
   };
 

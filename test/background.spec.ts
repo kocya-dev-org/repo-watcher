@@ -2,12 +2,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { WatchTargetRepo } from '../src/background/index';
 import {
+  buildRepoQuery,
+  hasAssigneeCommentNotification,
+  hasMentionNotification,
+  hasMentionThreadNotification,
+  isNewNotificationCandidate,
+  toStoredNotification,
+} from '../src/background/watchLogic';
+import {
   buildPatCacheKey,
   decryptPat,
   encryptPat,
   redactSensitiveText,
   sanitizeError,
 } from '../src/background/security';
+import {
+  calculateUnreadCount,
+  markNotificationAsRead,
+  reconcileNotificationState,
+  type StoredNotification,
+} from '../src/shared/notifications';
 
 // jsdom 環境では chrome API が存在しないため、最低限のモックを構成する
 declare const global: any;
@@ -220,5 +234,310 @@ describe('background security helpers', () => {
         },
       ],
     });
+  });
+});
+
+describe('background notification logic helpers', () => {
+  const lastCheckedAt = '2026-03-21T10:00:00.000Z';
+  const baseNode = {
+    __typename: 'Issue' as const,
+    id: 'ISSUE_1',
+    number: 42,
+    title: '通知テスト',
+    url: 'https://github.com/octo/repo/issues/42',
+    createdAt: '2026-03-21T10:05:00.000Z',
+    updatedAt: '2026-03-21T10:05:00.000Z',
+    repository: {
+      name: 'repo',
+      owner: { login: 'octo' },
+    },
+    assignees: {
+      nodes: [{ login: 'viewer' }],
+    },
+    body: '',
+    comments: {
+      nodes: [],
+    },
+  };
+
+  it('buildRepoQuery は repo 条件と created/mentions/assignee 条件を OR で構築する', () => {
+    const query = buildRepoQuery(
+      [
+        { owner: 'octo', name: 'repo1' },
+        { owner: 'hubot', name: 'repo2' },
+      ],
+      lastCheckedAt,
+      'viewer',
+    );
+
+    expect(query).toContain('(repo:octo/repo1 OR repo:hubot/repo2)');
+    expect(query).toContain(
+      `(created:>${lastCheckedAt} OR mentions:viewer OR assignee:viewer)`,
+    );
+  });
+
+  it('新規 PR/Issue 判定は createdAt が lastCheckedAt より後かで決まる', () => {
+    expect(isNewNotificationCandidate(baseNode, lastCheckedAt)).toBe(true);
+    expect(
+      isNewNotificationCandidate(
+        { ...baseNode, createdAt: '2026-03-21T09:55:00.000Z' },
+        lastCheckedAt,
+      ),
+    ).toBe(false);
+  });
+
+  it('メンション判定は新しい本文または新しいコメントだけを対象にする', () => {
+    expect(
+      hasMentionNotification(
+        { ...baseNode, body: 'hello @viewer' },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(true);
+
+    expect(
+      hasMentionNotification(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          updatedAt: '2026-03-21T10:10:00.000Z',
+          body: 'hello @viewer',
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(false);
+
+    expect(
+      hasMentionNotification(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          comments: {
+            nodes: [
+              {
+                body: 'old @viewer',
+                createdAt: '2026-03-21T09:56:00.000Z',
+                updatedAt: '2026-03-21T09:56:00.000Z',
+              },
+              {
+                body: 'new @viewer',
+                createdAt: '2026-03-21T10:06:00.000Z',
+                updatedAt: '2026-03-21T10:06:00.000Z',
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(true);
+  });
+
+  it('assignee コメント判定は assignee かつ新しいコメント更新がある場合のみ真になる', () => {
+    expect(
+      hasAssigneeCommentNotification(
+        {
+          ...baseNode,
+          comments: {
+            nodes: [
+              {
+                body: 'new comment',
+                createdAt: '2026-03-21T10:06:00.000Z',
+                updatedAt: '2026-03-21T10:06:00.000Z',
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(true);
+
+    expect(
+      hasAssigneeCommentNotification(
+        {
+          ...baseNode,
+          assignees: { nodes: [{ login: 'someone-else' }] },
+          comments: {
+            nodes: [
+              {
+                body: 'new comment',
+                createdAt: '2026-03-21T10:06:00.000Z',
+                updatedAt: '2026-03-21T10:06:00.000Z',
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(false);
+  });
+
+  it('未解決 thread で過去メンション + 新規コメントがある場合のみ通知対象にする', () => {
+    expect(
+      hasMentionThreadNotification(
+        {
+          __typename: 'PullRequest',
+          id: 'PR_1',
+          number: 5,
+          title: 'PR',
+          url: 'https://github.com/octo/repo/pull/5',
+          repository: {
+            name: 'repo',
+            owner: { login: 'octo' },
+          },
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'THREAD_1',
+                isResolved: false,
+                comments: {
+                  nodes: [
+                    {
+                      body: '@viewer ping',
+                      createdAt: '2026-03-21T09:59:00.000Z',
+                    },
+                    {
+                      body: 'follow up',
+                      createdAt: '2026-03-21T10:08:00.000Z',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(true);
+
+    expect(
+      hasMentionThreadNotification(
+        {
+          __typename: 'PullRequest',
+          id: 'PR_1',
+          number: 5,
+          title: 'PR',
+          url: 'https://github.com/octo/repo/pull/5',
+          repository: {
+            name: 'repo',
+            owner: { login: 'octo' },
+          },
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'THREAD_1',
+                isResolved: true,
+                comments: {
+                  nodes: [
+                    {
+                      body: '@viewer ping',
+                      createdAt: '2026-03-21T09:59:00.000Z',
+                    },
+                    {
+                      body: 'follow up',
+                      createdAt: '2026-03-21T10:08:00.000Z',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(false);
+  });
+
+  it('StoredNotification は kind と nodeId から一意 ID を作る', () => {
+    const stored = toStoredNotification(baseNode, 'mention', '2026-03-21T10:06:00.000Z');
+
+    expect(stored).toEqual({
+      id: 'mention:ISSUE_1',
+      kind: 'mention',
+      isPullRequest: false,
+      owner: 'octo',
+      repo: 'repo',
+      number: 42,
+      title: '通知テスト',
+      url: 'https://github.com/octo/repo/issues/42',
+      detectedAt: '2026-03-21T10:06:00.000Z',
+    });
+  });
+});
+
+describe('shared notification state helpers', () => {
+  const existingNotifications: StoredNotification[] = [
+    {
+      id: 'new:ISSUE_1',
+      kind: 'new',
+      isPullRequest: false,
+      owner: 'octo',
+      repo: 'repo',
+      number: 1,
+      title: 'Issue 1',
+      url: 'https://github.com/octo/repo/issues/1',
+      detectedAt: '2026-03-21T10:00:00.000Z',
+    },
+    {
+      id: 'mention:ISSUE_2',
+      kind: 'mention',
+      isPullRequest: false,
+      owner: 'octo',
+      repo: 'repo',
+      number: 2,
+      title: 'Issue 2',
+      url: 'https://github.com/octo/repo/issues/2',
+      detectedAt: '2026-03-21T10:00:00.000Z',
+    },
+  ];
+
+  it('既読追加は同じ ID を重複登録しない', () => {
+    expect(markNotificationAsRead([], 'mention:ISSUE_2')).toEqual(['mention:ISSUE_2']);
+    expect(markNotificationAsRead(['mention:ISSUE_2'], 'mention:ISSUE_2')).toEqual([
+      'mention:ISSUE_2',
+    ]);
+  });
+
+  it('未読件数は notifications と readNotificationIds から再計算する', () => {
+    expect(calculateUnreadCount(existingNotifications, [])).toBe(2);
+    expect(calculateUnreadCount(existingNotifications, ['mention:ISSUE_2'])).toBe(1);
+  });
+
+  it('reconcileNotificationState は既読通知を除去し、未読だけで badge を再計算する', () => {
+    const detectedNotifications: StoredNotification[] = [
+      existingNotifications[0],
+      {
+        id: 'thread:PR_3',
+        kind: 'thread',
+        isPullRequest: true,
+        owner: 'octo',
+        repo: 'repo',
+        number: 3,
+        title: 'PR 3',
+        url: 'https://github.com/octo/repo/pull/3',
+        detectedAt: '2026-03-21T10:10:00.000Z',
+      },
+    ];
+
+    const reconciled = reconcileNotificationState(
+      existingNotifications,
+      ['mention:ISSUE_2'],
+      detectedNotifications,
+    );
+
+    expect(reconciled.notifications.map((notification) => notification.id)).toEqual([
+      'new:ISSUE_1',
+      'thread:PR_3',
+    ]);
+    expect(reconciled.readNotificationIds).toEqual([]);
+    expect(reconciled.badgeCount).toBe(2);
+    expect(reconciled.addedNotifications.map((notification) => notification.id)).toEqual([
+      'thread:PR_3',
+    ]);
   });
 });

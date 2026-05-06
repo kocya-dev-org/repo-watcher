@@ -1,7 +1,23 @@
 import { graphql } from '@octokit/graphql';
 
+import {
+  buildRepoQuery,
+  getUpdatedPullRequestIds,
+  hasAssigneeCommentNotification,
+  hasMentionNotification,
+  hasMentionThreadNotification,
+  isNewNotificationCandidate,
+  toStoredNotification,
+  type IssueOrPullRequestNode,
+  type PullRequestReviewThreadsNode,
+} from './watchLogic';
 import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
+import {
+  calculateUnreadCount,
+  reconcileNotificationState,
+  type StoredNotification,
+} from '../shared/notifications';
 
 export type WatchTargetRepo = {
   owner: string;
@@ -33,20 +49,6 @@ let runtimeState: RuntimeState = {
   viewerLogin: null,
   viewerLoginPatKey: null,
   lastCheckedAt: null,
-};
-
-type NotificationKind = 'new' | 'mention' | 'thread' | 'assignee';
-
-type StoredNotification = {
-  id: string; // `${kind}:${nodeId}` などで一意化
-  kind: NotificationKind;
-  isPullRequest: boolean;
-  owner: string;
-  repo: string;
-  number: number;
-  title: string;
-  url: string;
-  detectedAt: string; // ISO8601
 };
 
 type LocalRuntimeStorage = {
@@ -293,33 +295,6 @@ async function showOSNotifications(notifications: StoredNotification[]) {
 }
 
 /**
- * `search(type: ISSUE)` で利用するクエリ文字列を組み立てる。
- *
- * - 監視対象リポジトリ: `repo:owner/name` の OR 条件
- * - 条件部分: `created:>lastCheckedAt` / `mentions:viewer` / `assignee:viewer` を OR で結合
- * @param repos 監視対象リポジトリ一覧
- * @param lastCheckedAt 前回監視時刻 (ISO8601)
- * @param viewerLogin ログインユーザーの login
- * @returns GitHub search クエリ文字列
- */
-function buildRepoQuery(
-  repos: WatchTargetRepo[],
-  lastCheckedAt: string,
-  viewerLogin: string,
-): string {
-  const repoPart =
-    repos.length === 0 ? '' : `${repos.map((r) => `repo:${r.owner}/${r.name}`).join(' OR ')}`;
-
-  const conditionPart = [
-    `created:>${lastCheckedAt}`,
-    //`mentions:${viewerLogin}`,
-    `assignee:${viewerLogin}`,
-  ].join(' ');
-
-  return `${repoPart} is:open ${conditionPart}`.trim();
-}
-
-/**
  * 監視サイクル本体。
  *
  * 1. 設定読み込み
@@ -411,51 +386,33 @@ async function runWatchCycle() {
     },
   );
 
-  const issuesAndPrs = (searchResult.search?.nodes ?? []) as any[];
+  const issuesAndPrs = (searchResult.search?.nodes ?? []) as IssueOrPullRequestNode[];
 
   // 各種イベントごとに一時配列へ振り分ける
-  const newItems: any[] = [];
-  const mentionItems: any[] = [];
-  const assigneeCommentItems: any[] = [];
-  const updatedPrIds: string[] = [];
+  const newItems: IssueOrPullRequestNode[] = [];
+  const mentionItems: IssueOrPullRequestNode[] = [];
+  const assigneeCommentItems: IssueOrPullRequestNode[] = [];
 
   for (const node of issuesAndPrs) {
-    const isNew = new Date(node.createdAt) > new Date(lastCheckedAt);
-    const hasAssigneeMe =
-      (node.assignees?.nodes ?? []).some((a: any) => a.login === viewerLogin) ?? false;
-
-    const comments = node.comments?.nodes ?? [];
-    const hasNewComment =
-      comments.some((c: any) => new Date(c.updatedAt) > new Date(lastCheckedAt)) ?? false;
-
-    const textTargets = [
-      node.body as string,
-      ...comments.map((c: any) => (c.body as string) ?? ''),
-    ];
-    const mentionToken = `@${viewerLogin}`;
-    const hasMention = textTargets.some((t) => t && t.includes(mentionToken)) ?? false;
-
-    // 新規 PR / Issue
-    if (settings.enableNewItems && isNew) {
+    if (settings.enableNewItems && isNewNotificationCandidate(node, lastCheckedAt)) {
       newItems.push(node);
     }
-    // 本文・コメント中に自分宛メンションが含まれるもの
-    if (settings.enableMentions && hasMention) {
+
+    if (settings.enableMentions && hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
       mentionItems.push(node);
     }
-    // 自分が Assignee かつ lastCheckedAt 以降にコメント更新があるもの
-    if (settings.enableAssigneeComments && hasAssigneeMe && hasNewComment) {
-      assigneeCommentItems.push(node);
-    }
 
-    const isPR = node.__typename === 'PullRequest';
-    if (isPR && new Date(node.updatedAt) > new Date(lastCheckedAt)) {
-      updatedPrIds.push(node.id);
+    if (
+      settings.enableAssigneeComments &&
+      hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)
+    ) {
+      assigneeCommentItems.push(node);
     }
   }
 
   // 自分のメンションを含む未解決レビュー スレッドへの新規コメント検知
-  const mentionThreadItems: any[] = [];
+  const mentionThreadItems: PullRequestReviewThreadsNode[] = [];
+  const updatedPrIds = getUpdatedPullRequestIds(issuesAndPrs, lastCheckedAt);
   if (settings.enableMentionThreads && updatedPrIds.length > 0) {
     const reviewResult = await (client as any)(
       `
@@ -496,124 +453,50 @@ async function runWatchCycle() {
       },
     );
 
-    for (const pr of (reviewResult.nodes ?? []) as any[]) {
-      const threads = pr.reviewThreads?.nodes ?? [];
-      for (const thread of threads) {
-        // 解決済みスレッドは対象外
-        if (thread.isResolved) continue;
-
-        const comments = thread.comments?.nodes ?? [];
-        if (comments.length === 0) continue;
-
-        const mentionToken = `@${viewerLogin}`;
-        const hadMentionBefore = comments.some(
-          (c: any) =>
-            new Date(c.createdAt) <= new Date(lastCheckedAt) &&
-            (c.body as string)?.includes(mentionToken),
-        );
-        const lastComment = comments[comments.length - 1];
-        const lastCreatedAt = new Date(lastComment.createdAt);
-
-        // 過去コメントに自分宛メンションが存在し、
-        // かつ最後のコメントが前回監視時刻より新しければ通知対象とする
-        if (hadMentionBefore && lastCreatedAt > new Date(lastCheckedAt)) {
-          mentionThreadItems.push({
-            pr,
-            thread,
-            lastComment,
-          });
-        }
+    for (const pr of (reviewResult.nodes ?? []) as PullRequestReviewThreadsNode[]) {
+      if (hasMentionThreadNotification(pr, lastCheckedAt, viewerLogin)) {
+        mentionThreadItems.push(pr);
       }
     }
   }
 
   // 通知一覧ストアへ反映（重複排除しつつ追加）
   const detectedAt = nowIso;
-  // GraphQL ノードから StoredNotification 形式へ変換し、kind と node.id から一意 ID を生成する
-  const toStored = (node: any, kind: NotificationKind): StoredNotification | null => {
-    if (!node || !node.repository) return null;
-    const isPullRequest = node.__typename === 'PullRequest';
-    const owner = node.repository.owner?.login ?? '';
-    const repo = node.repository.name ?? '';
-    const number = typeof node.number === 'number' ? node.number : 0;
-    const title = node.title ?? '';
-    const url = node.url ?? '';
-    const nodeId = node.id ?? `${owner}/${repo}#${number}`;
-    const id = `${kind}:${nodeId}`;
-
-    return {
-      id,
-      kind,
-      isPullRequest,
-      owner,
-      repo,
-      number,
-      title,
-      url,
-      detectedAt,
-    };
-  };
-
   const collected: StoredNotification[] = [];
 
-  // 新規 PR / Issue
   for (const n of newItems) {
-    const s = toStored(n, 'new');
+    const s = toStoredNotification(n, 'new', detectedAt);
     if (s) collected.push(s);
   }
-  // 本文・コメントに自分宛メンションを含むもの
   for (const n of mentionItems) {
-    const s = toStored(n, 'mention');
+    const s = toStoredNotification(n, 'mention', detectedAt);
     if (s) collected.push(s);
   }
-  // 自分が Assignee のチケットへの新規コメント
   for (const n of assigneeCommentItems) {
-    const s = toStored(n, 'assignee');
+    const s = toStoredNotification(n, 'assignee', detectedAt);
     if (s) collected.push(s);
   }
-  // 自分のメンションを含む未解決レビュー スレッドへのコメント
-  for (const t of mentionThreadItems) {
-    const pr = (t as any).pr;
-    const s = toStored(pr, 'thread');
+  for (const pr of mentionThreadItems) {
+    const s = toStoredNotification(pr, 'thread', detectedAt);
     if (s) collected.push(s);
   }
 
-  if (collected.length > 0) {
-    // 既存通知と突き合わせて重複を排除しつつ追加し、
-    // 追加件数分だけバッジカウントを増やす
-    let addedNotifications: StoredNotification[] = [];
-    await new Promise<void>((resolve) => {
-      chrome.storage.local.get({ notifications: [], badgeCount: 0 }, (items: any) => {
-        const existing: StoredNotification[] = Array.isArray(items.notifications)
-          ? items.notifications
-          : [];
-        const existingIds = new Set(existing.map((n) => n.id));
-        const merged = existing.slice();
-        addedNotifications = [];
+  const localState = await loadLocalRuntimeStorage();
+  const reconciled = reconcileNotificationState(
+    localState.notifications,
+    localState.readNotificationIds,
+    collected,
+  );
 
-        for (const n of collected) {
-          if (!existingIds.has(n.id)) {
-            merged.push(n);
-            addedNotifications.push(n);
-          }
-        }
+  await saveLocalRuntimeStorage({
+    notifications: reconciled.notifications,
+    readNotificationIds: reconciled.readNotificationIds,
+    badgeCount: reconciled.badgeCount,
+  });
+  setBadge(reconciled.badgeCount);
 
-        const newBadgeCount = (items.badgeCount ?? 0) + addedNotifications.length;
-
-        chrome.storage.local.set(
-          {
-            notifications: merged,
-            badgeCount: newBadgeCount,
-          },
-          () => {
-            setBadge(newBadgeCount);
-            resolve();
-          },
-        );
-      });
-    });
-
-    await showOSNotifications(addedNotifications);
+  if (reconciled.addedNotifications.length > 0) {
+    await showOSNotifications(reconciled.addedNotifications);
   }
 
   await saveLastCheckedAt(nowIso);
@@ -641,7 +524,11 @@ function setupAlarms() {
  */
 async function restoreBadge() {
   const localState = await loadLocalRuntimeStorage();
-  setBadge(localState.badgeCount);
+  const badgeCount = calculateUnreadCount(localState.notifications, localState.readNotificationIds);
+  if (badgeCount !== localState.badgeCount) {
+    await saveLocalRuntimeStorage({ badgeCount });
+  }
+  setBadge(badgeCount);
 }
 
 // 拡張機能インストール時にアラームを初期化
