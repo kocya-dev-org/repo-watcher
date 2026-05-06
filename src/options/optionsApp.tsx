@@ -41,12 +41,16 @@ const OptionsApp: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasSavedPat, setHasSavedPat] = useState(false);
 
-  const refreshPatStatus = async () => {
-    setHasSavedPat(await hasEncryptedPat());
-  };
+  const loadPatStatus = () => hasEncryptedPat();
 
   useEffect(() => {
-    void refreshPatStatus();
+    let isActive = true;
+
+    void loadPatStatus().then((status) => {
+      if (isActive) {
+        setHasSavedPat(status);
+      }
+    });
 
     chrome.storage.sync.get(
       {
@@ -71,6 +75,10 @@ const OptionsApp: React.FC = () => {
         });
       },
     );
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   /**
@@ -138,7 +146,7 @@ const OptionsApp: React.FC = () => {
           await saveEncryptedPat(form.pat.trim());
         }
 
-        await refreshPatStatus();
+        setHasSavedPat(await loadPatStatus());
         setForm((prev) => ({ ...prev, pat: '' }));
         setSaveMessage('保存しました');
         setTimeout(() => setSaveMessage(null), 2000);
@@ -159,7 +167,7 @@ const OptionsApp: React.FC = () => {
       setSaveError(null);
       try {
         await clearEncryptedPat();
-        await refreshPatStatus();
+        setHasSavedPat(await loadPatStatus());
         setForm((prev) => ({ ...prev, pat: '' }));
         setSaveMessage('PAT を削除しました');
         setTimeout(() => setSaveMessage(null), 2000);
