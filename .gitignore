@@ -1,6 +1,10 @@
 node_modules
 dist
 codex
+coverage
+
+.docs
+security-reports
 
 spec.md
 tasks.md

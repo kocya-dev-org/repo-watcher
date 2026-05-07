@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     setupFiles: [],
     coverage: {
+      all: true,
+      include: ['src/**/*.{ts,tsx}'],
       provider: 'v8',
     },
   },

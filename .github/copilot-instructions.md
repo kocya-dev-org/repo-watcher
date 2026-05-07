@@ -17,6 +17,12 @@
 - 単一テストファイル: `npx vitest run test/background.spec.ts`
 - テスト名を指定した単体実行: `npx vitest run test/background.spec.ts -t "background スクリプトが読み込まれると onInstalled / onAlarm リスナーが登録される"`
 
+## 実装ルール
+
+- 実装時は対応するテストコードを追加する
+  - 既存のテストコードを検索し、重複するケースがないか確認する
+  - 追加するテストコードは、変更したコードの機能を十分にカバーするものでなければならない
+
 ## 高レベルアーキテクチャ
 
 - このリポジトリは Chrome 拡張で、Vite で 3 つのエントリーポイントをビルドする。background service worker は `src/background/index.ts`、popup は `src/popup/index.html` から `src/popup/index.tsx`、options は `src/options/index.html` から `src/options/index.tsx` を使う。エントリーポイントや出力名を変える場合は `public/manifest.json` と `vite.config.ts` を必ず揃える。

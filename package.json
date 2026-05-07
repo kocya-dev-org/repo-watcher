@@ -7,8 +7,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:debug": "tsc && vite build --mode debug",
     "preview": "vite preview",
     "test": "vitest --run",
+    "cov": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write ."
