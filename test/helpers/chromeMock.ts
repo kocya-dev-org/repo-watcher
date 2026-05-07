@@ -8,6 +8,11 @@ type AlarmListener = (alarm: { name: string }) => void;
 type EmptyListener = () => void;
 type StorageChangeListener = (changes: StorageChanges, areaName: StorageAreaName) => void;
 type NotificationClickListener = (notificationId: string) => void;
+type RuntimeMessageListener = (
+  message: unknown,
+  sender: unknown,
+  sendResponse: (response: unknown) => void,
+) => boolean | void;
 
 function cloneValue<T>(value: T): T {
   return value === undefined ? value : structuredClone(value);
@@ -58,6 +63,7 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
   const runtimeStartupListeners: EmptyListener[] = [];
   const storageChangedListeners: StorageChangeListener[] = [];
   const notificationClickedListeners: NotificationClickListener[] = [];
+  const runtimeMessageListeners: RuntimeMessageListener[] = [];
 
   const localState: StorageState = { ...(initial?.local ?? {}) };
   const syncState: StorageState = { ...(initial?.sync ?? {}) };
@@ -122,8 +128,33 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
       },
     },
     runtime: {
+      lastError: undefined as { message: string } | undefined,
       getManifest: vi.fn(() => ({ version: '1.0.0' })),
       openOptionsPage: vi.fn(),
+      sendMessage: vi.fn((message: unknown, callback?: (response: unknown) => void) => {
+        let responded = false;
+        let handledAsync = false;
+        chromeMock.runtime.lastError = undefined;
+
+        const sendResponse = (response: unknown) => {
+          responded = true;
+          callback?.(response);
+        };
+
+        for (const listener of runtimeMessageListeners) {
+          const listenerResult = listener(message, {}, sendResponse);
+          if (listenerResult === true) {
+            handledAsync = true;
+          }
+          if (responded) {
+            break;
+          }
+        }
+
+        if (!responded && !handledAsync) {
+          callback?.(undefined);
+        }
+      }),
       onInstalled: {
         addListener: vi.fn((listener: EmptyListener) => {
           runtimeInstalledListeners.push(listener);
@@ -132,6 +163,11 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
       onStartup: {
         addListener: vi.fn((listener: EmptyListener) => {
           runtimeStartupListeners.push(listener);
+        }),
+      },
+      onMessage: {
+        addListener: vi.fn((listener: RuntimeMessageListener) => {
+          runtimeMessageListeners.push(listener);
         }),
       },
     },

@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   calculateUnreadCount,
   markNotificationAsRead,
   type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
+import {
+  REFRESH_WATCH_CYCLE_MESSAGE,
+  type RefreshWatchCycleResponse,
+} from '../shared/runtimeMessages';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -16,6 +20,11 @@ type PopupSettings = {
   enableMentions: boolean;
   enableMentionThreads: boolean;
   enableAssigneeComments: boolean;
+};
+
+type PopupLocalState = {
+  notifications: StoredNotification[];
+  readNotificationIds: string[];
 };
 
 /**
@@ -64,6 +73,60 @@ function formatKind(kind: NotificationKind): string {
   }
 }
 
+function loadPopupLocalState(): Promise<PopupLocalState> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ notifications: [], readNotificationIds: [] }, (items) => {
+      resolve({
+        notifications: Array.isArray(items.notifications)
+          ? (items.notifications as StoredNotification[])
+          : [],
+        readNotificationIds: Array.isArray(items.readNotificationIds)
+          ? (items.readNotificationIds as string[])
+          : [],
+      });
+    });
+  });
+}
+
+function loadPopupSettings(): Promise<PopupSettings> {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(
+      {
+        enableNewItems: true,
+        enableMentions: true,
+        enableMentionThreads: true,
+        enableAssigneeComments: true,
+      },
+      (items) => {
+        resolve({
+          enableNewItems: Boolean(items.enableNewItems),
+          enableMentions: Boolean(items.enableMentions),
+          enableMentionThreads: Boolean(items.enableMentionThreads),
+          enableAssigneeComments: Boolean(items.enableAssigneeComments),
+        });
+      },
+    );
+  });
+}
+
+function requestWatchCycleRefresh(): Promise<RefreshWatchCycleResponse> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: REFRESH_WATCH_CYCLE_MESSAGE }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      if (!response) {
+        reject(new Error('background から応答がありませんでした。'));
+        return;
+      }
+
+      resolve(response as RefreshWatchCycleResponse);
+    });
+  });
+}
+
 /**
  * ポップアップのルートコンポーネント。
  *
@@ -77,42 +140,35 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<PopupSettings | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const manifestVersion = chrome.runtime.getManifest().version;
 
-  useEffect(() => {
-    chrome.storage.local.get(
-      { notifications: [], readNotificationIds: [], badgeCount: 0 },
-      (items) => {
-        const list = Array.isArray(items.notifications)
-          ? (items.notifications as StoredNotification[])
-          : [];
-        const readList: string[] = Array.isArray(items.readNotificationIds)
-          ? (items.readNotificationIds as string[])
-          : [];
-
-        setNotifications(list);
-        setReadIds(new Set(readList));
-        setIsLoading(false);
-      },
-    );
-    chrome.storage.sync.get(
-      {
-        enableNewItems: true,
-        enableMentions: true,
-        enableMentionThreads: true,
-        enableAssigneeComments: true,
-      },
-      (items) => {
-        setSettings({
-          enableNewItems: Boolean(items.enableNewItems),
-          enableMentions: Boolean(items.enableMentions),
-          enableMentionThreads: Boolean(items.enableMentionThreads),
-          enableAssigneeComments: Boolean(items.enableAssigneeComments),
-        });
-      },
-    );
+  const reloadPopupState = useCallback(async () => {
+    const [localState, popupSettings] = await Promise.all([
+      loadPopupLocalState(),
+      loadPopupSettings(),
+    ]);
+    setNotifications(localState.notifications);
+    setReadIds(new Set(localState.readNotificationIds));
+    setSettings(popupSettings);
+    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    queueMicrotask(() => {
+      if (isActive) {
+        void reloadPopupState();
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [reloadPopupState]);
 
   /**
    * 通知を既読にし、readNotificationIds とバッジを更新する。
@@ -188,6 +244,25 @@ const App: React.FC = () => {
     setIsMenuOpen(false);
   };
 
+  const handleRefresh = async () => {
+    setRefreshError(null);
+    setIsRefreshing(true);
+
+    try {
+      const response = await requestWatchCycleRefresh();
+      if (!response.ok) {
+        setRefreshError(response.errorMessage);
+        return;
+      }
+
+      await reloadPopupState();
+    } catch (error) {
+      setRefreshError(error instanceof Error ? error.message : '更新に失敗しました。');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -238,6 +313,25 @@ const App: React.FC = () => {
           >
             <button
               type="button"
+              onClick={() => {
+                void handleRefresh();
+              }}
+              disabled={isRefreshing}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                border: 'none',
+                background: 'transparent',
+                padding: '6px 4px',
+                cursor: isRefreshing ? 'default' : 'pointer',
+                fontSize: '12px',
+                color: isRefreshing ? '#57606a' : '#24292f',
+              }}
+            >
+              {isRefreshing ? '更新中...' : '更新'}
+            </button>
+            <button
+              type="button"
               onClick={openOptions}
               style={{
                 width: '100%',
@@ -266,6 +360,10 @@ const App: React.FC = () => {
           </div>
         )}
       </header>
+
+      {refreshError && (
+        <p style={{ margin: '0 0 8px', color: '#d1242f' }}>{refreshError}</p>
+      )}
 
       {isLoading ? (
         <p style={{ margin: 0 }}>読み込み中...</p>

@@ -34,6 +34,9 @@ function setupChromeMock() {
     (changes: Record<string, unknown>, areaName: string) => void
   > = [];
   const notificationClickedListeners: Array<(notificationId: string) => void> = [];
+  const runtimeMessageListeners: Array<
+    (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void
+  > = [];
 
   const chromeMock = {
     storage: {
@@ -91,6 +94,28 @@ function setupChromeMock() {
       },
     },
     runtime: {
+      sendMessage: vi.fn((message: unknown, callback?: (response: unknown) => void) => {
+        let responded = false;
+        let handledAsync = false;
+        const sendResponse = (response: unknown) => {
+          responded = true;
+          callback?.(response);
+        };
+
+        for (const listener of runtimeMessageListeners) {
+          const listenerResult = listener(message, {}, sendResponse);
+          if (listenerResult === true) {
+            handledAsync = true;
+          }
+          if (responded) {
+            break;
+          }
+        }
+
+        if (!responded && !handledAsync) {
+          callback?.(undefined);
+        }
+      }),
       onInstalled: {
         addListener: vi.fn((fn: () => void) => {
           runtimeInstalledListeners.push(fn);
@@ -100,6 +125,19 @@ function setupChromeMock() {
         addListener: vi.fn((fn: () => void) => {
           runtimeStartupListeners.push(fn);
         }),
+      },
+      onMessage: {
+        addListener: vi.fn(
+          (
+            fn: (
+              message: unknown,
+              sender: unknown,
+              sendResponse: (response: unknown) => void,
+            ) => boolean | void,
+          ) => {
+            runtimeMessageListeners.push(fn);
+          },
+        ),
       },
     },
   } as any;
@@ -142,6 +180,7 @@ describe('background watch logic (sanity)', () => {
     // storage.onChanged / notifications.onClicked も購読される
     expect(chromeMock.storage.onChanged.addListener).toHaveBeenCalledTimes(1);
     expect(chromeMock.notifications.onClicked.addListener).toHaveBeenCalledTimes(1);
+    expect(chromeMock.runtime.onMessage.addListener).toHaveBeenCalledTimes(1);
   });
 
   it('アラーム発火時にストレージへアクセスしようとする', async () => {

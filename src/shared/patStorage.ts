@@ -103,7 +103,13 @@ export async function loadDecryptedPat(): Promise<string | null> {
     }
   }
 
+  await clearEncryptedPat();
   return null;
+}
+
+export async function hasReadablePat(): Promise<boolean> {
+  const pat = await loadDecryptedPat();
+  return pat !== null;
 }
 
 export async function rotateEncryptedPatForStartup(startupAt: string = new Date().toISOString()) {

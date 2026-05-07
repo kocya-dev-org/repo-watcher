@@ -206,4 +206,59 @@ describe('popup App', () => {
 
     await view.unmount();
   });
+
+  it('更新ボタン押下で background に message を送り、最新状態を再読込する', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+    chromeMock.chrome.runtime.sendMessage.mockImplementationOnce(
+      (_message: unknown, callback?: (response: unknown) => void) => {
+        chromeMock.setLocalState({
+          notifications: [
+            {
+              id: 'new:ISSUE_99',
+              kind: 'new',
+              isPullRequest: false,
+              owner: 'octo',
+              repo: 'repo',
+              number: 99,
+              title: '更新後の通知',
+              url: 'https://example.com/issues/99',
+              detectedAt: '2026-05-06T10:00:00.000Z',
+            },
+          ],
+          readNotificationIds: [],
+          badgeCount: 1,
+        });
+        callback?.({ ok: true });
+      },
+    );
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButton(view.container, 'メニュー');
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const refreshButton = findButton(view.container, '更新');
+    expect(refreshButton).toBeTruthy();
+
+    await act(async () => {
+      refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      { type: 'refresh-watch-cycle' },
+      expect.any(Function),
+    );
+    expect(view.container.textContent).toContain('更新後の通知');
+
+    await view.unmount();
+  });
 });

@@ -28,6 +28,21 @@ async function importBackground() {
   await flushPromises();
 }
 
+async function waitForCondition(
+  predicate: () => boolean,
+  { timeoutMs = 2000, intervalMs = 10 } = {},
+) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error('Condition not met within timeout');
+}
+
 describe('background integration', () => {
   let chromeMock: ChromeMockController;
 
@@ -52,9 +67,6 @@ describe('background integration', () => {
   });
 
   it('runWatchCycle が通知保存・badge 更新・OS 通知発行・lastCheckedAt 保存まで行う', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-05-06T09:30:00.000Z'));
-
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
@@ -64,7 +76,7 @@ describe('background integration', () => {
       enableAssigneeComments: true,
     });
     chromeMock.setLocalState({
-      lastCheckedAt: '2026-05-06T09:00:00.000Z',
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
@@ -164,15 +176,16 @@ describe('background integration', () => {
 
     await importBackground();
     chromeMock.triggerAlarm('github-notify-watch');
-    await flushPromises();
-    await flushPromises();
+    await waitForCondition(() => chromeMock.getLocalState().badgeCount === 4);
 
     const state = chromeMock.getLocalState();
     expect(state).toMatchObject({
-      lastCheckedAt: '2026-05-06T09:30:00.000Z',
       badgeCount: 4,
       readNotificationIds: [],
     });
+    expect(new Date(state.lastCheckedAt as string).getTime()).toBeGreaterThan(
+      new Date('2026-05-06T07:00:00.000Z').getTime(),
+    );
     expect((state.notifications as Array<unknown>)).toHaveLength(4);
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(4);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '4' });
@@ -182,6 +195,66 @@ describe('background integration', () => {
         (query as string).includes('WatchReviewThreads'),
       ),
     ).toBe(true);
+  });
+
+  it('manual refresh message で runWatchCycle を 1 回実行できる', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: true,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(async (query: string) => {
+      if (query.includes('GetViewer')) {
+        return { viewer: { login: 'viewer' } };
+      }
+      if (query.includes('WatchIssuesAndPRs')) {
+        return {
+          search: {
+            nodes: [
+              {
+                __typename: 'Issue',
+                id: 'ISSUE_10',
+                number: 10,
+                title: 'Issue manual refresh',
+                url: 'https://example.com/issues/10',
+                createdAt: '2026-05-06T09:10:00.000Z',
+                updatedAt: '2026-05-06T09:10:00.000Z',
+                repository: { name: 'repo', owner: { login: 'octo' } },
+                author: { login: 'someone' },
+                assignees: { nodes: [] },
+                body: '',
+                comments: { nodes: [] },
+              },
+            ],
+          },
+        };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    });
+
+    await importBackground();
+
+    const response = await new Promise<unknown>((resolve) => {
+      chromeMock.chrome.runtime.sendMessage({ type: 'refresh-watch-cycle' }, resolve);
+    });
+
+    expect(response).toEqual({ ok: true });
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 1,
+    });
+    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
   it('通知トグルが無効な種別は収集せず、review thread クエリも不要なら実行しない', async () => {
@@ -194,7 +267,7 @@ describe('background integration', () => {
       enableAssigneeComments: false,
     });
     chromeMock.setLocalState({
-      lastCheckedAt: '2026-05-06T09:00:00.000Z',
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
@@ -242,8 +315,11 @@ describe('background integration', () => {
 
     await importBackground();
     chromeMock.triggerAlarm('github-notify-watch');
-    await flushPromises();
-    await flushPromises();
+    await waitForCondition(
+      () =>
+        new Date(chromeMock.getLocalState().lastCheckedAt as string).getTime() >
+        new Date('2026-05-06T07:00:00.000Z').getTime(),
+    );
 
     expect(chromeMock.getLocalState()).toMatchObject({
       badgeCount: 0,

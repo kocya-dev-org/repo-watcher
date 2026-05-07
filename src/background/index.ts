@@ -18,6 +18,10 @@ import {
   reconcileNotificationState,
   type StoredNotification,
 } from '../shared/notifications';
+import {
+  isRefreshWatchCycleRequest,
+  type RefreshWatchCycleResponse,
+} from '../shared/runtimeMessages';
 
 export type WatchTargetRepo = {
   owner: string;
@@ -44,12 +48,14 @@ type RuntimeState = {
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
+const DEBUG_LOG_ENABLED = import.meta.env.MODE === 'debug';
 
 let runtimeState: RuntimeState = {
   viewerLogin: null,
   viewerLoginPatKey: null,
   lastCheckedAt: null,
 };
+let runningWatchCycle: Promise<void> | null = null;
 
 type LocalRuntimeStorage = {
   lastCheckedAt: string | null;
@@ -88,6 +94,36 @@ function createGithubClient(pat: string) {
       authorization: `token ${pat}`,
     },
   });
+}
+
+function debugLog(message: string, payload?: unknown) {
+  /*
+  if (!DEBUG_LOG_ENABLED) {
+    return;
+  }
+    */
+  console.info(!DEBUG_LOG_ENABLED);
+
+  if (payload === undefined) {
+    console.info('[github-notify-ext]', message);
+    return;
+  }
+
+  console.info('[github-notify-ext]', message, payload);
+}
+
+function toErrorMessage(error: unknown): string {
+  const sanitized = sanitizeError(error);
+  if (
+    sanitized &&
+    typeof sanitized === 'object' &&
+    'message' in sanitized &&
+    typeof sanitized.message === 'string'
+  ) {
+    return sanitized.message;
+  }
+
+  return '更新に失敗しました。';
 }
 
 /**
@@ -186,6 +222,10 @@ async function loadSettings(): Promise<Settings | null> {
   const pat = await loadDecryptedPat();
 
   if (!pat || !Array.isArray(syncSettings.repos) || syncSettings.repos.length === 0) {
+    debugLog('load settings failed: incomplete settings', {
+      pat: !!pat,
+      reposCount: Array.isArray(syncSettings.repos) ? syncSettings.repos.length : 'invalid',
+    });
     return null;
   }
 
@@ -306,6 +346,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
 async function runWatchCycle() {
   const settings = await loadSettings();
   if (!settings || !settings.pat || settings.repos.length === 0) {
+    debugLog('watch cycle skipped: settings are incomplete');
     return;
   }
 
@@ -317,6 +358,12 @@ async function runWatchCycle() {
   const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
 
   const repoQuery = buildRepoQuery(settings.repos, lastCheckedAt, viewerLogin);
+  debugLog('watch cycle started', {
+    repoCount: settings.repos.length,
+    lastCheckedAt,
+    viewerLogin,
+    repoQuery,
+  });
 
   const searchResult = await (client as any)(
     `
@@ -385,6 +432,7 @@ async function runWatchCycle() {
       repoQuery,
     },
   );
+  debugLog('WatchIssuesAndPRs result', searchResult);
 
   const issuesAndPrs = (searchResult.search?.nodes ?? []) as IssueOrPullRequestNode[];
 
@@ -452,6 +500,7 @@ async function runWatchCycle() {
         prIds: updatedPrIds,
       },
     );
+    debugLog('WatchReviewThreads result', reviewResult);
 
     for (const pr of (reviewResult.nodes ?? []) as PullRequestReviewThreadsNode[]) {
       if (hasMentionThreadNotification(pr, lastCheckedAt, viewerLogin)) {
@@ -487,6 +536,14 @@ async function runWatchCycle() {
     localState.readNotificationIds,
     collected,
   );
+  debugLog('watch cycle notification summary', {
+    newItems: newItems.length,
+    mentionItems: mentionItems.length,
+    assigneeCommentItems: assigneeCommentItems.length,
+    mentionThreadItems: mentionThreadItems.length,
+    addedNotifications: reconciled.addedNotifications.length,
+    badgeCount: reconciled.badgeCount,
+  });
 
   await saveLocalRuntimeStorage({
     notifications: reconciled.notifications,
@@ -500,6 +557,17 @@ async function runWatchCycle() {
   }
 
   await saveLastCheckedAt(nowIso);
+  debugLog('watch cycle completed', { nowIso });
+}
+
+function runWatchCycleOnce(): Promise<void> {
+  if (!runningWatchCycle) {
+    runningWatchCycle = runWatchCycle().finally(() => {
+      runningWatchCycle = null;
+    });
+  }
+
+  return runningWatchCycle;
 }
 
 /**
@@ -564,10 +632,33 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 // アラーム発火時に監視サイクルを実行する
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WATCH_ALARM_NAME) {
-    runWatchCycle().catch((err) => {
-      console.error('watch cycle failed', sanitizeError(err));
+    runWatchCycleOnce().catch((err) => {
+      console.error('watch cycle failed', JSON.stringify(sanitizeError(err), null, 2));
     });
   }
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!isRefreshWatchCycleRequest(message)) {
+    return;
+  }
+
+  debugLog('manual watch cycle requested');
+  void runWatchCycleOnce()
+    .then(() => {
+      const response: RefreshWatchCycleResponse = { ok: true };
+      sendResponse(response);
+    })
+    .catch((err) => {
+      console.error('manual watch cycle failed', sanitizeError(err));
+      const response: RefreshWatchCycleResponse = {
+        ok: false,
+        errorMessage: toErrorMessage(err),
+      };
+      sendResponse(response);
+    });
+
+  return true;
 });
 
 // OS 通知クリック時に対象の PR / Issue を開く
