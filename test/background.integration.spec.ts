@@ -257,6 +257,29 @@ describe('background integration', () => {
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
+  it('manual refresh message は PAT が読めないとき失敗を返す', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: true,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+    });
+    backgroundMocks.loadDecryptedPat.mockResolvedValueOnce(null);
+
+    await importBackground();
+
+    const response = await new Promise<unknown>((resolve) => {
+      chromeMock.chrome.runtime.sendMessage({ type: 'refresh-watch-cycle' }, resolve);
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      errorMessage: 'PAT が未設定か読み出せません。',
+    });
+  });
+
   it('通知トグルが無効な種別は収集せず、review thread クエリも不要なら実行しない', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],

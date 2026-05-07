@@ -47,6 +47,15 @@ type RuntimeState = {
   lastCheckedAt: string | null;
 };
 
+type WatchCycleResult =
+  | {
+      status: 'completed';
+    }
+  | {
+      status: 'skipped';
+      errorMessage: string;
+    };
+
 const DEFAULT_INTERVAL_MINUTES = 5;
 const DEBUG_LOG_ENABLED = import.meta.env.MODE === 'debug';
 
@@ -55,7 +64,7 @@ let runtimeState: RuntimeState = {
   viewerLoginPatKey: null,
   lastCheckedAt: null,
 };
-let runningWatchCycle: Promise<void> | null = null;
+let runningWatchCycle: Promise<WatchCycleResult> | null = null;
 
 type LocalRuntimeStorage = {
   lastCheckedAt: string | null;
@@ -217,21 +226,42 @@ async function loadSyncSettings(): Promise<SyncSettings> {
  * 設定ストレージと暗号化済み PAT を読み込み、監視実行に必要な設定を返す。
  * @returns 設定オブジェクト、または未設定時は null
  */
-async function loadSettings(): Promise<Settings | null> {
+function getIncompleteSettingsError(syncSettings: SyncSettings, pat: string | null): string {
+  const reasons: string[] = [];
+
+  if (!pat) {
+    reasons.push('PAT が未設定か読み出せません。');
+  }
+  if (!Array.isArray(syncSettings.repos) || syncSettings.repos.length === 0) {
+    reasons.push('監視対象リポジトリが未設定です。');
+  }
+
+  return reasons.join(' ');
+}
+
+async function loadSettings(): Promise<{ settings: Settings | null; errorMessage: string | null }> {
   const syncSettings = await loadSyncSettings();
   const pat = await loadDecryptedPat();
 
   if (!pat || !Array.isArray(syncSettings.repos) || syncSettings.repos.length === 0) {
+    const errorMessage = getIncompleteSettingsError(syncSettings, pat);
     debugLog('load settings failed: incomplete settings', {
       pat: !!pat,
       reposCount: Array.isArray(syncSettings.repos) ? syncSettings.repos.length : 'invalid',
+      errorMessage,
     });
-    return null;
+    return {
+      settings: null,
+      errorMessage,
+    };
   }
 
   return {
-    ...syncSettings,
-    pat,
+    settings: {
+      ...syncSettings,
+      pat,
+    },
+    errorMessage: null,
   };
 }
 
@@ -343,11 +373,14 @@ async function showOSNotifications(notifications: StoredNotification[]) {
  * 4. 通知ストアとバッジの更新
  * 5. `lastCheckedAt` の更新
  */
-async function runWatchCycle() {
-  const settings = await loadSettings();
+async function runWatchCycle(): Promise<WatchCycleResult> {
+  const { settings, errorMessage } = await loadSettings();
   if (!settings || !settings.pat || settings.repos.length === 0) {
     debugLog('watch cycle skipped: settings are incomplete');
-    return;
+    return {
+      status: 'skipped',
+      errorMessage: errorMessage ?? '設定が不足しているため更新できません。',
+    };
   }
 
   await hydrateRuntimeState();
@@ -558,9 +591,12 @@ async function runWatchCycle() {
 
   await saveLastCheckedAt(nowIso);
   debugLog('watch cycle completed', { nowIso });
+  return {
+    status: 'completed',
+  };
 }
 
-function runWatchCycleOnce(): Promise<void> {
+function runWatchCycleOnce(): Promise<WatchCycleResult> {
   if (!runningWatchCycle) {
     runningWatchCycle = runWatchCycle().finally(() => {
       runningWatchCycle = null;
@@ -645,8 +681,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   debugLog('manual watch cycle requested');
   void runWatchCycleOnce()
-    .then(() => {
-      const response: RefreshWatchCycleResponse = { ok: true };
+    .then((result) => {
+      const response: RefreshWatchCycleResponse =
+        result.status === 'completed'
+          ? { ok: true }
+          : {
+              ok: false,
+              errorMessage: result.errorMessage,
+            };
       sendResponse(response);
     })
     .catch((err) => {

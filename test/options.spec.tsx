@@ -9,12 +9,14 @@ const patStorageMocks = vi.hoisted(() => ({
   saveEncryptedPat: vi.fn(async (_pat: string) => {}),
   clearEncryptedPat: vi.fn(async () => {}),
   hasEncryptedPat: vi.fn(async () => false),
+  hasReadablePat: vi.fn(async () => false),
 }));
 
 vi.mock('../src/shared/patStorage', () => ({
   saveEncryptedPat: patStorageMocks.saveEncryptedPat,
   clearEncryptedPat: patStorageMocks.clearEncryptedPat,
   hasEncryptedPat: patStorageMocks.hasEncryptedPat,
+  hasReadablePat: patStorageMocks.hasReadablePat,
 }));
 
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
@@ -56,7 +58,9 @@ describe('options App', () => {
     patStorageMocks.saveEncryptedPat.mockClear();
     patStorageMocks.clearEncryptedPat.mockClear();
     patStorageMocks.hasEncryptedPat.mockReset();
+    patStorageMocks.hasReadablePat.mockReset();
     patStorageMocks.hasEncryptedPat.mockResolvedValue(false);
+    patStorageMocks.hasReadablePat.mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -67,7 +71,7 @@ describe('options App', () => {
   });
 
   it('sync storage の内容と PAT 状態を初期表示する', async () => {
-    patStorageMocks.hasEncryptedPat.mockResolvedValue(true);
+    patStorageMocks.hasReadablePat.mockResolvedValue(true);
     chromeMock.setSyncState({
       repos: [
         { owner: 'octo', name: 'repo1' },
@@ -101,7 +105,7 @@ describe('options App', () => {
   });
 
   it('フォーム送信時に repos / interval / toggles / PAT を保存する', async () => {
-    patStorageMocks.hasEncryptedPat.mockResolvedValue(false);
+    patStorageMocks.hasReadablePat.mockResolvedValue(false);
 
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
@@ -120,7 +124,7 @@ describe('options App', () => {
     await setCheckboxValue(checkboxes[2] as HTMLInputElement, true);
     await setCheckboxValue(checkboxes[3] as HTMLInputElement, true);
 
-    patStorageMocks.hasEncryptedPat.mockResolvedValue(true);
+    patStorageMocks.hasReadablePat.mockResolvedValue(true);
 
     await act(async () => {
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -151,6 +155,7 @@ describe('options App', () => {
 
   it('保存済み PAT を削除できる', async () => {
     patStorageMocks.hasEncryptedPat.mockResolvedValue(true);
+    patStorageMocks.hasReadablePat.mockResolvedValue(true);
 
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
@@ -159,6 +164,7 @@ describe('options App', () => {
     expect(button).toBeTruthy();
 
     patStorageMocks.hasEncryptedPat.mockResolvedValue(false);
+    patStorageMocks.hasReadablePat.mockResolvedValue(false);
 
     await act(async () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

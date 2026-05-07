@@ -4,6 +4,7 @@ import {
   clearEncryptedPat,
   ensurePatStartupTime,
   hasEncryptedPat,
+  hasReadablePat,
   loadDecryptedPat,
   loadStoredPatState,
   rotateEncryptedPatForStartup,
@@ -120,6 +121,41 @@ describe('shared patStorage lifecycle', () => {
       patCurrentStartupAt: '2026-05-06T02:03:04.000Z',
       patPreviousStartupAt: '2026-05-06T01:02:03.000Z',
     });
+  });
+
+  it('loadDecryptedPat は複号手段がない encryptedPat を破棄する', async () => {
+    const encryptedPat = await encryptPat('github_pat_orphaned', '2026-05-06T01:02:03.000Z');
+
+    chromeMock.setLocalState({
+      encryptedPat,
+      patCurrentStartupAt: null,
+      patPreviousStartupAt: null,
+    });
+
+    await expect(loadDecryptedPat()).resolves.toBeNull();
+    expect(chromeMock.getLocalState()).toMatchObject({
+      encryptedPat: null,
+      patCurrentStartupAt: null,
+      patPreviousStartupAt: null,
+    });
+  });
+
+  it('hasReadablePat は複号できる PAT だけを true と判定する', async () => {
+    const startupAt = '2026-05-06T01:02:03.000Z';
+    const encryptedPat = await encryptPat('github_pat_current', startupAt);
+
+    chromeMock.setLocalState({
+      encryptedPat,
+      patCurrentStartupAt: startupAt,
+    });
+    await expect(hasReadablePat()).resolves.toBe(true);
+
+    chromeMock.setLocalState({
+      encryptedPat,
+      patCurrentStartupAt: null,
+      patPreviousStartupAt: null,
+    });
+    await expect(hasReadablePat()).resolves.toBe(false);
   });
 
   it('rotateEncryptedPatForStartup は初回起動時に current startup を保存する', async () => {
