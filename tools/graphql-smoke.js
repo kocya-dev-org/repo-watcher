@@ -9,8 +9,13 @@ export const DEFAULT_QUERY = `query {
     bio
   }
 }`;
-// ORや括弧は認識されない
-const DEFAULT_OPTIONS = `{
+// パラメータ。ORや括弧は認識されない
+export const DEFAULT_OPTIONS = `{
+/*
+e.g.
+  repoQuery:
+    'repo:{repo_name} is:pr is:open updated:>{date time} assignee:{name}',
+*/
 }`;
 
 export const USAGE = `Usage:

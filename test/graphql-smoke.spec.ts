@@ -57,7 +57,7 @@ describe('graphql smoke tool', () => {
   });
 
   it('main は固定クエリを実行して整形済み JSON を出力する', async () => {
-    const { DEFAULT_QUERY, main } = await importGraphqlSmokeTool();
+    const { DEFAULT_QUERY, DEFAULT_OPTIONS, main } = await importGraphqlSmokeTool();
     const stdout: string[] = [];
     const stderr: string[] = [];
 
@@ -78,7 +78,7 @@ describe('graphql smoke tool', () => {
         authorization: 'token github_pat_test',
       },
     });
-    expect(graphqlMocks.client).toHaveBeenCalledWith(DEFAULT_QUERY);
+    expect(graphqlMocks.client).toHaveBeenCalledWith(DEFAULT_QUERY, DEFAULT_OPTIONS);
     expect(stderr).toEqual([]);
     expect(stdout.join('')).toContain('"login": "octocat"');
   });
@@ -87,9 +87,7 @@ describe('graphql smoke tool', () => {
     const { main } = await importGraphqlSmokeTool();
     const stderr: string[] = [];
 
-    graphqlMocks.client.mockRejectedValue(
-      new Error('authorization: token github_pat_test failed'),
-    );
+    graphqlMocks.client.mockRejectedValue(new Error('authorization: token github_pat_test failed'));
 
     const exitCode = await main(['--authorization', 'token github_pat_test'], {
       stdout: () => undefined,
