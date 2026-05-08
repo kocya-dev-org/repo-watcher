@@ -9,6 +9,7 @@
     "build": "tsc && vite build",
     "build:debug": "tsc && vite build --mode debug",
     "preview": "vite preview",
+    "tool-graphql": "node ./tools/graphql-smoke.js",
     "test": "vitest --run",
     "cov": "vitest run --coverage",
     "test:watch": "vitest --watch",
