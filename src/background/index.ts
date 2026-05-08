@@ -100,7 +100,7 @@ const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
 function createGithubClient(pat: string) {
   return graphql.defaults({
     headers: {
-      authorization: `token ${pat}`,
+      authorization: `bearer ${pat}`,
     },
   });
 }
