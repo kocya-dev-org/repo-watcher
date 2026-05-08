@@ -299,7 +299,7 @@ describe('background notification logic helpers', () => {
     },
   };
 
-  it('buildRepoQuery は repo 条件と created/mentions/assignee 条件を OR で構築する', () => {
+  it('buildRepoQuery は PR 向けの open 条件を含む検索クエリを構築する', () => {
     const query = buildRepoQuery(
       [
         { owner: 'octo', name: 'repo1' },
@@ -309,10 +309,13 @@ describe('background notification logic helpers', () => {
       'viewer',
     );
 
-    expect(query).toContain('(repo:octo/repo1 OR repo:hubot/repo2)');
-    expect(query).toContain(
-      `(created:>${lastCheckedAt} OR mentions:viewer OR assignee:viewer)`,
-    );
+    expect(query).toContain('repo:octo/repo1 repo:hubot/repo2');
+    expect(query).toContain('is:open is:pr');
+    expect(query).toContain(`updated:>${lastCheckedAt} assignee:viewer`);
+    expect(query).not.toContain(' OR ');
+    expect(query).not.toContain('mentions:viewer');
+    expect(query).not.toContain('(');
+    expect(query).not.toContain(')');
   });
 
   it('新規 PR/Issue 判定は createdAt が lastCheckedAt より後かで決まる', () => {

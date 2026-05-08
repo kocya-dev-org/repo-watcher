@@ -80,16 +80,10 @@ export function buildRepoQuery(
   viewerLogin: string,
 ): string {
   const repoPart =
-    repos.length === 0
-      ? ''
-      : `(${repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' OR ')})`;
-  const conditionPart = [
-    `created:>${lastCheckedAt}`,
-    `mentions:${viewerLogin}`,
-    `assignee:${viewerLogin}`,
-  ].join(' OR ');
+    repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
+  const conditionPart = [`updated:>${lastCheckedAt}`, `assignee:${viewerLogin}`].join(' ');
 
-  return `${repoPart} is:open (${conditionPart})`.trim();
+  return [repoPart, 'is:open is:pr', conditionPart].filter(Boolean).join(' ');
 }
 
 export function isNewNotificationCandidate(
@@ -142,7 +136,9 @@ export function getUpdatedPullRequestIds(
   return nodes
     .filter(
       (node) =>
-        node.__typename === 'PullRequest' && Boolean(node.id) && isDateAfter(node.updatedAt, lastCheckedAt),
+        node.__typename === 'PullRequest' &&
+        Boolean(node.id) &&
+        isDateAfter(node.updatedAt, lastCheckedAt),
     )
     .map((node) => node.id as string);
 }
@@ -166,9 +162,12 @@ export function hasMentionThreadNotification(
 
     const hadMentionBefore = comments.some(
       (comment) =>
-        !isDateAfter(comment.createdAt, lastCheckedAt) && includesMention(comment.body, viewerLogin),
+        !isDateAfter(comment.createdAt, lastCheckedAt) &&
+        includesMention(comment.body, viewerLogin),
     );
-    const hasNewCommentAfter = comments.some((comment) => isDateAfter(comment.createdAt, lastCheckedAt));
+    const hasNewCommentAfter = comments.some((comment) =>
+      isDateAfter(comment.createdAt, lastCheckedAt),
+    );
 
     return hadMentionBefore && hasNewCommentAfter;
   });
