@@ -24,6 +24,12 @@ function findButton(container: HTMLElement, text: string) {
   );
 }
 
+function findTab(container: HTMLElement, text: string) {
+  return Array.from(container.querySelectorAll('button[role="tab"]')).find(
+    (button) => button.textContent === text,
+  );
+}
+
 describe('popup App', () => {
   let chromeMock: ChromeMockController;
 
@@ -37,7 +43,7 @@ describe('popup App', () => {
     delete global.chrome;
   });
 
-  it('通知を PR / Issue に分けて表示し、設定で無効な種別は隠す', async () => {
+  it('通知を PR / Issue タブで切り替えて表示し、既定では PR タブを選択する', async () => {
     const notifications: StoredNotification[] = [
       {
         id: 'new:PR_1',
@@ -76,7 +82,7 @@ describe('popup App', () => {
 
     chromeMock.setLocalState({
       notifications,
-      readNotificationIds: ['mention:ISSUE_1'],
+      readNotificationIds: [],
       badgeCount: 2,
     });
     chromeMock.setSyncState({
@@ -89,14 +95,28 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    expect(view.container.textContent).toContain('Pull Requests');
-    expect(view.container.textContent).toContain('Issues');
+    const pullRequestTab = findTab(view.container, 'Pull Request');
+    const issueTab = findTab(view.container, 'Issue');
+    expect(pullRequestTab).toBeTruthy();
+    expect(issueTab).toBeTruthy();
+    expect(pullRequestTab?.getAttribute('aria-selected')).toBe('true');
+    expect(issueTab?.getAttribute('aria-selected')).toBe('false');
     expect(view.container.textContent).toContain('PR 通知');
-    expect(view.container.textContent).toContain('Issue メンション');
+    expect(view.container.textContent).not.toContain('Issue メンション');
     expect(view.container.textContent).not.toContain('担当通知');
     expect(view.container.textContent).toContain('新規');
+    expect(view.container.querySelectorAll('[title="既読"]')).toHaveLength(0);
+    expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
+
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(pullRequestTab?.getAttribute('aria-selected')).toBe('false');
+    expect(issueTab?.getAttribute('aria-selected')).toBe('true');
+    expect(view.container.textContent).toContain('Issue メンション');
     expect(view.container.textContent).toContain('メンション');
-    expect(view.container.querySelectorAll('[title="既読"]')).toHaveLength(1);
     expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
 
     await view.unmount();
@@ -167,7 +187,7 @@ describe('popup App', () => {
       badgeCount: 2,
     });
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
-    expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(2);
+    expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
 
     await view.unmount();
   });
@@ -274,6 +294,63 @@ describe('popup App', () => {
       badgeCount: 1,
     });
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+  });
+
+  it('popup を開いた時点で既読の Issue 通知は一覧から除去して再表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'new:PR_1',
+          kind: 'new',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'PR 通知',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'mention:ISSUE_1',
+          kind: 'mention',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: 'Issue メンション',
+          url: 'https://example.com/issues/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+      ],
+      readNotificationIds: ['mention:ISSUE_1'],
+      badgeCount: 2,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('PR 通知');
+    expect(view.container.textContent).not.toContain('Issue メンション');
+    expect(chromeMock.getLocalState()).toMatchObject({
+      notifications: [
+        {
+          id: 'new:PR_1',
+          kind: 'new',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'PR 通知',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+
+    await view.unmount();
   });
 
   it('読み込み中・空状態・メニュー表示を扱える', async () => {
@@ -385,6 +462,14 @@ describe('popup App', () => {
       { type: 'refresh-watch-cycle' },
       expect.any(Function),
     );
+    expect(view.container.textContent).toContain('このタブに表示できる通知はありません。');
+
+    const issueTab = findTab(view.container, 'Issue');
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
     expect(view.container.textContent).toContain('更新後の通知');
 
     await view.unmount();

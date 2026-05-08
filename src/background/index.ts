@@ -10,6 +10,7 @@ import {
   toStoredNotification,
   type IssueOrPullRequestNode,
   type PullRequestReviewThreadsNode,
+  type WatchSearchTarget,
 } from './watchLogic';
 import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
@@ -80,6 +81,68 @@ const WATCH_ALARM_NAME = 'github-notify-watch';
 const NOTIFICATION_ID_PREFIX = 'github-notify:';
 const NOTIFICATION_ICON_DATA_URL =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
+const WATCH_ISSUES_AND_PRS_QUERY = `
+  query WatchIssuesAndPRs(
+    $repoQuery: String!
+  ) {
+    search(query: $repoQuery, type: ISSUE, first: 50) {
+      issueCount
+      nodes {
+        __typename
+        ... on Issue {
+          id
+          number
+          title
+          url
+          createdAt
+          updatedAt
+          repository {
+            name
+            owner { login }
+          }
+          author { login }
+          assignees(first: 10) {
+            nodes { login }
+          }
+          body
+          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+            nodes {
+              body
+              author { login }
+              createdAt
+              updatedAt
+            }
+          }
+        }
+        ... on PullRequest {
+          id
+          number
+          title
+          url
+          createdAt
+          updatedAt
+          repository {
+            name
+            owner { login }
+          }
+          author { login }
+          assignees(first: 10) {
+            nodes { login }
+          }
+          body
+          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+            nodes {
+              body
+              author { login }
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      }
+    }
+  }
+`;
 
 const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
   lastCheckedAt: null,
@@ -103,6 +166,24 @@ function createGithubClient(pat: string) {
       authorization: `bearer ${pat}`,
     },
   });
+}
+
+async function searchIssuesAndPullRequests(
+  client: any,
+  repoQuery: string,
+  target: WatchSearchTarget,
+): Promise<IssueOrPullRequestNode[]> {
+  const searchResult = await client(WATCH_ISSUES_AND_PRS_QUERY, {
+    repoQuery,
+  });
+  debugLog('WatchIssuesAndPRs result', {
+    target,
+    repoQuery,
+    issueCount: searchResult.search?.issueCount ?? 0,
+    nodeCount: Array.isArray(searchResult.search?.nodes) ? searchResult.search.nodes.length : 0,
+  });
+
+  return (searchResult.search?.nodes ?? []) as IssueOrPullRequestNode[];
 }
 
 function debugLog(message: string, payload?: unknown) {
@@ -368,7 +449,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
  * 監視サイクル本体。
  *
  * 1. 設定読み込み
- * 2. Issues / PR の検索
+ * 2. PR / Issue の検索
  * 3. 新規作成 / メンション / Assignee コメント / レビュースレッドコメントの検知
  * 4. 通知ストアとバッジの更新
  * 5. `lastCheckedAt` の更新
@@ -389,85 +470,20 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const nowIso = new Date().toISOString();
   const lastCheckedAt = runtimeState.lastCheckedAt ?? new Date(0).toISOString();
   const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
-
-  const repoQuery = buildRepoQuery(settings.repos, lastCheckedAt, viewerLogin);
+  const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
+  const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
   debugLog('watch cycle started', {
     repoCount: settings.repos.length,
     lastCheckedAt,
     viewerLogin,
-    repoQuery,
+    pullRequestQuery,
+    issueQuery,
   });
-
-  const searchResult = await (client as any)(
-    `
-    query WatchIssuesAndPRs(
-      $repoQuery: String!
-    ) {
-      search(query: $repoQuery, type: ISSUE, first: 50) {
-        issueCount
-        nodes {
-          __typename
-          ... on Issue {
-            id
-            number
-            title
-            url
-            createdAt
-            updatedAt
-            repository {
-              name
-              owner { login }
-            }
-            author { login }
-            assignees(first: 10) {
-              nodes { login }
-            }
-            body
-            comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-              nodes {
-                body
-                author { login }
-                createdAt
-                updatedAt
-              }
-            }
-          }
-          ... on PullRequest {
-            id
-            number
-            title
-            url
-            createdAt
-            updatedAt
-            repository {
-              name
-              owner { login }
-            }
-            author { login }
-            assignees(first: 10) {
-              nodes { login }
-            }
-            body
-            comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-              nodes {
-                body
-                author { login }
-                createdAt
-                updatedAt
-              }
-            }
-          }
-        }
-      }
-    }
-    `,
-    {
-      repoQuery,
-    },
-  );
-  debugLog('WatchIssuesAndPRs result', searchResult);
-
-  const issuesAndPrs = (searchResult.search?.nodes ?? []) as IssueOrPullRequestNode[];
+  const [pullRequests, issues] = await Promise.all([
+    searchIssuesAndPullRequests(client as any, pullRequestQuery, 'pull_request'),
+    searchIssuesAndPullRequests(client as any, issueQuery, 'issue'),
+  ]);
+  const issuesAndPrs = [...pullRequests, ...issues];
 
   // 各種イベントごとに一時配列へ振り分ける
   const newItems: IssueOrPullRequestNode[] = [];

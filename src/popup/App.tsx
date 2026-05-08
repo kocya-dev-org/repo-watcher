@@ -16,6 +16,8 @@ type GroupedNotifications = {
   issues: StoredNotification[];
 };
 
+type NotificationTab = 'pull_request' | 'issue';
+
 type PopupSettings = {
   enableNewItems: boolean;
   enableMentions: boolean;
@@ -143,6 +145,7 @@ const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<NotificationTab>('pull_request');
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
 
@@ -153,9 +156,24 @@ const App: React.FC = () => {
       loadPopupLocalState(),
       loadPopupSettings(),
     ]);
-    notificationsRef.current = localState.notifications;
-    readIdsRef.current = new Set(localState.readNotificationIds);
-    setNotifications(localState.notifications);
+    const finalizedLocalState = pruneReadNotifications(
+      localState.notifications,
+      localState.readNotificationIds,
+    );
+
+    if (
+      finalizedLocalState.readNotificationIds.length !== localState.readNotificationIds.length ||
+      finalizedLocalState.notifications.length !== localState.notifications.length
+    ) {
+      chrome.storage.local.set(finalizedLocalState);
+      chrome.action.setBadgeText({
+        text: finalizedLocalState.badgeCount > 0 ? String(finalizedLocalState.badgeCount) : '',
+      });
+    }
+
+    notificationsRef.current = finalizedLocalState.notifications;
+    readIdsRef.current = new Set(finalizedLocalState.readNotificationIds);
+    setNotifications(finalizedLocalState.notifications);
     setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
     setIsLoading(false);
@@ -244,6 +262,7 @@ const App: React.FC = () => {
 
   const visibleNotifications = notifications.filter((n) => isKindEnabled(n.kind));
   const { prs, issues } = groupByType(visibleNotifications);
+  const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
 
   const renderNotificationItem = (n: StoredNotification) => (
     <li
@@ -460,26 +479,58 @@ const App: React.FC = () => {
         <p style={{ margin: 0 }}>現在表示できる通知はありません。</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
-          {prs.length > 0 && (
-            <section style={{ marginBottom: '8px' }}>
-              <h2
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  margin: '4px 0',
-                  borderBottom: '1px solid #ddd',
-                  paddingBottom: '2px',
-                }}
-              >
-                Pull Requests
-              </h2>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {prs.map(renderNotificationItem)}
-              </ul>
-            </section>
-          )}
+          <div
+            role="tablist"
+            aria-label="通知種別タブ"
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginBottom: '10px',
+            }}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedTab === 'pull_request'}
+              onClick={() => setSelectedTab('pull_request')}
+              style={{
+                flex: 1,
+                border: '1px solid #d0d7de',
+                background: selectedTab === 'pull_request' ? '#0969da' : '#fff',
+                color: selectedTab === 'pull_request' ? '#fff' : '#24292f',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Pull Request
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedTab === 'issue'}
+              onClick={() => setSelectedTab('issue')}
+              style={{
+                flex: 1,
+                border: '1px solid #d0d7de',
+                background: selectedTab === 'issue' ? '#0969da' : '#fff',
+                color: selectedTab === 'issue' ? '#fff' : '#24292f',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Issue
+            </button>
+          </div>
 
-          {issues.length > 0 && (
+          {activeNotifications.length === 0 ? (
+            <p style={{ margin: 0 }}>このタブに表示できる通知はありません。</p>
+          ) : (
             <section>
               <h2
                 style={{
@@ -490,10 +541,10 @@ const App: React.FC = () => {
                   paddingBottom: '2px',
                 }}
               >
-                Issues
+                {selectedTab === 'pull_request' ? 'Pull Request' : 'Issue'}
               </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {issues.map(renderNotificationItem)}
+                {activeNotifications.map(renderNotificationItem)}
               </ul>
             </section>
           )}

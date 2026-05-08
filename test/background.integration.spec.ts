@@ -83,11 +83,34 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string) => {
+    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
       if (query.includes('GetViewer')) {
         return { viewer: { login: 'viewer' } };
       }
       if (query.includes('WatchIssuesAndPRs')) {
+        if (variables?.repoQuery?.includes('is:pr')) {
+          return {
+            search: {
+              nodes: [
+                {
+                  __typename: 'PullRequest',
+                  id: 'PR_2',
+                  number: 2,
+                  title: 'PR thread',
+                  url: 'https://example.com/pulls/2',
+                  createdAt: '2026-05-06T08:30:00.000Z',
+                  updatedAt: '2026-05-06T09:20:00.000Z',
+                  repository: { name: 'repo', owner: { login: 'octo' } },
+                  author: { login: 'someone' },
+                  assignees: { nodes: [] },
+                  body: '',
+                  comments: { nodes: [] },
+                },
+              ],
+            },
+          };
+        }
+
         return {
           search: {
             nodes: [
@@ -113,20 +136,6 @@ describe('background integration', () => {
                     },
                   ],
                 },
-              },
-              {
-                __typename: 'PullRequest',
-                id: 'PR_2',
-                number: 2,
-                title: 'PR thread',
-                url: 'https://example.com/pulls/2',
-                createdAt: '2026-05-06T08:30:00.000Z',
-                updatedAt: '2026-05-06T09:20:00.000Z',
-                repository: { name: 'repo', owner: { login: 'octo' } },
-                author: { login: 'someone' },
-                assignees: { nodes: [] },
-                body: '',
-                comments: { nodes: [] },
               },
             ],
           },
@@ -191,6 +200,20 @@ describe('background integration', () => {
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '4' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(4);
     expect(
+      backgroundMocks.client.mock.calls.some(
+        ([query, variables]) =>
+          (query as string).includes('WatchIssuesAndPRs') &&
+          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes('is:pr is:open'),
+      ),
+    ).toBe(true);
+    expect(
+      backgroundMocks.client.mock.calls.some(
+        ([query, variables]) =>
+          (query as string).includes('WatchIssuesAndPRs') &&
+          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes('is:issue state:open'),
+      ),
+    ).toBe(true);
+    expect(
       backgroundMocks.client.mock.calls.some(([query]) =>
         (query as string).includes('WatchReviewThreads'),
       ),
@@ -214,11 +237,19 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string) => {
+    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
       if (query.includes('GetViewer')) {
         return { viewer: { login: 'viewer' } };
       }
       if (query.includes('WatchIssuesAndPRs')) {
+        if (variables?.repoQuery?.includes('is:pr')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+
         return {
           search: {
             nodes: [
@@ -297,11 +328,19 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string) => {
+    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
       if (query.includes('GetViewer')) {
         return { viewer: { login: 'viewer' } };
       }
       if (query.includes('WatchIssuesAndPRs')) {
+        if (variables?.repoQuery?.includes('is:issue')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+
         return {
           search: {
             nodes: [

@@ -1,6 +1,8 @@
 import type { NotificationKind, StoredNotification } from '../shared/notifications';
 import type { WatchTargetRepo } from './index';
 
+export type WatchSearchTarget = 'pull_request' | 'issue';
+
 type GithubActor = {
   login: string | null;
 };
@@ -77,13 +79,15 @@ function includesMention(text: string | null | undefined, viewerLogin: string): 
 export function buildRepoQuery(
   repos: WatchTargetRepo[],
   lastCheckedAt: string,
-  viewerLogin: string,
+  target: WatchSearchTarget,
 ): string {
   const repoPart =
     repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
-  const conditionPart = [`updated:>${lastCheckedAt}`, `assignee:${viewerLogin}`].join(' ');
+  const statePart =
+    target === 'pull_request' ? 'is:pr is:open' : 'is:issue state:open';
+  const conditionPart = `updated:>${lastCheckedAt}`;
 
-  return [repoPart, 'is:open is:pr', conditionPart].filter(Boolean).join(' ');
+  return [repoPart, statePart, conditionPart].filter(Boolean).join(' ');
 }
 
 export function isNewNotificationCandidate(

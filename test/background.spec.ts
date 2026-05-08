@@ -306,16 +306,29 @@ describe('background notification logic helpers', () => {
         { owner: 'hubot', name: 'repo2' },
       ],
       lastCheckedAt,
-      'viewer',
+      'pull_request',
     );
 
     expect(query).toContain('repo:octo/repo1 repo:hubot/repo2');
-    expect(query).toContain('is:open is:pr');
-    expect(query).toContain(`updated:>${lastCheckedAt} assignee:viewer`);
+    expect(query).toContain('is:pr is:open');
+    expect(query).toContain(`updated:>${lastCheckedAt}`);
+    expect(query).not.toContain('assignee:');
     expect(query).not.toContain(' OR ');
-    expect(query).not.toContain('mentions:viewer');
     expect(query).not.toContain('(');
     expect(query).not.toContain(')');
+  });
+
+  it('buildRepoQuery は Issue 向けの open 条件を含む検索クエリを構築する', () => {
+    const query = buildRepoQuery(
+      [{ owner: 'octo', name: 'repo1' }],
+      lastCheckedAt,
+      'issue',
+    );
+
+    expect(query).toContain('repo:octo/repo1');
+    expect(query).toContain('is:issue state:open');
+    expect(query).toContain(`updated:>${lastCheckedAt}`);
+    expect(query).not.toContain('is:pr');
   });
 
   it('新規 PR/Issue 判定は createdAt が lastCheckedAt より後かで決まる', () => {
