@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   calculateUnreadCount,
-  markNotificationAsRead,
+  pruneReadNotifications,
+  toggleNotificationRead,
   type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
@@ -142,6 +143,8 @@ const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const notificationsRef = useRef<StoredNotification[]>([]);
+  const readIdsRef = useRef<Set<string>>(new Set());
 
   const manifestVersion = chrome.runtime.getManifest().version;
 
@@ -150,8 +153,10 @@ const App: React.FC = () => {
       loadPopupLocalState(),
       loadPopupSettings(),
     ]);
+    notificationsRef.current = localState.notifications;
+    readIdsRef.current = new Set(localState.readNotificationIds);
     setNotifications(localState.notifications);
-    setReadIds(new Set(localState.readNotificationIds));
+    setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
     setIsLoading(false);
   }, []);
@@ -170,48 +175,49 @@ const App: React.FC = () => {
     };
   }, [reloadPopupState]);
 
-  /**
-   * 通知を既読にし、readNotificationIds とバッジを更新する。
-   * 実際の通知一覧からの除去は background の次回監視周期で行う。
-   * @param id 既読にする通知 ID
-   */
-  const markAsReadAndUpdate = (id: string) => {
-    chrome.storage.local.get(
-      { notifications: [], readNotificationIds: [], badgeCount: 0 },
-      (items) => {
-        const notificationsInStore: StoredNotification[] = Array.isArray(items.notifications)
-          ? (items.notifications as StoredNotification[])
-          : [];
-        const readList: string[] = Array.isArray(items.readNotificationIds)
-          ? (items.readNotificationIds as string[])
-          : [];
-        const nextReadIds = markNotificationAsRead(readList, id);
-        const newBadgeCount = calculateUnreadCount(notificationsInStore, nextReadIds);
+  useEffect(
+    () => () => {
+      const finalized = pruneReadNotifications(
+        notificationsRef.current,
+        Array.from(readIdsRef.current),
+      );
 
-        chrome.storage.local.set(
-          {
-            readNotificationIds: nextReadIds,
-            badgeCount: newBadgeCount,
-          },
-          () => {
-            setReadIds(new Set(nextReadIds));
-            chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
-          },
-        );
+      chrome.storage.local.set(finalized);
+      chrome.action.setBadgeText({ text: finalized.badgeCount > 0 ? String(finalized.badgeCount) : '' });
+    },
+    [],
+  );
+
+  /**
+   * 通知の既読/未読を切り替え、readNotificationIds とバッジを更新する。
+   * @param id 切り替える通知 ID
+   */
+  const toggleReadAndUpdate = (id: string) => {
+    const nextReadIds = toggleNotificationRead(Array.from(readIdsRef.current), id);
+    const newBadgeCount = calculateUnreadCount(notificationsRef.current, nextReadIds);
+
+    readIdsRef.current = new Set(nextReadIds);
+    setReadIds(new Set(readIdsRef.current));
+
+    chrome.storage.local.set(
+      {
+        readNotificationIds: nextReadIds,
+        badgeCount: newBadgeCount,
+      },
+      () => {
+        chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
       },
     );
   };
 
   /**
-   * 通知をクリックした際に GitHub 上の該当 PR/Issue を新しいタブで開き、
-   * その通知を既読として処理する。
+   * 通知の情報表示欄をクリックした際に GitHub 上の該当 PR/Issue を新しいタブで開く。
    * @param n クリックされた通知
    */
   const handleOpen = (n: StoredNotification) => {
     if (n.url) {
       chrome.tabs.create({ url: n.url });
     }
-    markAsReadAndUpdate(n.id);
   };
 
   /**
@@ -238,6 +244,89 @@ const App: React.FC = () => {
 
   const visibleNotifications = notifications.filter((n) => isKindEnabled(n.kind));
   const { prs, issues } = groupByType(visibleNotifications);
+
+  const renderNotificationItem = (n: StoredNotification) => (
+    <li
+      key={n.id}
+      style={{
+        padding: '4px 0',
+        borderBottom: '1px solid #eee',
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => toggleReadAndUpdate(n.id)}
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          border: '1px solid #ccc',
+          marginRight: 6,
+          backgroundColor: readIds.has(n.id) ? '#fff' : '#2da44e',
+          padding: 0,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+        title={readIds.has(n.id) ? '既読' : '未読'}
+        aria-label={readIds.has(n.id) ? '既読' : '未読'}
+      />
+      <button
+        type="button"
+        onClick={() => handleOpen(n)}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: '2px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#555',
+            }}
+          >
+            {n.owner}/{n.repo} #{n.number}
+          </span>
+          <span
+            style={{
+              fontSize: '10px',
+              color: '#fff',
+              backgroundColor: '#0969da',
+              borderRadius: '10px',
+              padding: '1px 6px',
+            }}
+          >
+            {formatKind(n.kind)}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: '12px',
+            color: '#24292f',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {n.title}
+        </div>
+      </button>
+    </li>
+  );
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
@@ -385,77 +474,7 @@ const App: React.FC = () => {
                 Pull Requests
               </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {prs.map((n) => (
-                  <li
-                    key={n.id}
-                    style={{
-                      padding: '4px 0',
-                      borderBottom: '1px solid #eee',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                    onClick={() => handleOpen(n)}
-                  >
-                    <span
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        border: '1px solid #ccc',
-                        marginRight: 6,
-                        backgroundColor: readIds.has(n.id) ? '#fff' : '#2da44e',
-                      }}
-                      title={readIds.has(n.id) ? '既読' : '未読'}
-                    />
-                    <div
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginBottom: '2px',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            color: '#555',
-                          }}
-                        >
-                          {n.owner}/{n.repo} #{n.number}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            color: '#fff',
-                            backgroundColor: '#0969da',
-                            borderRadius: '10px',
-                            padding: '1px 6px',
-                          }}
-                        >
-                          {formatKind(n.kind)}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: '#24292f',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {n.title}
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                {prs.map(renderNotificationItem)}
               </ul>
             </section>
           )}
@@ -474,77 +493,7 @@ const App: React.FC = () => {
                 Issues
               </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {issues.map((n) => (
-                  <li
-                    key={n.id}
-                    style={{
-                      padding: '4px 0',
-                      borderBottom: '1px solid #eee',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                    onClick={() => handleOpen(n)}
-                  >
-                    <span
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        border: '1px solid #ccc',
-                        marginRight: 6,
-                        backgroundColor: readIds.has(n.id) ? '#fff' : '#2da44e',
-                      }}
-                      title={readIds.has(n.id) ? '既読' : '未読'}
-                    />
-                    <div
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginBottom: '2px',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            color: '#555',
-                          }}
-                        >
-                          {n.owner}/{n.repo} #{n.number}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            color: '#fff',
-                            backgroundColor: '#0969da',
-                            borderRadius: '10px',
-                            padding: '1px 6px',
-                          }}
-                        >
-                          {formatKind(n.kind)}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: '#24292f',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {n.title}
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                {issues.map(renderNotificationItem)}
               </ul>
             </section>
           )}
