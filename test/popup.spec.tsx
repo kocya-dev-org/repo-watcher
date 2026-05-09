@@ -12,10 +12,8 @@ function findClickableItem(container: HTMLElement, text: string) {
   return Array.from(container.querySelectorAll('li')).find((item) => item.textContent?.includes(text));
 }
 
-function findButtonByText(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('button')).find((button) =>
-    button.textContent?.includes(text),
-  );
+function findLinkByText(container: HTMLElement, text: string) {
+  return Array.from(container.querySelectorAll('a')).find((link) => link.textContent?.includes(text));
 }
 
 function findButton(container: HTMLElement, text: string) {
@@ -192,7 +190,7 @@ describe('popup App', () => {
     await view.unmount();
   });
 
-  it('情報表示欄のクリックでだけ新しいタブを開き、既読状態は変えない', async () => {
+  it('タイトルを別タブ用のリンクとして表示し、項目自体のクリックでは遷移しない', async () => {
     chromeMock.setLocalState({
       notifications: [
         {
@@ -214,15 +212,17 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const contentButton = findButtonByText(view.container, 'PR 通知');
-    expect(contentButton).toBeTruthy();
+    const contentLink = findLinkByText(view.container, 'PR 通知');
+    expect(contentLink).toBeTruthy();
+    expect(contentLink?.getAttribute('href')).toBe('https://example.com/pr/10');
+    expect(contentLink?.getAttribute('target')).toBe('_blank');
 
     await act(async () => {
-      contentButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      findClickableItem(view.container, 'PR 通知')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
-    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({ url: 'https://example.com/pr/10' });
+    expect(chromeMock.chrome.tabs.create).not.toHaveBeenCalled();
     expect(chromeMock.getLocalState()).toMatchObject({
       readNotificationIds: [],
       badgeCount: 1,

@@ -232,16 +232,6 @@ const App: React.FC = () => {
   };
 
   /**
-   * 通知の情報表示欄をクリックした際に GitHub 上の該当 PR/Issue を新しいタブで開く。
-   * @param n クリックされた通知
-   */
-  const handleOpen = (n: StoredNotification) => {
-    if (n.url) {
-      chrome.tabs.create({ url: n.url });
-    }
-  };
-
-  /**
    * 通知種別ごとの ON/OFF 設定に基づき、
    * 該当の通知種別が表示対象かどうかを判定する。
    * @param kind 通知種別
@@ -294,18 +284,12 @@ const App: React.FC = () => {
         title={readIds.has(n.id) ? '既読' : '未読'}
         aria-label={readIds.has(n.id) ? '既読' : '未読'}
       />
-      <button
-        type="button"
-        onClick={() => handleOpen(n)}
+      <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          border: 'none',
-          background: 'transparent',
-          padding: 0,
-          textAlign: 'left',
-          cursor: 'pointer',
+          minWidth: 0,
         }}
       >
         <div
@@ -338,15 +322,24 @@ const App: React.FC = () => {
         <div
           style={{
             fontSize: '12px',
-            color: '#24292f',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
         >
-          {n.title}
+          <a
+            href={n.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: '#0969da',
+              textDecoration: 'underline',
+            }}
+          >
+            {n.title}
+          </a>
         </div>
-      </button>
+      </div>
     </li>
   );
 
@@ -533,17 +526,6 @@ const App: React.FC = () => {
             <p style={{ margin: 0 }}>このタブに表示できる通知はありません。</p>
           ) : (
             <section>
-              <h2
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  margin: '4px 0',
-                  borderBottom: '1px solid #ddd',
-                  paddingBottom: '2px',
-                }}
-              >
-                {selectedTab === 'pull_request' ? 'Pull Request' : 'Issue'}
-              </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {activeNotifications.map(renderNotificationItem)}
               </ul>
