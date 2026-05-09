@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Box from '@mui/material/Box';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
   pruneReadNotifications,
@@ -371,6 +374,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleTabChange = (_event: React.SyntheticEvent, nextTab: string) => {
+    if (nextTab === 'pull_request' || nextTab === 'issue') {
+      setSelectedTab(nextTab);
+    }
+  };
+
   return (
     <div
       style={{
@@ -479,54 +488,46 @@ const App: React.FC = () => {
         <p style={{ margin: 0 }}>現在表示できる通知はありません。</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
-          <div
-            role="tablist"
-            aria-label="通知種別タブ"
-            style={{
-              display: 'flex',
-              gap: '8px',
-              marginBottom: '10px',
-            }}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={selectedTab === 'pull_request'}
-              onClick={() => setSelectedTab('pull_request')}
-              style={{
-                flex: 1,
-                border: '1px solid #d0d7de',
-                background: selectedTab === 'pull_request' ? '#0969da' : '#fff',
-                color: selectedTab === 'pull_request' ? '#fff' : '#24292f',
-                borderRadius: '6px',
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
+          <Box sx={{ mb: 1.25, borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={selectedTab}
+              onChange={handleTabChange}
+              aria-label="通知種別タブ"
+              variant="fullWidth"
+              sx={{
+                minHeight: 0,
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#0969da',
+                  height: 3,
+                },
               }}
             >
-              Pull Request
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={selectedTab === 'issue'}
-              onClick={() => setSelectedTab('issue')}
-              style={{
-                flex: 1,
-                border: '1px solid #d0d7de',
-                background: selectedTab === 'issue' ? '#0969da' : '#fff',
-                color: selectedTab === 'issue' ? '#fff' : '#24292f',
-                borderRadius: '6px',
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Issue
-            </button>
-          </div>
+              <Tab
+                label="Pull Request"
+                value="pull_request"
+                sx={{
+                  minHeight: 0,
+                  py: 0.75,
+                  px: 1,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                }}
+              />
+              <Tab
+                label="Issue"
+                value="issue"
+                sx={{
+                  minHeight: 0,
+                  py: 0.75,
+                  px: 1,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                }}
+              />
+            </Tabs>
+          </Box>
 
           {activeNotifications.length === 0 ? (
             <p style={{ margin: 0 }}>このタブに表示できる通知はありません。</p>
