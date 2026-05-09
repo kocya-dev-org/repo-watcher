@@ -13,6 +13,11 @@ export type RefreshWatchCycleResponse =
       errorMessage: string;
     };
 
+/**
+ * runtime message が手動更新要求かどうかを判定する。
+ * @param value 判定対象の message
+ * @returns 手動更新要求の形なら true
+ */
 export function isRefreshWatchCycleRequest(
   value: unknown,
 ): value is RefreshWatchCycleRequest {

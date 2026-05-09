@@ -12,6 +12,12 @@ export type StoredNotification = {
   detectedAt: string;
 };
 
+/**
+ * 通知一覧と既読 ID から未読件数を数える。
+ * @param notifications 通知一覧
+ * @param readNotificationIds 既読通知 ID 一覧
+ * @returns 未読件数
+ */
 export function calculateUnreadCount(
   notifications: StoredNotification[],
   readNotificationIds: string[],
@@ -20,6 +26,12 @@ export function calculateUnreadCount(
   return notifications.filter((notification) => !readSet.has(notification.id)).length;
 }
 
+/**
+ * 指定した通知 ID を既読一覧へ追加する。
+ * @param readNotificationIds 既読通知 ID 一覧
+ * @param notificationId 追加する通知 ID
+ * @returns 更新後の既読通知 ID 一覧
+ */
 export function markNotificationAsRead(
   readNotificationIds: string[],
   notificationId: string,
@@ -31,6 +43,12 @@ export function markNotificationAsRead(
   return [...readNotificationIds, notificationId];
 }
 
+/**
+ * 指定した通知 ID の既読状態を反転する。
+ * @param readNotificationIds 既読通知 ID 一覧
+ * @param notificationId 切り替える通知 ID
+ * @returns 更新後の既読通知 ID 一覧
+ */
 export function toggleNotificationRead(
   readNotificationIds: string[],
   notificationId: string,
@@ -42,6 +60,12 @@ export function toggleNotificationRead(
   return [...readNotificationIds, notificationId];
 }
 
+/**
+ * 既読済み通知を通知一覧から取り除き、未読だけの状態へ整理する。
+ * @param notifications 通知一覧
+ * @param readNotificationIds 既読通知 ID 一覧
+ * @returns 整理後の通知一覧と badge 情報
+ */
 export function pruneReadNotifications(
   notifications: StoredNotification[],
   readNotificationIds: string[],
@@ -60,6 +84,13 @@ export function pruneReadNotifications(
   };
 }
 
+/**
+ * 新規検知分を既存通知へマージし、重複排除と badge 再計算を行う。
+ * @param existingNotifications 既存通知一覧
+ * @param readNotificationIds 既読通知 ID 一覧
+ * @param detectedNotifications 今回検知した通知一覧
+ * @returns 保存用に整えた通知状態
+ */
 export function reconcileNotificationState(
   existingNotifications: StoredNotification[],
   readNotificationIds: string[],

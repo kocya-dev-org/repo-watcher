@@ -60,6 +60,12 @@ export type PullRequestReviewThreadsNode = {
   } | null;
 };
 
+/**
+ * 2 つの日時を比較し、value が baseIso より後なら true を返す。
+ * @param value 比較対象の日時
+ * @param baseIso 基準日時
+ * @returns value が基準日時より後かどうか
+ */
 function isDateAfter(value: string | null | undefined, baseIso: string): boolean {
   if (!value) {
     return false;
@@ -68,6 +74,12 @@ function isDateAfter(value: string | null | undefined, baseIso: string): boolean
   return new Date(value).getTime() > new Date(baseIso).getTime();
 }
 
+/**
+ * 本文中に対象ユーザーへのメンションが含まれるか判定する。
+ * @param text 判定対象の本文
+ * @param viewerLogin ログイン名
+ * @returns `@viewerLogin` を含む場合は true
+ */
 function includesMention(text: string | null | undefined, viewerLogin: string): boolean {
   if (!text) {
     return false;
@@ -76,6 +88,13 @@ function includesMention(text: string | null | undefined, viewerLogin: string): 
   return text.toLowerCase().includes(`@${viewerLogin}`.toLowerCase());
 }
 
+/**
+ * 監視対象リポジトリと種別に応じて search API 用クエリを組み立てる。
+ * @param repos 監視対象リポジトリ一覧
+ * @param lastCheckedAt 前回監視時刻
+ * @param target 検索対象の種別
+ * @returns GitHub search API に渡すクエリ文字列
+ */
 export function buildRepoQuery(
   repos: WatchTargetRepo[],
   lastCheckedAt: string,
@@ -90,6 +109,12 @@ export function buildRepoQuery(
   return [repoPart, statePart, conditionPart].filter(Boolean).join(' ');
 }
 
+/**
+ * 新規作成通知の候補かどうかを判定する。
+ * @param node 判定対象の Issue / Pull Request
+ * @param lastCheckedAt 前回監視時刻
+ * @returns 作成日時が前回監視時刻より後なら true
+ */
 export function isNewNotificationCandidate(
   node: IssueOrPullRequestNode,
   lastCheckedAt: string,
@@ -97,6 +122,13 @@ export function isNewNotificationCandidate(
   return isDateAfter(node.createdAt, lastCheckedAt);
 }
 
+/**
+ * assignee に含まれる項目へ新規コメントが付いたか判定する。
+ * @param node 判定対象の Issue / Pull Request
+ * @param lastCheckedAt 前回監視時刻
+ * @param viewerLogin ログイン名
+ * @returns assignee 対象で新しいコメントがあれば true
+ */
 export function hasAssigneeCommentNotification(
   node: IssueOrPullRequestNode,
   lastCheckedAt: string,
@@ -116,6 +148,13 @@ export function hasAssigneeCommentNotification(
   );
 }
 
+/**
+ * 本文またはコメントに自分宛メンションが追加されたか判定する。
+ * @param node 判定対象の Issue / Pull Request
+ * @param lastCheckedAt 前回監視時刻
+ * @param viewerLogin ログイン名
+ * @returns 新しいメンションがあれば true
+ */
 export function hasMentionNotification(
   node: IssueOrPullRequestNode,
   lastCheckedAt: string,
@@ -133,6 +172,12 @@ export function hasMentionNotification(
   return hasRecentBodyMention || hasRecentCommentMention;
 }
 
+/**
+ * review thread 追加取得のために更新済み PR の node ID を抽出する。
+ * @param nodes search API で取得した項目一覧
+ * @param lastCheckedAt 前回監視時刻
+ * @returns 更新済み Pull Request の node ID 一覧
+ */
 export function getUpdatedPullRequestIds(
   nodes: IssueOrPullRequestNode[],
   lastCheckedAt: string,
@@ -147,6 +192,13 @@ export function getUpdatedPullRequestIds(
     .map((node) => node.id as string);
 }
 
+/**
+ * 自分への過去メンションを含む未解決レビュー スレッドに新規コメントがあるか判定する。
+ * @param pr reviewThreads を含む Pull Request
+ * @param lastCheckedAt 前回監視時刻
+ * @param viewerLogin ログイン名
+ * @returns 条件を満たすスレッドが 1 つでもあれば true
+ */
 export function hasMentionThreadNotification(
   pr: PullRequestReviewThreadsNode,
   lastCheckedAt: string,
@@ -177,6 +229,13 @@ export function hasMentionThreadNotification(
   });
 }
 
+/**
+ * GraphQL ノードを popup / storage 共通の通知データへ正規化する。
+ * @param node 通知元の Issue / Pull Request / review thread 付き PR
+ * @param kind 通知種別
+ * @param detectedAt 検知時刻
+ * @returns 保存用通知データ、生成できない場合は null
+ */
 export function toStoredNotification(
   node: IssueOrPullRequestNode | PullRequestReviewThreadsNode,
   kind: NotificationKind,

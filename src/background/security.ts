@@ -35,12 +35,22 @@ const TOKEN_PATTERNS = [
 ];
 const PAT_ENCRYPTION_ITERATIONS = 120_000;
 
+/**
+ * Uint8Array を Web Crypto API で使いやすい ArrayBuffer にコピーする。
+ * @param bytes 変換元のバイト列
+ * @returns 同じ内容を持つ ArrayBuffer
+ */
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   return buffer;
 }
 
+/**
+ * バイト列を base64 文字列へ変換する。
+ * @param bytes 変換元のバイト列
+ * @returns base64 文字列
+ */
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
 
@@ -51,6 +61,11 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/**
+ * base64 文字列をバイト列へ戻す。
+ * @param value base64 文字列
+ * @returns 復元したバイト列
+ */
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -62,6 +77,13 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * 起動時刻から PAT 暗号化用の AES-GCM 鍵を導出する。
+ * @param startupTime 鍵導出に使う起動時刻
+ * @param salt 鍵導出用ソルト
+ * @param iterations PBKDF2 の反復回数
+ * @returns 導出した暗号鍵
+ */
 async function derivePatEncryptionKey(
   startupTime: string,
   salt: Uint8Array,
@@ -181,6 +203,11 @@ export function redactSensitiveText(text: string): string {
   return redacted;
 }
 
+/**
+ * GraphQL エラー配列からログ出力用の最小情報だけを抽出する。
+ * @param errors GraphQL エラー配列
+ * @returns サニタイズ済みエラー一覧
+ */
 function sanitizeGraphQLErrors(errors: unknown): SanitizedGraphQLError[] | undefined {
   if (!Array.isArray(errors)) {
     return undefined;

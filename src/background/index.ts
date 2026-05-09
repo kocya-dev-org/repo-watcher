@@ -168,6 +168,13 @@ function createGithubClient(pat: string) {
   });
 }
 
+/**
+ * search(type: ISSUE) を実行し、PR / Issue ノード一覧を取得する。
+ * @param client GraphQL クライアント
+ * @param repoQuery search API 用クエリ
+ * @param target 検索対象の種別
+ * @returns 取得したノード一覧
+ */
 async function searchIssuesAndPullRequests(
   client: any,
   repoQuery: string,
@@ -186,6 +193,11 @@ async function searchIssuesAndPullRequests(
   return (searchResult.search?.nodes ?? []) as IssueOrPullRequestNode[];
 }
 
+/**
+ * デバッグビルド向けのログを統一フォーマットで出力する。
+ * @param message ログメッセージ
+ * @param payload 追加の詳細情報
+ */
 function debugLog(message: string, payload?: unknown) {
   /*
   if (!DEBUG_LOG_ENABLED) {
@@ -202,6 +214,11 @@ function debugLog(message: string, payload?: unknown) {
   console.info('[github-notify-ext]', message, payload);
 }
 
+/**
+ * 外部例外をユーザー向けの短いエラーメッセージへ変換する。
+ * @param error 捕捉した例外
+ * @returns 表示用エラーメッセージ
+ */
 function toErrorMessage(error: unknown): string {
   const sanitized = sanitizeError(error);
   if (
@@ -271,10 +288,8 @@ async function hydrateRuntimeState() {
 }
 
 /**
- * 設定ストレージから PAT / 監視対象リポジトリ / 各種フラグを読み込む。
- *
- * PAT またはリポジトリ一覧が未設定の場合は null を返す。
- * @returns 設定オブジェクト、または未設定時は null
+ * sync storage から監視対象リポジトリと各種フラグを読み込む。
+ * @returns sync storage 上の監視設定
  */
 async function loadSyncSettings(): Promise<SyncSettings> {
   return new Promise((resolve) => {
@@ -304,8 +319,10 @@ async function loadSyncSettings(): Promise<SyncSettings> {
 }
 
 /**
- * 設定ストレージと暗号化済み PAT を読み込み、監視実行に必要な設定を返す。
- * @returns 設定オブジェクト、または未設定時は null
+ * 不足している設定項目をユーザー向けエラーメッセージへ整形する。
+ * @param syncSettings sync storage から読んだ設定
+ * @param pat 復号済み PAT
+ * @returns 不足理由をつないだエラーメッセージ
  */
 function getIncompleteSettingsError(syncSettings: SyncSettings, pat: string | null): string {
   const reasons: string[] = [];
@@ -320,6 +337,10 @@ function getIncompleteSettingsError(syncSettings: SyncSettings, pat: string | nu
   return reasons.join(' ');
 }
 
+/**
+ * sync 設定と復号済み PAT をまとめて読み込み、監視実行用の設定へ整形する。
+ * @returns 監視設定または不足理由
+ */
 async function loadSettings(): Promise<{ settings: Settings | null; errorMessage: string | null }> {
   const syncSettings = await loadSyncSettings();
   const pat = await loadDecryptedPat();
@@ -612,6 +633,10 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   };
 }
 
+/**
+ * 同時実行を避けながら監視サイクルを 1 回だけ走らせる。
+ * @returns 実行中または完了した監視サイクルの Promise
+ */
 function runWatchCycleOnce(): Promise<WatchCycleResult> {
   if (!runningWatchCycle) {
     runningWatchCycle = runWatchCycle().finally(() => {
