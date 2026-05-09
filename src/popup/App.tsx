@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
+import Checkbox from '@mui/material/Checkbox';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
@@ -21,7 +22,13 @@ type GroupedNotifications = {
 
 type NotificationTab = 'pull_request' | 'issue';
 
+type WatchTargetRepo = {
+  owner: string;
+  name: string;
+};
+
 type PopupSettings = {
+  repos: WatchTargetRepo[];
   enableNewItems: boolean;
   enableMentions: boolean;
   enableMentionThreads: boolean;
@@ -31,6 +38,11 @@ type PopupSettings = {
 type PopupLocalState = {
   notifications: StoredNotification[];
   readNotificationIds: string[];
+};
+
+type NotificationRepositoryOption = {
+  value: string;
+  label: string;
 };
 
 /**
@@ -79,6 +91,60 @@ function formatKind(kind: NotificationKind): string {
   }
 }
 
+/**
+ * 通知に対応するリポジトリ識別子を返す。
+ * @param notification 通知データ
+ * @returns owner/repo 形式の識別子
+ */
+function getNotificationRepositoryValue(notification: StoredNotification): string {
+  return `${notification.owner}/${notification.repo}`;
+}
+
+/**
+ * 設定済みリポジトリ一覧からリポジトリ選択肢を生成する。
+ * @param repos 設定済みリポジトリ一覧
+ * @returns Select 表示用のリポジトリ選択肢
+ */
+function listRepositoryOptions(repos: WatchTargetRepo[]): NotificationRepositoryOption[] {
+  const repositoryValues = new Set(
+    repos
+      .filter(
+        (repo) =>
+          repo &&
+          typeof repo.owner === 'string' &&
+          repo.owner.length > 0 &&
+          typeof repo.name === 'string' &&
+          repo.name.length > 0,
+      )
+      .map((repo) => `${repo.owner}/${repo.name}`),
+  );
+
+  return Array.from(repositoryValues)
+    .sort((left, right) => left.localeCompare(right))
+    .map((value) => ({
+      value,
+      label: value,
+    }));
+}
+
+/**
+ * 選択されたリポジトリだけに通知一覧を絞り込む。
+ * @param items 通知一覧
+ * @param selectedRepositoryValues 選択中のリポジトリ識別子
+ * @returns 絞り込み後の通知一覧
+ */
+function filterNotificationsByRepositories(
+  items: StoredNotification[],
+  selectedRepositoryValues: string[],
+): StoredNotification[] {
+  if (selectedRepositoryValues.length === 0) {
+    return items;
+  }
+
+  const selectedSet = new Set(selectedRepositoryValues);
+  return items.filter((item) => selectedSet.has(getNotificationRepositoryValue(item)));
+}
+
 function loadPopupLocalState(): Promise<PopupLocalState> {
   return new Promise((resolve) => {
     chrome.storage.local.get({ notifications: [], readNotificationIds: [] }, (items) => {
@@ -98,13 +164,26 @@ function loadPopupSettings(): Promise<PopupSettings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(
       {
+        repos: [],
         enableNewItems: true,
         enableMentions: true,
         enableMentionThreads: true,
         enableAssigneeComments: true,
       },
       (items) => {
+        const repos = Array.isArray(items.repos)
+          ? (items.repos as WatchTargetRepo[]).filter(
+              (repo) =>
+                repo &&
+                typeof repo.owner === 'string' &&
+                repo.owner.length > 0 &&
+                typeof repo.name === 'string' &&
+                repo.name.length > 0,
+            )
+          : [];
+
         resolve({
+          repos,
           enableNewItems: Boolean(items.enableNewItems),
           enableMentions: Boolean(items.enableMentions),
           enableMentionThreads: Boolean(items.enableMentionThreads),
@@ -146,9 +225,11 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<PopupSettings | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRepositoryMenuOpen, setIsRepositoryMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<NotificationTab>('pull_request');
+  const [selectedRepositories, setSelectedRepositories] = useState<string[]>([]);
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
 
@@ -174,11 +255,21 @@ const App: React.FC = () => {
       });
     }
 
+    const availableRepositoryValues = new Set(
+      listRepositoryOptions(popupSettings.repos).map((option) => option.value),
+    );
+
     notificationsRef.current = finalizedLocalState.notifications;
     readIdsRef.current = new Set(finalizedLocalState.readNotificationIds);
     setNotifications(finalizedLocalState.notifications);
     setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
+    setSelectedRepositories((current) =>
+      current.filter((value) => availableRepositoryValues.has(value)),
+    );
+    if (availableRepositoryValues.size === 0) {
+      setIsRepositoryMenuOpen(false);
+    }
     setIsLoading(false);
   }, []);
 
@@ -204,7 +295,9 @@ const App: React.FC = () => {
       );
 
       chrome.storage.local.set(finalized);
-      chrome.action.setBadgeText({ text: finalized.badgeCount > 0 ? String(finalized.badgeCount) : '' });
+      chrome.action.setBadgeText({
+        text: finalized.badgeCount > 0 ? String(finalized.badgeCount) : '',
+      });
     },
     [],
   );
@@ -254,7 +347,12 @@ const App: React.FC = () => {
   };
 
   const visibleNotifications = notifications.filter((n) => isKindEnabled(n.kind));
-  const { prs, issues } = groupByType(visibleNotifications);
+  const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
+  const filteredNotifications = filterNotificationsByRepositories(
+    visibleNotifications,
+    selectedRepositories,
+  );
+  const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
 
   const renderNotificationItem = (n: StoredNotification) => (
@@ -346,6 +444,7 @@ const App: React.FC = () => {
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
     setIsMenuOpen(false);
+    setIsRepositoryMenuOpen(false);
   };
 
   const handleRefresh = async () => {
@@ -371,6 +470,18 @@ const App: React.FC = () => {
     if (nextTab === 'pull_request' || nextTab === 'issue') {
       setSelectedTab(nextTab);
     }
+  };
+
+  /**
+   * リポジトリ選択状態を反転する。
+   * @param repositoryValue owner/repo 形式の識別子
+   */
+  const toggleRepositorySelection = (repositoryValue: string) => {
+    setSelectedRepositories((current) =>
+      current.includes(repositoryValue)
+        ? current.filter((value) => value !== repositoryValue)
+        : [...current, repositoryValue],
+    );
   };
 
   return (
@@ -442,6 +553,71 @@ const App: React.FC = () => {
             </button>
             <button
               type="button"
+              onClick={() => setIsRepositoryMenuOpen((current) => !current)}
+              aria-label="Repository"
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                border: 'none',
+                background: 'transparent',
+                padding: '6px 4px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                color: '#24292f',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>Repository</span>
+              <span style={{ fontSize: '10px', color: '#57606a' }}>
+                {isRepositoryMenuOpen ? '▲' : '▼'}
+              </span>
+            </button>
+            {isRepositoryMenuOpen && (
+              <div
+                style={{
+                  marginTop: '2px',
+                  marginBottom: '4px',
+                  marginLeft: '8px',
+                  paddingLeft: '8px',
+                  borderLeft: '1px solid #d8dee4',
+                }}
+              >
+                {repositoryOptions.length === 0 ? (
+                  <div style={{ padding: '6px 4px', fontSize: '11px', color: '#57606a' }}>
+                    設定済みリポジトリはありません
+                  </div>
+                ) : (
+                  repositoryOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleRepositorySelection(option.value)}
+                      aria-label={`Repository:${option.value}`}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 'none',
+                        background: 'transparent',
+                        padding: '6px 4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#24292f',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <Checkbox checked={selectedRepositories.includes(option.value)} size="small" />
+                      <span>{option.label}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+            <button
+              type="button"
               onClick={openOptions}
               style={{
                 width: '100%',
@@ -471,9 +647,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      {refreshError && (
-        <p style={{ margin: '0 0 8px', color: '#d1242f' }}>{refreshError}</p>
-      )}
+      {refreshError && <p style={{ margin: '0 0 8px', color: '#d1242f' }}>{refreshError}</p>}
 
       {isLoading ? (
         <p style={{ margin: 0 }}>読み込み中...</p>

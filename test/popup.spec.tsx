@@ -28,6 +28,10 @@ function findTab(container: HTMLElement, text: string) {
   );
 }
 
+function findButtonByAriaLabel(container: HTMLElement, label: string) {
+  return container.querySelector(`button[aria-label="${label}"]`);
+}
+
 describe('popup App', () => {
   let chromeMock: ChromeMockController;
 
@@ -84,6 +88,7 @@ describe('popup App', () => {
       badgeCount: 2,
     });
     chromeMock.setSyncState({
+      repos: [],
       enableNewItems: true,
       enableMentions: true,
       enableMentionThreads: true,
@@ -359,6 +364,7 @@ describe('popup App', () => {
       localCallback = callback;
     });
     chromeMock.setSyncState({
+      repos: [],
       enableNewItems: false,
       enableMentions: false,
       enableMentionThreads: false,
@@ -401,6 +407,7 @@ describe('popup App', () => {
     await flushPromises();
 
     expect(view.container.textContent).toContain('バージョン: 1.0.0');
+    expect(view.container.textContent).toContain('Repository');
 
     const openOptionsButton = findButton(view.container, '設定を開く');
     await act(async () => {
@@ -471,6 +478,150 @@ describe('popup App', () => {
     await flushPromises();
 
     expect(view.container.textContent).toContain('更新後の通知');
+
+    await view.unmount();
+  });
+
+  it('メニュー内の Repository サブメニューで設定済みリポジトリを切り替えて一覧を絞り込む', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'new:PR_1',
+          kind: 'new',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo-a',
+          number: 10,
+          title: 'repo-a の PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'new:PR_2',
+          kind: 'new',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo-b',
+          number: 11,
+          title: 'repo-b の PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+        {
+          id: 'mention:ISSUE_1',
+          kind: 'mention',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo-a',
+          number: 12,
+          title: 'repo-a の Issue',
+          url: 'https://example.com/issues/12',
+          detectedAt: '2026-05-06T06:00:00.000Z',
+        },
+        {
+          id: 'mention:ISSUE_2',
+          kind: 'mention',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo-b',
+          number: 13,
+          title: 'repo-b の Issue',
+          url: 'https://example.com/issues/13',
+          detectedAt: '2026-05-06T05:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 4,
+    });
+    chromeMock.setSyncState({
+      repos: [
+        { owner: 'octo', name: 'repo-a' },
+        { owner: 'octo', name: 'repo-b' },
+        { owner: 'octo', name: 'repo-c' },
+      ],
+      enableNewItems: true,
+      enableMentions: true,
+      enableMentionThreads: true,
+      enableAssigneeComments: true,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('repo-a の PR');
+    expect(view.container.textContent).toContain('repo-b の PR');
+
+    const menuButton = findButton(view.container, 'メニュー');
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const repositoryButton = findButtonByAriaLabel(view.container, 'Repository');
+    expect(repositoryButton).toBeTruthy();
+
+    await act(async () => {
+      repositoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('octo/repo-a');
+    expect(view.container.textContent).toContain('octo/repo-b');
+    expect(view.container.textContent).toContain('octo/repo-c');
+
+    const repoAOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-a');
+    expect(repoAOption).toBeTruthy();
+
+    await act(async () => {
+      repoAOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.runtime.sendMessage).not.toHaveBeenCalled();
+    expect(view.container.textContent).toContain('repo-a の PR');
+    expect(view.container.textContent).not.toContain('repo-b の PR');
+
+    const issueTab = findTab(view.container, 'Issue');
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('repo-a の Issue');
+    expect(view.container.textContent).not.toContain('repo-b の Issue');
+
+    const repoBOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-b');
+    expect(repoBOption).toBeTruthy();
+
+    await act(async () => {
+      repoBOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('repo-a の Issue');
+    expect(view.container.textContent).toContain('repo-b の Issue');
+
+    const selectedRepoAOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-a');
+    expect(selectedRepoAOption).toBeTruthy();
+
+    await act(async () => {
+      selectedRepoAOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).not.toContain('repo-a の Issue');
+    expect(view.container.textContent).toContain('repo-b の Issue');
+
+    const selectedRepoBOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-b');
+    expect(selectedRepoBOption).toBeTruthy();
+
+    await act(async () => {
+      selectedRepoBOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('repo-a の Issue');
+    expect(view.container.textContent).toContain('repo-b の Issue');
 
     await view.unmount();
   });
