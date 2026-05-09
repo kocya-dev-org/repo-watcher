@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox';
 import MenuIcon from '@mui/icons-material/Menu';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
@@ -46,6 +49,8 @@ type NotificationRepositoryOption = {
   value: string;
   label: string;
 };
+
+type BulkReadState = 'all_read' | 'all_unread' | 'partial';
 
 /**
  * 通知一覧を PR と Issue に振り分け、検出日時の降順で整列する。
@@ -145,6 +150,30 @@ function filterNotificationsByRepositories(
 
   const selectedSet = new Set(selectedRepositoryValues);
   return items.filter((item) => selectedSet.has(getNotificationRepositoryValue(item)));
+}
+
+/**
+ * 現在表示中の一覧全体が既読か未読かを集計する。
+ * @param items 表示中の通知一覧
+ * @param readIds 既読通知 ID 一覧
+ * @returns 一覧全体の既読状態
+ */
+function getBulkReadState(items: StoredNotification[], readIds: Set<string>): BulkReadState {
+  if (items.length === 0) {
+    return 'all_unread';
+  }
+
+  const readCount = items.filter((item) => readIds.has(item.id)).length;
+
+  if (readCount === 0) {
+    return 'all_unread';
+  }
+
+  if (readCount === items.length) {
+    return 'all_read';
+  }
+
+  return 'partial';
 }
 
 function loadPopupLocalState(): Promise<PopupLocalState> {
@@ -305,11 +334,10 @@ const App: React.FC = () => {
   );
 
   /**
-   * 通知の既読/未読を切り替え、readNotificationIds とバッジを更新する。
-   * @param id 切り替える通知 ID
+   * 既読 ID 一覧を state / storage / badge に反映する。
+   * @param nextReadIds 更新後の既読通知 ID 一覧
    */
-  const toggleReadAndUpdate = (id: string) => {
-    const nextReadIds = toggleNotificationRead(Array.from(readIdsRef.current), id);
+  const applyReadIds = (nextReadIds: string[]) => {
     const newBadgeCount = calculateUnreadCount(notificationsRef.current, nextReadIds);
 
     readIdsRef.current = new Set(nextReadIds);
@@ -324,6 +352,15 @@ const App: React.FC = () => {
         chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
       },
     );
+  };
+
+  /**
+   * 通知の既読/未読を切り替え、readNotificationIds とバッジを更新する。
+   * @param id 切り替える通知 ID
+   */
+  const toggleReadAndUpdate = (id: string) => {
+    const nextReadIds = toggleNotificationRead(Array.from(readIdsRef.current), id);
+    applyReadIds(nextReadIds);
   };
 
   /**
@@ -356,6 +393,7 @@ const App: React.FC = () => {
   );
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
+  const bulkReadState = getBulkReadState(activeNotifications, readIds);
 
   const renderNotificationItem = (n: StoredNotification) => (
     <li
@@ -367,23 +405,24 @@ const App: React.FC = () => {
         alignItems: 'center',
       }}
     >
-      <button
-        type="button"
+      <IconButton
         onClick={() => toggleReadAndUpdate(n.id)}
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: '50%',
-          border: '1px solid #ccc',
-          marginRight: 6,
-          backgroundColor: readIds.has(n.id) ? '#fff' : '#2da44e',
+        size="small"
+        sx={{
+          marginRight: '6px',
           padding: 0,
-          cursor: 'pointer',
+          color: readIds.has(n.id) ? '#57606a' : '#2da44e',
           flexShrink: 0,
         }}
         title={readIds.has(n.id) ? '既読' : '未読'}
         aria-label={readIds.has(n.id) ? '既読' : '未読'}
-      />
+      >
+        {readIds.has(n.id) ? (
+          <CheckBoxIcon fontSize="small" />
+        ) : (
+          <CheckBoxOutlineBlankIcon fontSize="small" />
+        )}
+      </IconButton>
       <div
         style={{
           flex: 1,
@@ -486,6 +525,32 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 現在表示している一覧を一括で既読または未読へ切り替える。
+   */
+  const toggleBulkReadState = () => {
+    const nextReadIds = new Set(readIdsRef.current);
+
+    if (bulkReadState === 'all_read') {
+      for (const notification of activeNotifications) {
+        nextReadIds.delete(notification.id);
+      }
+    } else {
+      for (const notification of activeNotifications) {
+        nextReadIds.add(notification.id);
+      }
+    }
+
+    applyReadIds(Array.from(nextReadIds));
+  };
+
+  const bulkReadButtonLabel =
+    bulkReadState === 'all_read'
+      ? 'Mark all as unread'
+      : bulkReadState === 'partial'
+        ? 'Mark visible list as read'
+        : 'Mark all as read';
+
   return (
     <div
       style={{
@@ -505,19 +570,42 @@ const App: React.FC = () => {
         }}
       >
         <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
-        <IconButton
-          aria-label="Menu"
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-          size="small"
-          sx={{
-            border: '1px solid #d0d7de',
-            borderRadius: '6px',
-            color: '#24292f',
-            padding: '4px',
-          }}
-        >
-          <MenuIcon fontSize="small" />
-        </IconButton>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconButton
+            aria-label={bulkReadButtonLabel}
+            title={bulkReadButtonLabel}
+            onClick={toggleBulkReadState}
+            size="small"
+            disabled={activeNotifications.length === 0}
+            sx={{
+              border: '1px solid #d0d7de',
+              borderRadius: '6px',
+              color: '#24292f',
+              padding: '4px',
+            }}
+          >
+            {bulkReadState === 'all_read' ? (
+              <CheckBoxIcon fontSize="small" />
+            ) : bulkReadState === 'partial' ? (
+              <IndeterminateCheckBoxIcon fontSize="small" />
+            ) : (
+              <CheckBoxOutlineBlankIcon fontSize="small" />
+            )}
+          </IconButton>
+          <IconButton
+            aria-label="Menu"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            size="small"
+            sx={{
+              border: '1px solid #d0d7de',
+              borderRadius: '6px',
+              color: '#24292f',
+              padding: '4px',
+            }}
+          >
+            <MenuIcon fontSize="small" />
+          </IconButton>
+        </div>
         {isMenuOpen && (
           <div
             style={{

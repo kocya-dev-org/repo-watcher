@@ -195,6 +195,112 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('全既読/未読アイコンは一覧の状態に応じて変化し、クリックで表示中一覧を一括切り替えする', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'new:PR_1',
+          kind: 'new',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'PR 通知 1',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'mention:PR_2',
+          kind: 'mention',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: 'PR 通知 2',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+        {
+          id: 'mention:ISSUE_1',
+          kind: 'mention',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 12,
+          title: 'Issue 通知',
+          url: 'https://example.com/issues/12',
+          detectedAt: '2026-05-06T06:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const bulkToggleButton = () =>
+      findButtonByAriaLabel(view.container, 'Mark all as read') ??
+      findButtonByAriaLabel(view.container, 'Mark visible list as read') ??
+      findButtonByAriaLabel(view.container, 'Mark all as unread');
+
+    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+
+    await act(async () => {
+      bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      readNotificationIds: ['new:PR_1', 'mention:PR_2'],
+      badgeCount: 1,
+    });
+    expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
+
+    await act(async () => {
+      bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+
+    const prItem = findClickableItem(view.container, 'PR 通知 1');
+    const unreadIcon = prItem?.querySelector('button[title="未読"]');
+    expect(unreadIcon).toBeTruthy();
+
+    await act(async () => {
+      unreadIcon?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(findButtonByAriaLabel(view.container, 'Mark visible list as read')).toBeTruthy();
+
+    await act(async () => {
+      bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      readNotificationIds: ['new:PR_1', 'mention:PR_2'],
+      badgeCount: 1,
+    });
+    expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
+
+    const issueTab = findTab(view.container, 'Issue');
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+
+    await view.unmount();
+  });
+
   it('タイトルを別タブ用のリンクとして表示し、項目自体のクリックでは遷移しない', async () => {
     chromeMock.setLocalState({
       notifications: [
