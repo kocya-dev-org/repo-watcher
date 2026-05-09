@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import MenuIcon from '@mui/icons-material/Menu';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
+import IconButton from '@mui/material/IconButton';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
@@ -503,20 +505,19 @@ const App: React.FC = () => {
         }}
       >
         <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
-        <button
-          type="button"
+        <IconButton
+          aria-label="Menu"
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          style={{
+          size="small"
+          sx={{
             border: '1px solid #d0d7de',
-            background: '#fff',
             borderRadius: '6px',
-            padding: '4px 8px',
-            fontSize: '11px',
-            cursor: 'pointer',
+            color: '#24292f',
+            padding: '4px',
           }}
         >
-          Menu
-        </button>
+          <MenuIcon fontSize="small" />
+        </IconButton>
         {isMenuOpen && (
           <div
             style={{

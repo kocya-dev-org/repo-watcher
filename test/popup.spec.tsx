@@ -373,7 +373,7 @@ describe('popup App', () => {
 
     const view = await renderReact(<App />);
 
-    expect(view.container.textContent).toContain('読み込み中...');
+    expect(view.container.textContent).toContain('Loading...');
 
     await act(async () => {
       localCallback?.({
@@ -396,9 +396,9 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('現在表示できる通知はありません。');
+    expect(view.container.textContent).toContain('No notifications available.');
 
-    const menuButton = findButton(view.container, 'メニュー');
+    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
     expect(menuButton).toBeTruthy();
 
     await act(async () => {
@@ -406,10 +406,10 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('バージョン: 1.0.0');
+    expect(view.container.textContent).toContain('Version: 1.0.0');
     expect(view.container.textContent).toContain('Repository');
 
-    const openOptionsButton = findButton(view.container, '設定を開く');
+    const openOptionsButton = findButton(view.container, 'Open Settings');
     await act(async () => {
       openOptionsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -451,13 +451,13 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const menuButton = findButton(view.container, 'メニュー');
+    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
     await act(async () => {
       menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
-    const refreshButton = findButton(view.container, '更新');
+    const refreshButton = findButton(view.container, 'Update');
     expect(refreshButton).toBeTruthy();
 
     await act(async () => {
@@ -469,7 +469,7 @@ describe('popup App', () => {
       { type: 'refresh-watch-cycle' },
       expect.any(Function),
     );
-    expect(view.container.textContent).toContain('このタブに表示できる通知はありません。');
+    expect(view.container.textContent).toContain('No notifications available for this tab.');
 
     const issueTab = findTab(view.container, 'Issue');
     await act(async () => {
@@ -551,7 +551,7 @@ describe('popup App', () => {
     expect(view.container.textContent).toContain('repo-a の PR');
     expect(view.container.textContent).toContain('repo-b の PR');
 
-    const menuButton = findButton(view.container, 'メニュー');
+    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
     await act(async () => {
       menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
