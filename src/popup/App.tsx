@@ -523,7 +523,7 @@ const App: React.FC = () => {
               position: 'absolute',
               top: '28px',
               right: 0,
-              width: '180px',
+              width: '300px',
               backgroundColor: '#fff',
               border: '1px solid #d0d7de',
               borderRadius: '8px',
@@ -600,18 +600,23 @@ const App: React.FC = () => {
                         textAlign: 'left',
                         border: 'none',
                         background: 'transparent',
-                        padding: '6px 4px',
+                        padding: '3px 4px',
                         cursor: 'pointer',
                         fontSize: '12px',
                         color: '#24292f',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '4px',
+                        minHeight: '24px',
                       }}
                     >
                       <Checkbox
                         checked={selectedRepositories.includes(option.value)}
                         size="small"
+                        sx={{
+                          padding: 0,
+                          marginRight: '2px',
+                        }}
                       />
                       <span>{option.label}</span>
                     </button>
