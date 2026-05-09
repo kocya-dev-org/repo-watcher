@@ -515,7 +515,7 @@ const App: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-          メニュー
+          Menu
         </button>
         {isMenuOpen && (
           <div
@@ -549,7 +549,7 @@ const App: React.FC = () => {
                 color: isRefreshing ? '#57606a' : '#24292f',
               }}
             >
-              {isRefreshing ? '更新中...' : '更新'}
+              {isRefreshing ? 'Updating...' : 'Update'}
             </button>
             <button
               type="button"
@@ -586,7 +586,7 @@ const App: React.FC = () => {
               >
                 {repositoryOptions.length === 0 ? (
                   <div style={{ padding: '6px 4px', fontSize: '11px', color: '#57606a' }}>
-                    設定済みリポジトリはありません
+                    No configured repositories
                   </div>
                 ) : (
                   repositoryOptions.map((option) => (
@@ -609,7 +609,10 @@ const App: React.FC = () => {
                         gap: '6px',
                       }}
                     >
-                      <Checkbox checked={selectedRepositories.includes(option.value)} size="small" />
+                      <Checkbox
+                        checked={selectedRepositories.includes(option.value)}
+                        size="small"
+                      />
                       <span>{option.label}</span>
                     </button>
                   ))
@@ -630,7 +633,7 @@ const App: React.FC = () => {
                 color: '#24292f',
               }}
             >
-              設定を開く
+              Open Settings
             </button>
             <div
               style={{
@@ -641,7 +644,7 @@ const App: React.FC = () => {
                 color: '#57606a',
               }}
             >
-              バージョン: {manifestVersion}
+              Version: {manifestVersion}
             </div>
           </div>
         )}
@@ -650,16 +653,16 @@ const App: React.FC = () => {
       {refreshError && <p style={{ margin: '0 0 8px', color: '#d1242f' }}>{refreshError}</p>}
 
       {isLoading ? (
-        <p style={{ margin: 0 }}>読み込み中...</p>
+        <p style={{ margin: 0 }}>Loading...</p>
       ) : visibleNotifications.length === 0 ? (
-        <p style={{ margin: 0 }}>現在表示できる通知はありません。</p>
+        <p style={{ margin: 0 }}>No notifications available.</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
           <Box sx={{ mb: 1.25, borderBottom: 1, borderColor: 'divider' }}>
             <Tabs
               value={selectedTab}
               onChange={handleTabChange}
-              aria-label="通知種別タブ"
+              aria-label="Notification Type Tabs"
               variant="fullWidth"
               sx={{
                 minHeight: 0,
@@ -697,7 +700,7 @@ const App: React.FC = () => {
           </Box>
 
           {activeNotifications.length === 0 ? (
-            <p style={{ margin: 0 }}>このタブに表示できる通知はありません。</p>
+            <p style={{ margin: 0 }}>No notifications available for this tab.</p>
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
