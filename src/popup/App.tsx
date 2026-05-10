@@ -3,6 +3,7 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox';
 import MenuIcon from '@mui/icons-material/Menu';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
@@ -550,6 +551,7 @@ const App: React.FC = () => {
       : bulkReadState === 'partial'
         ? 'Mark visible list as read'
         : 'Mark all as read';
+  const refreshButtonLabel = isRefreshing ? 'Updating...' : 'Update';
 
   return (
     <div
@@ -571,6 +573,36 @@ const App: React.FC = () => {
       >
         <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconButton
+            aria-label={refreshButtonLabel}
+            title={refreshButtonLabel}
+            onClick={() => {
+              void handleRefresh();
+            }}
+            size="small"
+            disabled={isRefreshing}
+            sx={{
+              border: '1px solid #d0d7de',
+              borderRadius: '6px',
+              color: '#24292f',
+              padding: '4px',
+            }}
+          >
+            <RefreshIcon
+              fontSize="small"
+              sx={
+                isRefreshing
+                  ? {
+                      animation: 'spin 1s linear infinite',
+                      '@keyframes spin': {
+                        from: { transform: 'rotate(0deg)' },
+                        to: { transform: 'rotate(360deg)' },
+                      },
+                    }
+                  : undefined
+              }
+            />
+          </IconButton>
           <IconButton
             aria-label={bulkReadButtonLabel}
             title={bulkReadButtonLabel}
@@ -621,25 +653,6 @@ const App: React.FC = () => {
               zIndex: 10,
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                void handleRefresh();
-              }}
-              disabled={isRefreshing}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
-                padding: '6px 4px',
-                cursor: isRefreshing ? 'default' : 'pointer',
-                fontSize: '12px',
-                color: isRefreshing ? '#57606a' : '#24292f',
-              }}
-            >
-              {isRefreshing ? 'Updating...' : 'Update'}
-            </button>
             <button
               type="button"
               onClick={() => setIsRepositoryMenuOpen((current) => !current)}

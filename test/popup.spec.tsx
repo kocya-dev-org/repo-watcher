@@ -557,13 +557,12 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
-    await act(async () => {
-      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-    await flushPromises();
+    const headerButtons = Array.from(
+      view.container.querySelectorAll('header button[aria-label]'),
+    ).map((button) => button.getAttribute('aria-label'));
+    expect(headerButtons).toEqual(['Update', 'Mark all as read', 'Menu']);
 
-    const refreshButton = findButton(view.container, 'Update');
+    const refreshButton = findButtonByAriaLabel(view.container, 'Update');
     expect(refreshButton).toBeTruthy();
 
     await act(async () => {
