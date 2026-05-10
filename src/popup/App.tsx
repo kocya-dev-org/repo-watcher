@@ -396,92 +396,98 @@ const App: React.FC = () => {
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
 
-  const renderNotificationItem = (n: StoredNotification) => (
-    <li
-      key={n.id}
-      style={{
-        padding: '4px 0',
-        borderBottom: '1px solid #eee',
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      <IconButton
-        onClick={() => toggleReadAndUpdate(n.id)}
-        size="small"
-        sx={{
-          marginRight: '6px',
-          padding: 0,
-          color: readIds.has(n.id) ? '#57606a' : '#2da44e',
-          flexShrink: 0,
-        }}
-        title={readIds.has(n.id) ? '既読' : '未読'}
-        aria-label={readIds.has(n.id) ? '既読' : '未読'}
-      >
-        {readIds.has(n.id) ? (
-          <CheckBoxIcon fontSize="small" />
-        ) : (
-          <CheckBoxOutlineBlankIcon fontSize="small" />
-        )}
-      </IconButton>
-      <div
+  const renderNotificationItem = (n: StoredNotification) => {
+    const isMissingFromLatestResult = n.isPresentInLatestResult === false;
+
+    return (
+      <li
+        key={n.id}
         style={{
-          flex: 1,
+          padding: '6px 8px',
+          borderBottom: '1px solid #eee',
           display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
+          alignItems: 'center',
+          backgroundColor: isMissingFromLatestResult ? '#f6f8fa' : 'transparent',
+          borderRadius: '6px',
         }}
       >
+        <IconButton
+          onClick={() => toggleReadAndUpdate(n.id)}
+          size="small"
+          sx={{
+            marginRight: '6px',
+            padding: 0,
+            color: readIds.has(n.id) ? '#57606a' : '#2da44e',
+            flexShrink: 0,
+          }}
+          title={readIds.has(n.id) ? '既読' : '未読'}
+          aria-label={readIds.has(n.id) ? '既読' : '未読'}
+        >
+          {readIds.has(n.id) ? (
+            <CheckBoxIcon fontSize="small" />
+          ) : (
+            <CheckBoxOutlineBlankIcon fontSize="small" />
+          )}
+        </IconButton>
         <div
           style={{
+            flex: 1,
             display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '2px',
+            flexDirection: 'column',
+            minWidth: 0,
           }}
         >
-          <span
+          <div
             style={{
-              fontSize: '11px',
-              color: '#555',
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '2px',
             }}
           >
-            {n.owner}/{n.repo} #{n.number}
-          </span>
-          <span
+            <span
+              style={{
+                fontSize: '11px',
+                color: isMissingFromLatestResult ? '#6e7781' : '#555',
+              }}
+            >
+              {n.owner}/{n.repo} #{n.number}
+            </span>
+            <span
+              style={{
+                fontSize: '10px',
+                color: '#fff',
+                backgroundColor: '#0969da',
+                borderRadius: '10px',
+                padding: '1px 6px',
+              }}
+            >
+              {formatKind(n.kind)}
+            </span>
+          </div>
+          <div
             style={{
-              fontSize: '10px',
-              color: '#fff',
-              backgroundColor: '#0969da',
-              borderRadius: '10px',
-              padding: '1px 6px',
+              fontSize: '12px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
-            {formatKind(n.kind)}
-          </span>
+            <a
+              href={n.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: isMissingFromLatestResult ? '#57606a' : '#0969da',
+                textDecoration: 'underline',
+              }}
+            >
+              {n.title}
+            </a>
+          </div>
         </div>
-        <div
-          style={{
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          <a
-            href={n.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              color: '#0969da',
-              textDecoration: 'underline',
-            }}
-          >
-            {n.title}
-          </a>
-        </div>
-      </div>
-    </li>
-  );
+      </li>
+    );
+  };
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();

@@ -9,11 +9,15 @@ import { flushPromises, renderReact } from './helpers/react';
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
 
 function findClickableItem(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('li')).find((item) => item.textContent?.includes(text));
+  return Array.from(container.querySelectorAll('li')).find((item) =>
+    item.textContent?.includes(text),
+  );
 }
 
 function findLinkByText(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('a')).find((link) => link.textContent?.includes(text));
+  return Array.from(container.querySelectorAll('a')).find((link) =>
+    link.textContent?.includes(text),
+  );
 }
 
 function findButton(container: HTMLElement, text: string) {
@@ -329,7 +333,9 @@ describe('popup App', () => {
     expect(contentLink?.getAttribute('target')).toBe('_blank');
 
     await act(async () => {
-      findClickableItem(view.container, 'PR 通知')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      findClickableItem(view.container, 'PR 通知')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
     });
     await flushPromises();
 
@@ -339,6 +345,53 @@ describe('popup App', () => {
       badgeCount: 1,
     });
     expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
+
+    await view.unmount();
+  });
+
+  it('最新の API 結果にない通知は薄いグレー背景で表示する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'new:PR_1',
+          kind: 'new',
+          sourceNodeId: 'PR_1',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: '残っている PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+          isPresentInLatestResult: true,
+        },
+        {
+          id: 'mention:PR_2',
+          kind: 'mention',
+          sourceNodeId: 'PR_2',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: 'close 済み PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+          isPresentInLatestResult: false,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    expect(findClickableItem(view.container, '残っている PR')?.style.backgroundColor).toBe(
+      'transparent',
+    );
+    expect(findClickableItem(view.container, 'close 済み PR')?.style.backgroundColor).toBe(
+      'rgb(246, 248, 250)',
+    );
 
     await view.unmount();
   });
@@ -466,9 +519,11 @@ describe('popup App', () => {
 
   it('読み込み中・空状態・メニュー表示を扱える', async () => {
     let localCallback: ((items: unknown) => void) | null = null;
-    chromeMock.chrome.storage.local.get.mockImplementationOnce((query: unknown, callback: (items: unknown) => void) => {
-      localCallback = callback;
-    });
+    chromeMock.chrome.storage.local.get.mockImplementationOnce(
+      (query: unknown, callback: (items: unknown) => void) => {
+        localCallback = callback;
+      },
+    );
     chromeMock.setSyncState({
       repos: [],
       enableNewItems: false,

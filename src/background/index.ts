@@ -16,6 +16,7 @@ import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
 import {
   calculateUnreadCount,
+  getStoredNotificationNodeId,
   reconcileNotificationState,
   type StoredNotification,
 } from '../shared/notifications';
@@ -56,6 +57,12 @@ type WatchCycleResult =
       status: 'skipped';
       errorMessage: string;
     };
+
+type NotificationStatusNode = {
+  __typename?: 'Issue' | 'PullRequest';
+  id?: string | null;
+  closed?: boolean | null;
+};
 
 const DEFAULT_INTERVAL_MINUTES = 5;
 const DEBUG_LOG_ENABLED = import.meta.env.MODE === 'debug';
@@ -139,6 +146,23 @@ const WATCH_ISSUES_AND_PRS_QUERY = `
             }
           }
         }
+      }
+    }
+  }
+`;
+const WATCH_NOTIFICATION_STATUS_QUERY = `
+  query WatchNotificationStatuses(
+    $nodeIds: [ID!]!
+  ) {
+    nodes(ids: $nodeIds) {
+      __typename
+      ... on Issue {
+        id
+        closed
+      }
+      ... on PullRequest {
+        id
+        closed
       }
     }
   }
@@ -467,6 +491,76 @@ async function showOSNotifications(notifications: StoredNotification[]) {
 }
 
 /**
+ * 現在の API 結果で open 扱いの通知元 node ID 一覧を取得する。
+ * @param client GraphQL クライアント
+ * @param notifications 状態確認したい通知一覧
+ * @returns 最新 API 結果に残っている node ID 集合
+ */
+async function fetchLatestOpenNotificationNodeIds(
+  client: any,
+  notifications: StoredNotification[],
+): Promise<Set<string>> {
+  const nodeIds = Array.from(
+    new Set(
+      notifications
+        .map((notification) => getStoredNotificationNodeId(notification))
+        .filter((nodeId): nodeId is string => Boolean(nodeId)),
+    ),
+  );
+
+  if (nodeIds.length === 0) {
+    return new Set<string>();
+  }
+
+  const openNodeIds = new Set<string>();
+
+  for (let index = 0; index < nodeIds.length; index += 50) {
+    const chunk = nodeIds.slice(index, index + 50);
+    const result = await client(WATCH_NOTIFICATION_STATUS_QUERY, {
+      nodeIds: chunk,
+    });
+
+    for (const node of ((result as { nodes?: NotificationStatusNode[] }).nodes ??
+      []) as NotificationStatusNode[]) {
+      if (
+        (node.__typename === 'Issue' || node.__typename === 'PullRequest') &&
+        typeof node.id === 'string' &&
+        node.id.length > 0 &&
+        node.closed === false
+      ) {
+        openNodeIds.add(node.id);
+      }
+    }
+  }
+
+  return openNodeIds;
+}
+
+/**
+ * 最新 API 結果に基づき、通知ごとの表示状態を更新する。
+ * @param notifications 保存済み通知一覧
+ * @param latestOpenNodeIds 最新 API 結果に残っている open の node ID 集合
+ * @returns 表示状態を反映した通知一覧
+ */
+function applyLatestResultStatus(
+  notifications: StoredNotification[],
+  latestOpenNodeIds: Set<string>,
+): StoredNotification[] {
+  return notifications.map((notification) => {
+    const sourceNodeId = getStoredNotificationNodeId(notification);
+    if (!sourceNodeId) {
+      return notification;
+    }
+
+    return {
+      ...notification,
+      sourceNodeId,
+      isPresentInLatestResult: latestOpenNodeIds.has(sourceNodeId),
+    };
+  });
+}
+
+/**
  * 監視サイクル本体。
  *
  * 1. 設定読み込み
@@ -606,6 +700,14 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     localState.readNotificationIds,
     collected,
   );
+  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(
+    client as any,
+    reconciled.notifications,
+  );
+  const notificationsWithLatestStatus = applyLatestResultStatus(
+    reconciled.notifications,
+    latestOpenNodeIds,
+  );
   debugLog('watch cycle notification summary', {
     newItems: newItems.length,
     mentionItems: mentionItems.length,
@@ -613,10 +715,11 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     mentionThreadItems: mentionThreadItems.length,
     addedNotifications: reconciled.addedNotifications.length,
     badgeCount: reconciled.badgeCount,
+    activeNotifications: latestOpenNodeIds.size,
   });
 
   await saveLocalRuntimeStorage({
-    notifications: reconciled.notifications,
+    notifications: notificationsWithLatestStatus,
     readNotificationIds: reconciled.readNotificationIds,
     badgeCount: reconciled.badgeCount,
   });

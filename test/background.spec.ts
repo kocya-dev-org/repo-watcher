@@ -18,6 +18,7 @@ import {
 } from '../src/background/security';
 import {
   calculateUnreadCount,
+  getStoredNotificationNodeId,
   markNotificationAsRead,
   reconcileNotificationState,
   type StoredNotification,
@@ -319,11 +320,7 @@ describe('background notification logic helpers', () => {
   });
 
   it('buildRepoQuery は Issue 向けの open 条件を含む検索クエリを構築する', () => {
-    const query = buildRepoQuery(
-      [{ owner: 'octo', name: 'repo1' }],
-      lastCheckedAt,
-      'issue',
-    );
+    const query = buildRepoQuery([{ owner: 'octo', name: 'repo1' }], lastCheckedAt, 'issue');
 
     expect(query).toContain('repo:octo/repo1');
     expect(query).toContain('is:issue state:open');
@@ -343,11 +340,7 @@ describe('background notification logic helpers', () => {
 
   it('メンション判定は新しい本文または新しいコメントだけを対象にする', () => {
     expect(
-      hasMentionNotification(
-        { ...baseNode, body: 'hello @viewer' },
-        lastCheckedAt,
-        'viewer',
-      ),
+      hasMentionNotification({ ...baseNode, body: 'hello @viewer' }, lastCheckedAt, 'viewer'),
     ).toBe(true);
 
     expect(
@@ -514,6 +507,7 @@ describe('background notification logic helpers', () => {
     expect(stored).toEqual({
       id: 'mention:ISSUE_1',
       kind: 'mention',
+      sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
       owner: 'octo',
       repo: 'repo',
@@ -521,7 +515,26 @@ describe('background notification logic helpers', () => {
       title: '通知テスト',
       url: 'https://github.com/octo/repo/issues/42',
       detectedAt: '2026-03-21T10:06:00.000Z',
+      isPresentInLatestResult: true,
     });
+  });
+
+  it('sourceNodeId が欠ける旧データでも通知 ID から node ID を復元できる', () => {
+    expect(
+      getStoredNotificationNodeId({
+        id: 'mention:ISSUE_1',
+        kind: 'mention',
+        sourceNodeId: '',
+        isPullRequest: false,
+        owner: 'octo',
+        repo: 'repo',
+        number: 42,
+        title: '通知テスト',
+        url: 'https://github.com/octo/repo/issues/42',
+        detectedAt: '2026-03-21T10:06:00.000Z',
+        isPresentInLatestResult: true,
+      }),
+    ).toBe('ISSUE_1');
   });
 });
 
@@ -530,6 +543,7 @@ describe('shared notification state helpers', () => {
     {
       id: 'new:ISSUE_1',
       kind: 'new',
+      sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
       owner: 'octo',
       repo: 'repo',
@@ -537,10 +551,12 @@ describe('shared notification state helpers', () => {
       title: 'Issue 1',
       url: 'https://github.com/octo/repo/issues/1',
       detectedAt: '2026-03-21T10:00:00.000Z',
+      isPresentInLatestResult: true,
     },
     {
       id: 'mention:ISSUE_2',
       kind: 'mention',
+      sourceNodeId: 'ISSUE_2',
       isPullRequest: false,
       owner: 'octo',
       repo: 'repo',
@@ -548,6 +564,7 @@ describe('shared notification state helpers', () => {
       title: 'Issue 2',
       url: 'https://github.com/octo/repo/issues/2',
       detectedAt: '2026-03-21T10:00:00.000Z',
+      isPresentInLatestResult: true,
     },
   ];
 
@@ -569,6 +586,7 @@ describe('shared notification state helpers', () => {
       {
         id: 'thread:PR_3',
         kind: 'thread',
+        sourceNodeId: 'PR_3',
         isPullRequest: true,
         owner: 'octo',
         repo: 'repo',
@@ -576,6 +594,7 @@ describe('shared notification state helpers', () => {
         title: 'PR 3',
         url: 'https://github.com/octo/repo/pull/3',
         detectedAt: '2026-03-21T10:10:00.000Z',
+        isPresentInLatestResult: true,
       },
     ];
 

@@ -83,105 +83,116 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
-      if (query.includes('GetViewer')) {
-        return { viewer: { login: 'viewer' } };
-      }
-      if (query.includes('WatchIssuesAndPRs')) {
-        if (variables?.repoQuery?.includes('is:pr')) {
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          if (variables?.repoQuery?.includes('is:pr')) {
+            return {
+              search: {
+                nodes: [
+                  {
+                    __typename: 'PullRequest',
+                    id: 'PR_2',
+                    number: 2,
+                    title: 'PR thread',
+                    url: 'https://example.com/pulls/2',
+                    createdAt: '2026-05-06T08:30:00.000Z',
+                    updatedAt: '2026-05-06T09:20:00.000Z',
+                    repository: { name: 'repo', owner: { login: 'octo' } },
+                    author: { login: 'someone' },
+                    assignees: { nodes: [] },
+                    body: '',
+                    comments: { nodes: [] },
+                  },
+                ],
+              },
+            };
+          }
+
           return {
             search: {
               nodes: [
                 {
-                  __typename: 'PullRequest',
-                  id: 'PR_2',
-                  number: 2,
-                  title: 'PR thread',
-                  url: 'https://example.com/pulls/2',
-                  createdAt: '2026-05-06T08:30:00.000Z',
-                  updatedAt: '2026-05-06T09:20:00.000Z',
+                  __typename: 'Issue',
+                  id: 'ISSUE_1',
+                  number: 1,
+                  title: 'Issue 新規',
+                  url: 'https://example.com/issues/1',
+                  createdAt: '2026-05-06T09:10:00.000Z',
+                  updatedAt: '2026-05-06T09:15:00.000Z',
                   repository: { name: 'repo', owner: { login: 'octo' } },
                   author: { login: 'someone' },
-                  assignees: { nodes: [] },
-                  body: '',
-                  comments: { nodes: [] },
+                  assignees: { nodes: [{ login: 'viewer' }] },
+                  body: 'hello @viewer',
+                  comments: {
+                    nodes: [
+                      {
+                        body: 'new comment',
+                        author: { login: 'someone' },
+                        createdAt: '2026-05-06T09:12:00.000Z',
+                        updatedAt: '2026-05-06T09:12:00.000Z',
+                      },
+                    ],
+                  },
                 },
               ],
             },
           };
         }
-
-        return {
-          search: {
+        if (query.includes('WatchReviewThreads')) {
+          return {
             nodes: [
               {
-                __typename: 'Issue',
-                id: 'ISSUE_1',
-                number: 1,
-                title: 'Issue 新規',
-                url: 'https://example.com/issues/1',
-                createdAt: '2026-05-06T09:10:00.000Z',
-                updatedAt: '2026-05-06T09:15:00.000Z',
+                __typename: 'PullRequest',
+                id: 'PR_2',
+                number: 2,
+                title: 'PR thread',
+                url: 'https://example.com/pulls/2',
                 repository: { name: 'repo', owner: { login: 'octo' } },
-                author: { login: 'someone' },
-                assignees: { nodes: [{ login: 'viewer' }] },
-                body: 'hello @viewer',
-                comments: {
+                reviewThreads: {
                   nodes: [
                     {
-                      body: 'new comment',
-                      author: { login: 'someone' },
-                      createdAt: '2026-05-06T09:12:00.000Z',
-                      updatedAt: '2026-05-06T09:12:00.000Z',
+                      id: 'THREAD_1',
+                      isResolved: false,
+                      comments: {
+                        nodes: [
+                          {
+                            id: 'COMMENT_1',
+                            body: '@viewer ping',
+                            author: { login: 'someone' },
+                            createdAt: '2026-05-06T08:50:00.000Z',
+                          },
+                          {
+                            id: 'COMMENT_2',
+                            body: 'follow up',
+                            author: { login: 'someone' },
+                            createdAt: '2026-05-06T09:25:00.000Z',
+                          },
+                        ],
+                      },
                     },
                   ],
                 },
               },
             ],
-          },
-        };
-      }
-      if (query.includes('WatchReviewThreads')) {
-        return {
-          nodes: [
-            {
-              __typename: 'PullRequest',
-              id: 'PR_2',
-              number: 2,
-              title: 'PR thread',
-              url: 'https://example.com/pulls/2',
-              repository: { name: 'repo', owner: { login: 'octo' } },
-              reviewThreads: {
-                nodes: [
-                  {
-                    id: 'THREAD_1',
-                    isResolved: false,
-                    comments: {
-                      nodes: [
-                        {
-                          id: 'COMMENT_1',
-                          body: '@viewer ping',
-                          author: { login: 'someone' },
-                          createdAt: '2026-05-06T08:50:00.000Z',
-                        },
-                        {
-                          id: 'COMMENT_2',
-                          body: 'follow up',
-                          author: { login: 'someone' },
-                          createdAt: '2026-05-06T09:25:00.000Z',
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        };
-      }
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: nodeId.startsWith('PR_') ? 'PullRequest' : 'Issue',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
 
-      throw new Error(`Unexpected query: ${query}`);
-    });
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
 
     await importBackground();
     chromeMock.triggerAlarm('github-notify-watch');
@@ -195,7 +206,7 @@ describe('background integration', () => {
     expect(new Date(state.lastCheckedAt as string).getTime()).toBeGreaterThan(
       new Date('2026-05-06T07:00:00.000Z').getTime(),
     );
-    expect((state.notifications as Array<unknown>)).toHaveLength(4);
+    expect(state.notifications as Array<unknown>).toHaveLength(4);
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(4);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '4' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(4);
@@ -210,12 +221,19 @@ describe('background integration', () => {
       backgroundMocks.client.mock.calls.some(
         ([query, variables]) =>
           (query as string).includes('WatchIssuesAndPRs') &&
-          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes('is:issue state:open'),
+          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes(
+            'is:issue state:open',
+          ),
       ),
     ).toBe(true);
     expect(
       backgroundMocks.client.mock.calls.some(([query]) =>
         (query as string).includes('WatchReviewThreads'),
+      ),
+    ).toBe(true);
+    expect(
+      backgroundMocks.client.mock.calls.some(([query]) =>
+        (query as string).includes('WatchNotificationStatuses'),
       ),
     ).toBe(true);
   });
@@ -237,43 +255,54 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
-      if (query.includes('GetViewer')) {
-        return { viewer: { login: 'viewer' } };
-      }
-      if (query.includes('WatchIssuesAndPRs')) {
-        if (variables?.repoQuery?.includes('is:pr')) {
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          if (variables?.repoQuery?.includes('is:pr')) {
+            return {
+              search: {
+                nodes: [],
+              },
+            };
+          }
+
           return {
             search: {
-              nodes: [],
+              nodes: [
+                {
+                  __typename: 'Issue',
+                  id: 'ISSUE_10',
+                  number: 10,
+                  title: 'Issue manual refresh',
+                  url: 'https://example.com/issues/10',
+                  createdAt: '2026-05-06T09:10:00.000Z',
+                  updatedAt: '2026-05-06T09:10:00.000Z',
+                  repository: { name: 'repo', owner: { login: 'octo' } },
+                  author: { login: 'someone' },
+                  assignees: { nodes: [] },
+                  body: '',
+                  comments: { nodes: [] },
+                },
+              ],
             },
           };
         }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'Issue',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
 
-        return {
-          search: {
-            nodes: [
-              {
-                __typename: 'Issue',
-                id: 'ISSUE_10',
-                number: 10,
-                title: 'Issue manual refresh',
-                url: 'https://example.com/issues/10',
-                createdAt: '2026-05-06T09:10:00.000Z',
-                updatedAt: '2026-05-06T09:10:00.000Z',
-                repository: { name: 'repo', owner: { login: 'octo' } },
-                author: { login: 'someone' },
-                assignees: { nodes: [] },
-                body: '',
-                comments: { nodes: [] },
-              },
-            ],
-          },
-        };
-      }
-
-      throw new Error(`Unexpected query: ${query}`);
-    });
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
 
     await importBackground();
 
@@ -286,6 +315,111 @@ describe('background integration', () => {
       badgeCount: 1,
     });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('現在の API 結果にない通知は灰色表示用の状態として保存する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: false,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [
+        {
+          id: 'new:ISSUE_1',
+          kind: 'new',
+          sourceNodeId: 'ISSUE_1',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'open issue',
+          url: 'https://example.com/issues/1',
+          detectedAt: '2026-05-06T07:30:00.000Z',
+          isPresentInLatestResult: true,
+        },
+        {
+          id: 'mention:PR_2',
+          kind: 'mention',
+          sourceNodeId: 'PR_2',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'closed pr',
+          url: 'https://example.com/pulls/2',
+          detectedAt: '2026-05-06T07:40:00.000Z',
+          isPresentInLatestResult: true,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: [
+              {
+                __typename: 'Issue',
+                id: 'ISSUE_1',
+                closed: false,
+              },
+              {
+                __typename: 'PullRequest',
+                id: 'PR_2',
+                closed: true,
+              },
+            ].filter((node) => (variables?.nodeIds ?? []).includes(node.id)),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await waitForCondition(
+      () =>
+        Array.isArray(chromeMock.getLocalState().notifications) &&
+        (
+          chromeMock.getLocalState().notifications as Array<{
+            id: string;
+            isPresentInLatestResult?: boolean;
+          }>
+        ).some(
+          (notification) =>
+            notification.id === 'mention:PR_2' && notification.isPresentInLatestResult === false,
+        ),
+    );
+
+    expect(chromeMock.getLocalState().notifications).toMatchObject([
+      {
+        id: 'new:ISSUE_1',
+        isPresentInLatestResult: true,
+      },
+      {
+        id: 'mention:PR_2',
+        isPresentInLatestResult: false,
+      },
+    ]);
   });
 
   it('manual refresh message は PAT が読めないとき失敗を返す', async () => {
@@ -328,52 +462,63 @@ describe('background integration', () => {
       notificationClickTargets: {},
     });
 
-    backgroundMocks.client.mockImplementation(async (query: string, variables?: { repoQuery?: string }) => {
-      if (query.includes('GetViewer')) {
-        return { viewer: { login: 'viewer' } };
-      }
-      if (query.includes('WatchIssuesAndPRs')) {
-        if (variables?.repoQuery?.includes('is:issue')) {
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          if (variables?.repoQuery?.includes('is:issue')) {
+            return {
+              search: {
+                nodes: [],
+              },
+            };
+          }
+
           return {
             search: {
-              nodes: [],
+              nodes: [
+                {
+                  __typename: 'PullRequest',
+                  id: 'PR_1',
+                  number: 1,
+                  title: 'No notify',
+                  url: 'https://example.com/pulls/1',
+                  createdAt: '2026-05-06T09:10:00.000Z',
+                  updatedAt: '2026-05-06T09:20:00.000Z',
+                  repository: { name: 'repo', owner: { login: 'octo' } },
+                  author: { login: 'someone' },
+                  assignees: { nodes: [{ login: 'viewer' }] },
+                  body: '@viewer',
+                  comments: {
+                    nodes: [
+                      {
+                        body: '@viewer',
+                        author: { login: 'someone' },
+                        createdAt: '2026-05-06T09:15:00.000Z',
+                        updatedAt: '2026-05-06T09:15:00.000Z',
+                      },
+                    ],
+                  },
+                },
+              ],
             },
           };
         }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'PullRequest',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
 
-        return {
-          search: {
-            nodes: [
-              {
-                __typename: 'PullRequest',
-                id: 'PR_1',
-                number: 1,
-                title: 'No notify',
-                url: 'https://example.com/pulls/1',
-                createdAt: '2026-05-06T09:10:00.000Z',
-                updatedAt: '2026-05-06T09:20:00.000Z',
-                repository: { name: 'repo', owner: { login: 'octo' } },
-                author: { login: 'someone' },
-                assignees: { nodes: [{ login: 'viewer' }] },
-                body: '@viewer',
-                comments: {
-                  nodes: [
-                    {
-                      body: '@viewer',
-                      author: { login: 'someone' },
-                      createdAt: '2026-05-06T09:15:00.000Z',
-                      updatedAt: '2026-05-06T09:15:00.000Z',
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        };
-      }
-
-      throw new Error(`Unexpected query: ${query}`);
-    });
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
 
     await importBackground();
     chromeMock.triggerAlarm('github-notify-watch');

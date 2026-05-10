@@ -3,6 +3,7 @@ export type NotificationKind = 'new' | 'mention' | 'thread' | 'assignee';
 export type StoredNotification = {
   id: string;
   kind: NotificationKind;
+  sourceNodeId?: string;
   isPullRequest: boolean;
   owner: string;
   repo: string;
@@ -10,7 +11,26 @@ export type StoredNotification = {
   title: string;
   url: string;
   detectedAt: string;
+  isPresentInLatestResult?: boolean;
 };
+
+/**
+ * 通知が参照している Issue / Pull Request の node ID を返す。
+ * @param notification 通知データ
+ * @returns node ID。取得できない場合は null
+ */
+export function getStoredNotificationNodeId(notification: StoredNotification): string | null {
+  if (typeof notification.sourceNodeId === 'string' && notification.sourceNodeId.length > 0) {
+    return notification.sourceNodeId;
+  }
+
+  const separatorIndex = notification.id.indexOf(':');
+  if (separatorIndex < 0 || separatorIndex === notification.id.length - 1) {
+    return null;
+  }
+
+  return notification.id.slice(separatorIndex + 1);
+}
 
 /**
  * 通知一覧と既読 ID から未読件数を数える。

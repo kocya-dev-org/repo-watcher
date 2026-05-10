@@ -102,8 +102,7 @@ export function buildRepoQuery(
 ): string {
   const repoPart =
     repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
-  const statePart =
-    target === 'pull_request' ? 'is:pr is:open' : 'is:issue state:open';
+  const statePart = target === 'pull_request' ? 'is:pr is:open' : 'is:issue state:open';
   const conditionPart = `updated:>${lastCheckedAt}`;
 
   return [repoPart, statePart, conditionPart].filter(Boolean).join(' ');
@@ -252,6 +251,7 @@ export function toStoredNotification(
   return {
     id: `${kind}:${nodeId}`,
     kind,
+    sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',
     owner,
     repo,
@@ -259,5 +259,6 @@ export function toStoredNotification(
     title: node.title ?? '',
     url: node.url ?? '',
     detectedAt,
+    isPresentInLatestResult: true,
   };
 }
