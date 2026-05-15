@@ -103,7 +103,7 @@ export function buildRepoQuery(
   const repoPart =
     repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
   const statePart = target === 'pull_request' ? 'is:pr is:open' : 'is:issue state:open';
-  const conditionPart = `updated:>${lastCheckedAt}`;
+  const conditionPart = `updated:>${lastCheckedAt}`; // ここでは先頭の説明しか検知できない。追加コメントは対象外。
 
   return [repoPart, statePart, conditionPart].filter(Boolean).join(' ');
 }
