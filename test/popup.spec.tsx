@@ -93,10 +93,6 @@ describe('popup App', () => {
     });
     chromeMock.setSyncState({
       repos: [],
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: false,
     });
 
     const view = await renderReact(<App />);
@@ -123,8 +119,9 @@ describe('popup App', () => {
     expect(pullRequestTab?.getAttribute('aria-selected')).toBe('false');
     expect(issueTab?.getAttribute('aria-selected')).toBe('true');
     expect(view.container.textContent).toContain('Issue メンション');
+    expect(view.container.textContent).toContain('担当通知');
     expect(view.container.textContent).toContain('メンション');
-    expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
+    expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(2);
 
     await view.unmount();
   });
@@ -526,10 +523,6 @@ describe('popup App', () => {
     );
     chromeMock.setSyncState({
       repos: [],
-      enableNewItems: false,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
 
     const view = await renderReact(<App />);
@@ -557,7 +550,7 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('No notifications available.');
+    expect(view.container.textContent).toContain('No notifications available for this tab.');
 
     const menuButton = findButtonByAriaLabel(view.container, 'Menu');
     expect(menuButton).toBeTruthy();
@@ -580,7 +573,7 @@ describe('popup App', () => {
     await view.unmount();
   });
 
-  it('enableNewItems が false のときは updated 通知を表示する', async () => {
+  it('updated 通知も一覧に表示できる', async () => {
     chromeMock.setLocalState({
       notifications: [
         {
@@ -600,10 +593,6 @@ describe('popup App', () => {
     });
     chromeMock.setSyncState({
       repos: [],
-      enableNewItems: false,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
 
     const view = await renderReact(<App />);
@@ -691,10 +680,6 @@ describe('popup App', () => {
     });
     chromeMock.setSyncState({
       repos: [],
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
       isWatchPaused: true,
     });
 
@@ -785,10 +770,6 @@ describe('popup App', () => {
         { owner: 'octo', name: 'repo-b' },
         { owner: 'octo', name: 'repo-c' },
       ],
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
     });
 
     const view = await renderReact(<App />);

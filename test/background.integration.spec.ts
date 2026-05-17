@@ -70,10 +70,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -243,10 +239,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: true,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -318,14 +310,10 @@ describe('background integration', () => {
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
-  it('enableNewItems が false のときは既存項目の更新を updated 通知として保存する', async () => {
+  it('既存項目の更新だけでは updated 通知を保存しない', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: false,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -407,10 +395,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: false,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -512,10 +496,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: true,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
     backgroundMocks.loadDecryptedPat.mockResolvedValueOnce(null);
 
@@ -531,14 +511,10 @@ describe('background integration', () => {
     });
   });
 
-  it('通知トグルが無効な種別は収集せず、review thread クエリも不要なら実行しない', async () => {
+  it('関連する更新済み PR がなければ review thread クエリを実行しない', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: false,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -571,8 +547,8 @@ describe('background integration', () => {
                   number: 1,
                   title: 'No notify',
                   url: 'https://example.com/pulls/1',
-                  createdAt: '2026-05-06T09:10:00.000Z',
-                  updatedAt: '2026-05-06T09:20:00.000Z',
+                  createdAt: '2026-05-06T06:10:00.000Z',
+                  updatedAt: '2026-05-06T06:20:00.000Z',
                   repository: { name: 'repo', owner: { login: 'octo' } },
                   author: { login: 'someone' },
                   assignees: { nodes: [{ login: 'viewer' }] },
@@ -582,8 +558,8 @@ describe('background integration', () => {
                       {
                         body: '@viewer',
                         author: { login: 'someone' },
-                        createdAt: '2026-05-06T09:15:00.000Z',
-                        updatedAt: '2026-05-06T09:15:00.000Z',
+                        createdAt: '2026-05-06T06:15:00.000Z',
+                        updatedAt: '2026-05-06T06:15:00.000Z',
                       },
                     ],
                   },
@@ -617,7 +593,6 @@ describe('background integration', () => {
     expect(chromeMock.getLocalState()).toMatchObject({
       badgeCount: 0,
       notifications: [],
-      notificationClickTargets: {},
     });
     expect(chromeMock.chrome.notifications.create).not.toHaveBeenCalled();
     expect(
@@ -631,10 +606,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
       isWatchPaused: true,
     });
     chromeMock.setLocalState({
@@ -664,10 +635,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
-      enableNewItems: true,
-      enableMentions: false,
-      enableMentionThreads: false,
-      enableAssigneeComments: false,
       isWatchPaused: true,
     });
     chromeMock.setLocalState({
@@ -744,10 +711,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 15,
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
       isWatchPaused: false,
     });
 
@@ -767,10 +730,6 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 30,
-      enableNewItems: true,
-      enableMentions: true,
-      enableMentionThreads: true,
-      enableAssigneeComments: true,
       isWatchPaused: false,
     });
     chromeMock.triggerStorageChanged(

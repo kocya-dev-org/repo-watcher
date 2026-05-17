@@ -37,10 +37,6 @@ type WatchTargetRepo = {
 
 type PopupSettings = {
   repos: WatchTargetRepo[];
-  enableNewItems: boolean;
-  enableMentions: boolean;
-  enableMentionThreads: boolean;
-  enableAssigneeComments: boolean;
   isWatchPaused: boolean;
 };
 
@@ -202,10 +198,6 @@ function loadPopupSettings(): Promise<PopupSettings> {
     chrome.storage.sync.get(
       {
         repos: [],
-        enableNewItems: true,
-        enableMentions: true,
-        enableMentionThreads: true,
-        enableAssigneeComments: true,
         isWatchPaused: false,
       },
       (items) => {
@@ -222,10 +214,6 @@ function loadPopupSettings(): Promise<PopupSettings> {
 
         resolve({
           repos,
-          enableNewItems: Boolean(items.enableNewItems),
-          enableMentions: Boolean(items.enableMentions),
-          enableMentionThreads: Boolean(items.enableMentionThreads),
-          enableAssigneeComments: Boolean(items.enableAssigneeComments),
           isWatchPaused: Boolean(items.isWatchPaused),
         });
       },
@@ -255,7 +243,7 @@ function requestWatchCycleRefresh(): Promise<RefreshWatchCycleResponse> {
  * ポップアップのルートコンポーネント。
  *
  * - local storage から通知一覧と既読 ID を読み込む
- * - sync storage から通知の有効/無効設定を読み込む
+ * - sync storage からリポジトリ設定と一時停止状態を読み込む
  * - クリックした通知を既読にする
  */
 const App: React.FC = () => {
@@ -371,34 +359,9 @@ const App: React.FC = () => {
     applyReadIds(nextReadIds);
   };
 
-  /**
-   * 通知種別ごとの ON/OFF 設定に基づき、
-   * 該当の通知種別が表示対象かどうかを判定する。
-   * @param kind 通知種別
-   * @returns true: 表示する / false: 非表示にする
-   */
-  const isKindEnabled = (kind: NotificationKind): boolean => {
-    if (!settings) return true;
-    switch (kind) {
-      case 'new':
-        return settings.enableNewItems;
-      case 'updated':
-        return !settings.enableNewItems;
-      case 'mention':
-        return settings.enableMentions;
-      case 'thread':
-        return settings.enableMentionThreads;
-      case 'assignee':
-        return settings.enableAssigneeComments;
-      default:
-        return true;
-    }
-  };
-
-  const visibleNotifications = notifications.filter((n) => isKindEnabled(n.kind));
   const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
   const filteredNotifications = filterNotificationsByRepositories(
-    visibleNotifications,
+    notifications,
     selectedRepositories,
   );
   const { prs, issues } = groupByType(filteredNotifications);
@@ -816,7 +779,7 @@ const App: React.FC = () => {
 
       {isLoading ? (
         <p style={{ margin: 0 }}>Loading...</p>
-      ) : visibleNotifications.length === 0 ? (
+      ) : notifications.length === 0 ? (
         <p style={{ margin: 0 }}>No notifications available.</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>

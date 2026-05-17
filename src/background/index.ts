@@ -34,10 +34,6 @@ export type WatchTargetRepo = {
 type SyncSettings = {
   repos: WatchTargetRepo[];
   intervalMinutes: number;
-  enableNewItems: boolean;
-  enableMentions: boolean;
-  enableMentionThreads: boolean;
-  enableAssigneeComments: boolean;
   isWatchPaused: boolean;
 };
 
@@ -313,7 +309,7 @@ async function hydrateRuntimeState() {
 }
 
 /**
- * sync storage から監視対象リポジトリと各種フラグを読み込む。
+ * sync storage から監視対象リポジトリと監視設定を読み込む。
  * @returns sync storage 上の監視設定
  */
 async function loadSyncSettings(): Promise<SyncSettings> {
@@ -322,20 +318,12 @@ async function loadSyncSettings(): Promise<SyncSettings> {
       {
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
-        enableNewItems: true,
-        enableMentions: true,
-        enableMentionThreads: true,
-        enableAssigneeComments: true,
         isWatchPaused: false,
       },
       (items: any) => {
         const settings: SyncSettings = {
           repos: items.repos,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
-          enableNewItems: Boolean(items.enableNewItems),
-          enableMentions: Boolean(items.enableMentions),
-          enableMentionThreads: Boolean(items.enableMentionThreads),
-          enableAssigneeComments: Boolean(items.enableAssigneeComments),
           isWatchPaused: Boolean(items.isWatchPaused),
         };
 
@@ -635,24 +623,18 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const assigneeCommentItems: IssueOrPullRequestNode[] = [];
 
   for (const node of issuesAndPrs) {
-    if (settings.enableNewItems) {
-      if (isNewNotificationCandidate(node, lastCheckedAt)) {
-        newItems.push(node);
-      }
-    } else {
-      if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
-        updatedItems.push(node);
-      }
+    if (isNewNotificationCandidate(node, lastCheckedAt)) {
+      newItems.push(node);
+    }
+    if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
+      updatedItems.push(node);
     }
 
-    if (settings.enableMentions && hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
+    if (hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
       mentionItems.push(node);
     }
 
-    if (
-      settings.enableAssigneeComments &&
-      hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)
-    ) {
+    if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
       assigneeCommentItems.push(node);
     }
   }
@@ -660,7 +642,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   // 自分のメンションを含む未解決レビュー スレッドへの新規コメント検知
   const mentionThreadItems: PullRequestReviewThreadsNode[] = [];
   const updatedPrIds = getUpdatedPullRequestIds(issuesAndPrs, lastCheckedAt);
-  if (settings.enableMentionThreads && updatedPrIds.length > 0) {
+  if (updatedPrIds.length > 0) {
     const reviewResult = await (client as any)(
       `
       query WatchReviewThreads(
@@ -837,15 +819,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     return;
   }
 
-  if (
-    changes.intervalMinutes ||
-    changes.repos ||
-    changes.enableNewItems ||
-    changes.enableMentions ||
-    changes.enableMentionThreads ||
-    changes.enableAssigneeComments ||
-    changes.isWatchPaused
-  ) {
+  if (changes.intervalMinutes || changes.repos || changes.isWatchPaused) {
     setupAlarms();
   }
 });

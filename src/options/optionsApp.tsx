@@ -15,10 +15,6 @@ type SettingsForm = {
   pat: string;
   reposText: string;
   intervalMinutes: number;
-  enableNewItems: boolean;
-  enableMentions: boolean;
-  enableMentionThreads: boolean;
-  enableAssigneeComments: boolean;
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
@@ -57,10 +53,6 @@ const OptionsApp: React.FC = () => {
     pat: '',
     reposText: '',
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
-    enableNewItems: true,
-    enableMentions: true,
-    enableMentionThreads: true,
-    enableAssigneeComments: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -121,10 +113,6 @@ const OptionsApp: React.FC = () => {
       {
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
-        enableNewItems: true,
-        enableMentions: true,
-        enableMentionThreads: true,
-        enableAssigneeComments: true,
       },
       (items: any) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
@@ -133,10 +121,6 @@ const OptionsApp: React.FC = () => {
           pat: '',
           reposText,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
-          enableNewItems: Boolean(items.enableNewItems),
-          enableMentions: Boolean(items.enableMentions),
-          enableMentionThreads: Boolean(items.enableMentionThreads),
-          enableAssigneeComments: Boolean(items.enableAssigneeComments),
         });
       },
     );
@@ -198,10 +182,6 @@ const OptionsApp: React.FC = () => {
             {
               repos,
               intervalMinutes: form.intervalMinutes,
-              enableNewItems: form.enableNewItems,
-              enableMentions: form.enableMentions,
-              enableMentionThreads: form.enableMentionThreads,
-              enableAssigneeComments: form.enableAssigneeComments,
             },
             () => resolve(),
           );
@@ -390,43 +370,6 @@ const OptionsApp: React.FC = () => {
             </button>
           </div>
         </section>
-
-        <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>通知種別</h2>
-          <label style={{ display: 'block', margin: '4px 0' }}>
-            <input
-              type="checkbox"
-              checked={form.enableNewItems}
-              onChange={(e) => handleChange({ enableNewItems: e.target.checked })}
-            />{' '}
-            新着 PR/Issue
-          </label>
-          <label style={{ display: 'block', margin: '4px 0' }}>
-            <input
-              type="checkbox"
-              checked={form.enableMentions}
-              onChange={(e) => handleChange({ enableMentions: e.target.checked })}
-            />{' '}
-            自分へのメンション
-          </label>
-          <label style={{ display: 'block', margin: '4px 0' }}>
-            <input
-              type="checkbox"
-              checked={form.enableMentionThreads}
-              onChange={(e) => handleChange({ enableMentionThreads: e.target.checked })}
-            />{' '}
-            自分のメンションを含む会話
-          </label>
-          <label style={{ display: 'block', margin: '4px 0' }}>
-            <input
-              type="checkbox"
-              checked={form.enableAssigneeComments}
-              onChange={(e) => handleChange({ enableAssigneeComments: e.target.checked })}
-            />{' '}
-            自分が担当するチケットの会話
-          </label>
-        </section>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="submit"

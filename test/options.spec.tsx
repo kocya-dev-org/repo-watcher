@@ -50,16 +50,6 @@ async function setTextValue(element: HTMLInputElement | HTMLTextAreaElement, val
   });
 }
 
-async function setCheckboxValue(element: HTMLInputElement, checked: boolean) {
-  if (element.checked === checked) {
-    return;
-  }
-
-  await act(async () => {
-    element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
-}
-
 describe('options App', () => {
   let chromeMock: ChromeMockController;
 
@@ -91,10 +81,6 @@ describe('options App', () => {
         { owner: 'hubot', name: 'repo2' },
       ],
       intervalMinutes: 15,
-      enableNewItems: false,
-      enableMentions: true,
-      enableMentionThreads: false,
-      enableAssigneeComments: true,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-17T01:02:03Z',
@@ -108,16 +94,12 @@ describe('options App', () => {
     ) as HTMLInputElement;
     const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
-    const checkboxes = view.container.querySelectorAll('input[type="checkbox"]');
 
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
     expect(passwordInput.placeholder).toContain('変更する場合のみ新しい PAT を入力');
     expect(textarea.value).toBe('octo/repo1\nhubot/repo2');
     expect(numberInput.value).toBe('15');
-    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
-    expect((checkboxes[1] as HTMLInputElement).checked).toBe(true);
-    expect((checkboxes[2] as HTMLInputElement).checked).toBe(false);
-    expect((checkboxes[3] as HTMLInputElement).checked).toBe(true);
+    expect(view.container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
 
     await view.unmount();
@@ -150,7 +132,7 @@ describe('options App', () => {
     await view.unmount();
   });
 
-  it('フォーム送信時に repos / interval / toggles / PAT を保存する', async () => {
+  it('フォーム送信時に repos / interval / PAT を保存する', async () => {
     patStorageMocks.hasReadablePat.mockResolvedValue(false);
 
     const view = await renderReact(<OptionsApp />);
@@ -161,16 +143,11 @@ describe('options App', () => {
     ) as HTMLInputElement;
     const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
-    const checkboxes = view.container.querySelectorAll('input[type="checkbox"]');
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(passwordInput, 'github_pat_new_value');
     await setTextValue(textarea, 'octo/repo1\ninvalid\nhubot/repo2');
     await setTextValue(numberInput, '30');
-    await setCheckboxValue(checkboxes[0] as HTMLInputElement, false);
-    await setCheckboxValue(checkboxes[1] as HTMLInputElement, false);
-    await setCheckboxValue(checkboxes[2] as HTMLInputElement, true);
-    await setCheckboxValue(checkboxes[3] as HTMLInputElement, true);
 
     patStorageMocks.hasReadablePat.mockResolvedValue(true);
 
@@ -186,10 +163,6 @@ describe('options App', () => {
           { owner: 'hubot', name: 'repo2' },
         ],
         intervalMinutes: 30,
-        enableNewItems: false,
-        enableMentions: false,
-        enableMentionThreads: true,
-        enableAssigneeComments: true,
       },
       expect.any(Function),
     );
