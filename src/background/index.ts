@@ -7,6 +7,7 @@ import {
   hasMentionNotification,
   hasMentionThreadNotification,
   isNewNotificationCandidate,
+  isUpdatedNotificationCandidate,
   toStoredNotification,
   type IssueOrPullRequestNode,
   type PullRequestReviewThreadsNode,
@@ -589,7 +590,7 @@ function applyLatestResultStatus(
  *
  * 1. 設定読み込み
  * 2. PR / Issue の検索
- * 3. 新規作成 / メンション / Assignee コメント / レビュースレッドコメントの検知
+ * 3. 新規作成または更新 / メンション / Assignee コメント / レビュースレッドコメントの検知
  * 4. 通知ストアとバッジの更新
  * 5. `lastCheckedAt` の更新
  */
@@ -628,12 +629,17 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
 
   // 各種イベントごとに一時配列へ振り分ける
   const newItems: IssueOrPullRequestNode[] = [];
+  const updatedItems: IssueOrPullRequestNode[] = [];
   const mentionItems: IssueOrPullRequestNode[] = [];
   const assigneeCommentItems: IssueOrPullRequestNode[] = [];
 
   for (const node of issuesAndPrs) {
-    if (settings.enableNewItems && isNewNotificationCandidate(node, lastCheckedAt)) {
-      newItems.push(node);
+    if (settings.enableNewItems) {
+      if (isNewNotificationCandidate(node, lastCheckedAt)) {
+        newItems.push(node);
+      }
+    } else if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
+      updatedItems.push(node);
     }
 
     if (settings.enableMentions && hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
@@ -707,6 +713,10 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     const s = toStoredNotification(n, 'new', detectedAt);
     if (s) collected.push(s);
   }
+  for (const n of updatedItems) {
+    const s = toStoredNotification(n, 'updated', detectedAt);
+    if (s) collected.push(s);
+  }
   for (const n of mentionItems) {
     const s = toStoredNotification(n, 'mention', detectedAt);
     if (s) collected.push(s);
@@ -736,6 +746,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   );
   debugLog('watch cycle notification summary', {
     newItems: newItems.length,
+    updatedItems: updatedItems.length,
     mentionItems: mentionItems.length,
     assigneeCommentItems: assigneeCommentItems.length,
     mentionThreadItems: mentionThreadItems.length,

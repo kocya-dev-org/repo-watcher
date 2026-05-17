@@ -122,6 +122,19 @@ export function isNewNotificationCandidate(
 }
 
 /**
+ * 既存項目が前回監視後に更新された通知候補かどうかを判定する。
+ * @param node 判定対象の Issue / Pull Request
+ * @param lastCheckedAt 前回監視時刻
+ * @returns 作成済み項目が前回監視後に更新されていれば true
+ */
+export function isUpdatedNotificationCandidate(
+  node: IssueOrPullRequestNode,
+  lastCheckedAt: string,
+): boolean {
+  return !isDateAfter(node.createdAt, lastCheckedAt) && isDateAfter(node.updatedAt, lastCheckedAt);
+}
+
+/**
  * assignee に含まれる項目へ新規コメントが付いたか判定する。
  * @param node 判定対象の Issue / Pull Request
  * @param lastCheckedAt 前回監視時刻

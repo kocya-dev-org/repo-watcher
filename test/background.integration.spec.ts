@@ -318,6 +318,91 @@ describe('background integration', () => {
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
+  it('enableNewItems が false のときは既存項目の更新を updated 通知として保存する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: false,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          if (variables?.repoQuery?.includes('is:pr')) {
+            return {
+              search: {
+                nodes: [],
+              },
+            };
+          }
+
+          return {
+            search: {
+              nodes: [
+                {
+                  __typename: 'Issue',
+                  id: 'ISSUE_20',
+                  number: 20,
+                  title: 'Issue updated item',
+                  url: 'https://example.com/issues/20',
+                  createdAt: '2026-05-06T06:30:00.000Z',
+                  updatedAt: '2026-05-06T09:10:00.000Z',
+                  repository: { name: 'repo', owner: { login: 'octo' } },
+                  author: { login: 'someone' },
+                  assignees: { nodes: [] },
+                  body: '',
+                  comments: { nodes: [] },
+                },
+              ],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'Issue',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+
+    const response = await new Promise<unknown>((resolve) => {
+      chromeMock.chrome.runtime.sendMessage({ type: 'refresh-watch-cycle' }, resolve);
+    });
+
+    expect(response).toEqual({ ok: true });
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 1,
+      notifications: [
+        expect.objectContaining({
+          id: 'updated:ISSUE_20',
+          kind: 'updated',
+        }),
+      ],
+    });
+    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
+  });
+
   it('現在の API 結果にない通知は灰色表示用の状態として保存する', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],

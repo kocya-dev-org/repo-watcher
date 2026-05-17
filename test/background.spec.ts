@@ -7,6 +7,7 @@ import {
   hasMentionNotification,
   hasMentionThreadNotification,
   isNewNotificationCandidate,
+  isUpdatedNotificationCandidate,
   toStoredNotification,
 } from '../src/background/watchLogic';
 import {
@@ -333,6 +334,31 @@ describe('background notification logic helpers', () => {
     expect(
       isNewNotificationCandidate(
         { ...baseNode, createdAt: '2026-03-21T09:55:00.000Z' },
+        lastCheckedAt,
+      ),
+    ).toBe(false);
+  });
+
+  it('更新通知判定は既存項目が前回監視後に更新された場合のみ真になる', () => {
+    expect(
+      isUpdatedNotificationCandidate(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          updatedAt: '2026-03-21T10:05:00.000Z',
+        },
+        lastCheckedAt,
+      ),
+    ).toBe(true);
+
+    expect(isUpdatedNotificationCandidate(baseNode, lastCheckedAt)).toBe(false);
+    expect(
+      isUpdatedNotificationCandidate(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          updatedAt: '2026-03-21T09:56:00.000Z',
+        },
         lastCheckedAt,
       ),
     ).toBe(false);

@@ -91,6 +91,8 @@ function formatKind(kind: NotificationKind): string {
   switch (kind) {
     case 'new':
       return '新規';
+    case 'updated':
+      return '更新';
     case 'mention':
       return 'メンション';
     case 'thread':
@@ -380,6 +382,8 @@ const App: React.FC = () => {
     switch (kind) {
       case 'new':
         return settings.enableNewItems;
+      case 'updated':
+        return !settings.enableNewItems;
       case 'mention':
         return settings.enableMentions;
       case 'thread':

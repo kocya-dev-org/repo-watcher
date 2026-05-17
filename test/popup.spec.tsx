@@ -580,6 +580,47 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('enableNewItems が false のときは updated 通知を表示する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'updated:ISSUE_20',
+          kind: 'updated',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 20,
+          title: '更新通知',
+          url: 'https://example.com/issues/20',
+          detectedAt: '2026-05-06T09:10:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+    chromeMock.setSyncState({
+      repos: [],
+      enableNewItems: false,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const issueTab = findTab(view.container, 'Issue');
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('更新通知');
+    expect(view.container.textContent).toContain('更新');
+
+    await view.unmount();
+  });
+
   it('更新ボタン押下で background に message を送り、最新状態を再読込する', async () => {
     chromeMock.setLocalState({
       notifications: [],
@@ -615,12 +656,7 @@ describe('popup App', () => {
     const headerButtons = Array.from(
       view.container.querySelectorAll('header button[aria-label]'),
     ).map((button) => button.getAttribute('aria-label'));
-    expect(headerButtons).toEqual([
-      'Pause scheduled watch',
-      'Update',
-      'Mark all as read',
-      'Menu',
-    ]);
+    expect(headerButtons).toEqual(['Pause scheduled watch', 'Update', 'Mark all as read', 'Menu']);
 
     const refreshButton = findButtonByAriaLabel(view.container, 'Update');
     expect(refreshButton).toBeTruthy();

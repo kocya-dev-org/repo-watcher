@@ -1,4 +1,4 @@
-export type NotificationKind = 'new' | 'mention' | 'thread' | 'assignee';
+export type NotificationKind = 'new' | 'updated' | 'mention' | 'thread' | 'assignee';
 
 export type StoredNotification = {
   id: string;
