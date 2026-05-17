@@ -306,14 +306,10 @@ function saveLocalRuntimeStorage(items: Partial<LocalRuntimeStorage>): Promise<v
  * 永続化されているランタイム状態をメモリへ読み戻す。
  */
 async function hydrateRuntimeState() {
-  if (runtimeState.lastCheckedAt && runtimeState.viewerLogin) {
-    return;
-  }
-
   const localState = await loadLocalRuntimeStorage();
-  runtimeState.lastCheckedAt ??= localState.lastCheckedAt;
-  runtimeState.viewerLogin ??= localState.viewerLogin;
-  runtimeState.viewerLoginPatKey ??= localState.viewerLoginPatKey;
+  runtimeState.lastCheckedAt = localState.lastCheckedAt;
+  runtimeState.viewerLogin = localState.viewerLogin;
+  runtimeState.viewerLoginPatKey = localState.viewerLoginPatKey;
 }
 
 /**
