@@ -615,7 +615,12 @@ describe('popup App', () => {
     const headerButtons = Array.from(
       view.container.querySelectorAll('header button[aria-label]'),
     ).map((button) => button.getAttribute('aria-label'));
-    expect(headerButtons).toEqual(['Update', 'Mark all as read', 'Menu']);
+    expect(headerButtons).toEqual([
+      'Pause scheduled watch',
+      'Update',
+      'Mark all as read',
+      'Menu',
+    ]);
 
     const refreshButton = findButtonByAriaLabel(view.container, 'Update');
     expect(refreshButton).toBeTruthy();
@@ -638,6 +643,51 @@ describe('popup App', () => {
     await flushPromises();
 
     expect(view.container.textContent).toContain('更新後の通知');
+
+    await view.unmount();
+  });
+
+  it('定期監視の一時停止/再開ボタンは保存済み状態に応じて表示を切り替え、押下で永続状態を反転する', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+    chromeMock.setSyncState({
+      repos: [],
+      enableNewItems: true,
+      enableMentions: true,
+      enableMentionThreads: true,
+      enableAssigneeComments: true,
+      isWatchPaused: true,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const resumeButton = findButtonByAriaLabel(view.container, 'Resume scheduled watch');
+    expect(resumeButton).toBeTruthy();
+
+    await act(async () => {
+      resumeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.getSyncState()).toMatchObject({
+      isWatchPaused: false,
+    });
+    expect(findButtonByAriaLabel(view.container, 'Pause scheduled watch')).toBeTruthy();
+
+    const pauseButton = findButtonByAriaLabel(view.container, 'Pause scheduled watch');
+    await act(async () => {
+      pauseButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.getSyncState()).toMatchObject({
+      isWatchPaused: true,
+    });
+    expect(findButtonByAriaLabel(view.container, 'Resume scheduled watch')).toBeTruthy();
 
     await view.unmount();
   });

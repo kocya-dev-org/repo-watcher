@@ -541,6 +541,119 @@ describe('background integration', () => {
     ).toBe(false);
   });
 
+  it('定期監視が一時停止中のとき、アラーム発火では API を呼ばずに終了する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: true,
+      enableMentions: true,
+      enableMentionThreads: true,
+      enableAssigneeComments: true,
+      isWatchPaused: true,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await flushPromises();
+
+    expect(backgroundMocks.loadDecryptedPat).not.toHaveBeenCalled();
+    expect(backgroundMocks.client).not.toHaveBeenCalled();
+    expect(chromeMock.getLocalState()).toMatchObject({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+  });
+
+  it('定期監視が一時停止中でも手動更新は実行できる', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      enableNewItems: true,
+      enableMentions: false,
+      enableMentionThreads: false,
+      enableAssigneeComments: false,
+      isWatchPaused: true,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          if (variables?.repoQuery?.includes('is:pr')) {
+            return {
+              search: {
+                nodes: [],
+              },
+            };
+          }
+
+          return {
+            search: {
+              nodes: [
+                {
+                  __typename: 'Issue',
+                  id: 'ISSUE_42',
+                  number: 42,
+                  title: 'paused manual refresh',
+                  url: 'https://example.com/issues/42',
+                  createdAt: '2026-05-06T09:10:00.000Z',
+                  updatedAt: '2026-05-06T09:10:00.000Z',
+                  repository: { name: 'repo', owner: { login: 'octo' } },
+                  author: { login: 'someone' },
+                  assignees: { nodes: [] },
+                  body: '',
+                  comments: { nodes: [] },
+                },
+              ],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'Issue',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+
+    const response = await new Promise<unknown>((resolve) => {
+      chromeMock.chrome.runtime.sendMessage({ type: 'refresh-watch-cycle' }, resolve);
+    });
+
+    expect(response).toEqual({ ok: true });
+    expect(backgroundMocks.client).toHaveBeenCalled();
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 1,
+    });
+  });
+
   it('インストール時と sync 設定変更時にアラームを再設定する', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
@@ -549,6 +662,7 @@ describe('background integration', () => {
       enableMentions: true,
       enableMentionThreads: true,
       enableAssigneeComments: true,
+      isWatchPaused: false,
     });
 
     await importBackground();
@@ -571,6 +685,7 @@ describe('background integration', () => {
       enableMentions: true,
       enableMentionThreads: true,
       enableAssigneeComments: true,
+      isWatchPaused: false,
     });
     chromeMock.triggerStorageChanged(
       {

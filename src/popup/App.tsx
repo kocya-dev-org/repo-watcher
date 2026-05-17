@@ -3,6 +3,8 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox';
 import MenuIcon from '@mui/icons-material/Menu';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
@@ -39,6 +41,7 @@ type PopupSettings = {
   enableMentions: boolean;
   enableMentionThreads: boolean;
   enableAssigneeComments: boolean;
+  isWatchPaused: boolean;
 };
 
 type PopupLocalState = {
@@ -201,6 +204,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
         enableMentions: true,
         enableMentionThreads: true,
         enableAssigneeComments: true,
+        isWatchPaused: false,
       },
       (items) => {
         const repos = Array.isArray(items.repos)
@@ -220,6 +224,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
           enableMentions: Boolean(items.enableMentions),
           enableMentionThreads: Boolean(items.enableMentionThreads),
           enableAssigneeComments: Boolean(items.enableAssigneeComments),
+          isWatchPaused: Boolean(items.isWatchPaused),
         });
       },
     );
@@ -557,7 +562,28 @@ const App: React.FC = () => {
       : bulkReadState === 'partial'
         ? 'Mark visible list as read'
         : 'Mark all as read';
+  const watchPauseButtonLabel = settings?.isWatchPaused
+    ? 'Resume scheduled watch'
+    : 'Pause scheduled watch';
   const refreshButtonLabel = isRefreshing ? 'Updating...' : 'Update';
+
+  /**
+   * 定期監視の一時停止状態を反転して保存する。
+   */
+  const toggleScheduledWatchPause = () => {
+    setSettings((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextIsWatchPaused = !current.isWatchPaused;
+      chrome.storage.sync.set({ isWatchPaused: nextIsWatchPaused });
+      return {
+        ...current,
+        isWatchPaused: nextIsWatchPaused,
+      };
+    });
+  };
 
   return (
     <div
@@ -579,6 +605,25 @@ const App: React.FC = () => {
       >
         <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconButton
+            aria-label={watchPauseButtonLabel}
+            title={watchPauseButtonLabel}
+            onClick={toggleScheduledWatchPause}
+            size="small"
+            disabled={!settings}
+            sx={{
+              border: '1px solid #d0d7de',
+              borderRadius: '6px',
+              color: settings?.isWatchPaused ? '#1a7f37' : '#24292f',
+              padding: '4px',
+            }}
+          >
+            {settings?.isWatchPaused ? (
+              <PlayArrowIcon fontSize="small" />
+            ) : (
+              <PauseIcon fontSize="small" />
+            )}
+          </IconButton>
           <IconButton
             aria-label={refreshButtonLabel}
             title={refreshButtonLabel}

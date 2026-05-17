@@ -37,6 +37,7 @@ type SyncSettings = {
   enableMentions: boolean;
   enableMentionThreads: boolean;
   enableAssigneeComments: boolean;
+  isWatchPaused: boolean;
 };
 
 type Settings = SyncSettings & {
@@ -52,6 +53,9 @@ type RuntimeState = {
 type WatchCycleResult =
   | {
       status: 'completed';
+    }
+  | {
+      status: 'paused';
     }
   | {
       status: 'skipped';
@@ -325,6 +329,7 @@ async function loadSyncSettings(): Promise<SyncSettings> {
         enableMentions: true,
         enableMentionThreads: true,
         enableAssigneeComments: true,
+        isWatchPaused: false,
       },
       (items: any) => {
         const settings: SyncSettings = {
@@ -334,6 +339,7 @@ async function loadSyncSettings(): Promise<SyncSettings> {
           enableMentions: Boolean(items.enableMentions),
           enableMentionThreads: Boolean(items.enableMentionThreads),
           enableAssigneeComments: Boolean(items.enableAssigneeComments),
+          isWatchPaused: Boolean(items.isWatchPaused),
         };
 
         resolve(settings);
@@ -389,6 +395,15 @@ async function loadSettings(): Promise<{ settings: Settings | null; errorMessage
     },
     errorMessage: null,
   };
+}
+
+/**
+ * 定期監視が一時停止中かどうかを返す。
+ * @returns 一時停止中なら true
+ */
+async function isScheduledWatchPaused(): Promise<boolean> {
+  const syncSettings = await loadSyncSettings();
+  return syncSettings.isWatchPaused;
 }
 
 /**
@@ -803,7 +818,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     changes.enableNewItems ||
     changes.enableMentions ||
     changes.enableMentionThreads ||
-    changes.enableAssigneeComments
+    changes.enableAssigneeComments ||
+    changes.isWatchPaused
   ) {
     setupAlarms();
   }
@@ -812,9 +828,18 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 // アラーム発火時に監視サイクルを実行する
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WATCH_ALARM_NAME) {
-    runWatchCycleOnce().catch((err) => {
-      console.error('watch cycle failed', JSON.stringify(sanitizeError(err), null, 2));
-    });
+    void isScheduledWatchPaused()
+      .then((paused) => {
+        if (paused) {
+          debugLog('watch cycle skipped: scheduled watch is paused');
+          return;
+        }
+
+        return runWatchCycleOnce();
+      })
+      .catch((err) => {
+        console.error('watch cycle failed', JSON.stringify(sanitizeError(err), null, 2));
+      });
   }
 });
 
@@ -827,7 +852,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void runWatchCycleOnce()
     .then((result) => {
       const response: RefreshWatchCycleResponse =
-        result.status === 'completed'
+        result.status === 'completed' || result.status === 'paused'
           ? { ok: true }
           : {
               ok: false,
