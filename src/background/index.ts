@@ -639,8 +639,10 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
       if (isNewNotificationCandidate(node, lastCheckedAt)) {
         newItems.push(node);
       }
-    } else if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
-      updatedItems.push(node);
+    } else {
+      if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
+        updatedItems.push(node);
+      }
     }
 
     if (settings.enableMentions && hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
