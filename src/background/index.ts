@@ -608,9 +608,14 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const client = createGithubClient(settings.pat);
 
   const nowIso = toUtcIsoSeconds(new Date());
+  const getTodayMidnight = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
   const lastCheckedAt = runtimeState.lastCheckedAt
     ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
-    : toUtcIsoSeconds(new Date(0));
+    : toUtcIsoSeconds(getTodayMidnight());
   const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
   const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
   const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');

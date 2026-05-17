@@ -27,8 +27,20 @@ function findButton(container: HTMLElement, text: string) {
   );
 }
 
+function formatLocalDateTime(value: string) {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return (
+    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('/') +
+    ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
 async function setTextValue(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
-  const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const prototype =
+    element instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
 
   await act(async () => {
@@ -71,6 +83,7 @@ describe('options App', () => {
   });
 
   it('sync storage の内容と PAT 状態を初期表示する', async () => {
+    const expectedLastCheckedAt = formatLocalDateTime('2026-05-17T01:02:03Z');
     patStorageMocks.hasReadablePat.mockResolvedValue(true);
     chromeMock.setSyncState({
       repos: [
@@ -83,11 +96,16 @@ describe('options App', () => {
       enableMentionThreads: false,
       enableAssigneeComments: true,
     });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-17T01:02:03Z',
+    });
 
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
+    const passwordInput = view.container.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
     const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
     const checkboxes = view.container.querySelectorAll('input[type="checkbox"]');
@@ -100,6 +118,34 @@ describe('options App', () => {
     expect((checkboxes[1] as HTMLInputElement).checked).toBe(true);
     expect((checkboxes[2] as HTMLInputElement).checked).toBe(false);
     expect((checkboxes[3] as HTMLInputElement).checked).toBe(true);
+    expect(view.container.textContent).toContain(expectedLastCheckedAt);
+
+    await view.unmount();
+  });
+
+  it('最終チェック日をリセットできる', async () => {
+    const expectedLastCheckedAt = formatLocalDateTime('2026-05-17T01:02:03Z');
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-17T01:02:03Z',
+    });
+
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+
+    const button = findButton(view.container, 'リセット');
+    expect(button).toBeTruthy();
+    expect(view.container.textContent).toContain(expectedLastCheckedAt);
+
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.storage.local.set).toHaveBeenCalledWith(
+      { lastCheckedAt: null },
+      expect.any(Function),
+    );
+    expect(view.container.textContent).toContain('未設定');
 
     await view.unmount();
   });
@@ -110,7 +156,9 @@ describe('options App', () => {
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
+    const passwordInput = view.container.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
     const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
     const checkboxes = view.container.querySelectorAll('input[type="checkbox"]');
@@ -184,7 +232,9 @@ describe('options App', () => {
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
+    const passwordInput = view.container.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(passwordInput, 'github_pat_error');

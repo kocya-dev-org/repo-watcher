@@ -24,6 +24,28 @@ type SettingsForm = {
 const DEFAULT_INTERVAL_MINUTES = 5;
 
 /**
+ * ISO8601 文字列を options 画面表示用の日時文字列へ整形する。
+ * @param value local storage に保存された `lastCheckedAt`
+ * @returns `YYYY/MM/DD HH:mm:ss` 形式、または未設定表示
+ */
+function formatLastCheckedAt(value: string | null): string {
+  if (!value) {
+    return '未設定';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '未設定';
+  }
+
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return (
+    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('/') +
+    ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
+/**
  * オプションページのルートコンポーネント。
  *
  * - sync storage から通常設定を読み込みフォームへ反映
@@ -47,8 +69,21 @@ const OptionsApp: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+  const [isResettingLastCheckedAt, setIsResettingLastCheckedAt] = useState(false);
 
   const loadPatStatus = () => hasReadablePat();
+
+  /**
+   * local storage から最終チェック日時を読み込む。
+   * @returns 保存済み `lastCheckedAt`
+   */
+  const loadLastCheckedAt = () =>
+    new Promise<string | null>((resolve) => {
+      chrome.storage.local.get({ lastCheckedAt: null }, (items: { lastCheckedAt?: unknown }) => {
+        resolve(typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null);
+      });
+    });
 
   const requestWatchCycleRefresh = () =>
     new Promise<RefreshWatchCycleResponse>((resolve, reject) => {
@@ -73,6 +108,12 @@ const OptionsApp: React.FC = () => {
     void loadPatStatus().then((status) => {
       if (isActive) {
         setHasSavedPat(status);
+      }
+    });
+
+    void loadLastCheckedAt().then((value) => {
+      if (isActive) {
+        setLastCheckedAt(value);
       }
     });
 
@@ -230,6 +271,23 @@ const OptionsApp: React.FC = () => {
     })();
   };
 
+  /**
+   * 保存済みの最終チェック日時をクリアする。
+   */
+  const handleResetLastCheckedAt = () => {
+    void (async () => {
+      setIsResettingLastCheckedAt(true);
+      try {
+        await new Promise<void>((resolve) => {
+          chrome.storage.local.set({ lastCheckedAt: null }, () => resolve());
+        });
+        setLastCheckedAt(null);
+      } finally {
+        setIsResettingLastCheckedAt(false);
+      }
+    })();
+  };
+
   return (
     <div
       style={{
@@ -308,6 +366,29 @@ const OptionsApp: React.FC = () => {
             style={{ width: '80px', padding: '4px' }}
           />{' '}
           分
+        </section>
+
+        <section style={{ marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>最終チェック日</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt)}</span>
+            <button
+              type="button"
+              onClick={handleResetLastCheckedAt}
+              disabled={isSaving || isRefreshing || isResettingLastCheckedAt}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: '1px solid #d0d7de',
+                backgroundColor: '#fff',
+                color: '#24292f',
+                cursor:
+                  isSaving || isRefreshing || isResettingLastCheckedAt ? 'default' : 'pointer',
+              }}
+            >
+              {isResettingLastCheckedAt ? 'リセット中...' : 'リセット'}
+            </button>
+          </div>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
