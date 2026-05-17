@@ -53,7 +53,6 @@ describe('popup App', () => {
     const notifications: StoredNotification[] = [
       {
         id: 'PR_1',
-        kind: 'new',
         kinds: ['new', 'mention'],
         isPullRequest: true,
         owner: 'octo',
@@ -65,7 +64,6 @@ describe('popup App', () => {
       },
       {
         id: 'mention:ISSUE_1',
-        kind: 'mention',
         isPullRequest: false,
         owner: 'octo',
         repo: 'repo',
@@ -76,7 +74,6 @@ describe('popup App', () => {
       },
       {
         id: 'assignee:ISSUE_2',
-        kind: 'assignee',
         isPullRequest: false,
         owner: 'octo',
         repo: 'repo',
@@ -133,7 +130,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -144,7 +140,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -203,7 +198,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -214,7 +208,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:PR_2',
-          kind: 'mention',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -225,7 +218,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -309,7 +301,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -353,7 +344,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           sourceNodeId: 'PR_1',
           isPullRequest: true,
           owner: 'octo',
@@ -366,7 +356,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:PR_2',
-          kind: 'mention',
           sourceNodeId: 'PR_2',
           isPullRequest: true,
           owner: 'octo',
@@ -400,7 +389,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -411,7 +399,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -443,7 +430,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -464,7 +450,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -475,7 +460,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -498,7 +482,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -536,7 +519,6 @@ describe('popup App', () => {
         notifications: [
           {
             id: 'mention:ISSUE_1',
-            kind: 'mention',
             isPullRequest: false,
             owner: 'octo',
             repo: 'repo',
@@ -580,7 +562,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'updated:ISSUE_20',
-          kind: 'updated',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -624,7 +605,6 @@ describe('popup App', () => {
           notifications: [
             {
               id: 'new:ISSUE_99',
-              kind: 'new',
               isPullRequest: false,
               owner: 'octo',
               repo: 'repo',
@@ -720,7 +700,6 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'new:PR_1',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo-a',
@@ -731,7 +710,6 @@ describe('popup App', () => {
         },
         {
           id: 'new:PR_2',
-          kind: 'new',
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo-b',
@@ -742,7 +720,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_1',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo-a',
@@ -753,7 +730,6 @@ describe('popup App', () => {
         },
         {
           id: 'mention:ISSUE_2',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo-b',

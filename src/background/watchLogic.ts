@@ -263,7 +263,6 @@ export function toStoredNotification(
 
   return {
     id: nodeId,
-    kind,
     kinds: [kind],
     sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',

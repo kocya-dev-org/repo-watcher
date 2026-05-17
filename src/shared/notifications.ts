@@ -11,7 +11,6 @@ const NOTIFICATION_KIND_ORDER: NotificationKind[] = [
 export type StoredNotification = {
   id: string;
   kinds?: NotificationKind[];
-  kind?: NotificationKind;
   sourceNodeId?: string;
   isPullRequest: boolean;
   owner: string;
@@ -24,6 +23,23 @@ export type StoredNotification = {
 };
 
 /**
+ * 旧形式の通知 ID から通知種別を復元する。
+ * @param notificationId 通知 ID
+ * @returns 旧形式から復元した通知種別。判定できない場合は null
+ */
+function getLegacyNotificationKind(notificationId: string): NotificationKind | null {
+  const separatorIndex = notificationId.indexOf(':');
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  const kind = notificationId.slice(0, separatorIndex);
+  return NOTIFICATION_KIND_ORDER.includes(kind as NotificationKind)
+    ? (kind as NotificationKind)
+    : null;
+}
+
+/**
  * 保存済み通知から kind 一覧を正規化して返す。
  * @param notification 通知データ
  * @returns 重複を除いた通知種別一覧
@@ -32,7 +48,9 @@ export function getNotificationKinds(notification: StoredNotification): Notifica
   const mergedKinds = new Set<NotificationKind>(
     [
       ...(Array.isArray(notification.kinds) ? notification.kinds : []),
-      ...(notification.kind ? [notification.kind] : []),
+      ...(getLegacyNotificationKind(notification.id)
+        ? [getLegacyNotificationKind(notification.id) as NotificationKind]
+        : []),
     ].filter((kind): kind is NotificationKind => NOTIFICATION_KIND_ORDER.includes(kind)),
   );
 
@@ -68,7 +86,6 @@ export function normalizeStoredNotification(notification: StoredNotification): S
   return {
     ...notification,
     id: normalizedId,
-    kind: kinds[0],
     kinds,
     sourceNodeId: normalizedId,
   };
@@ -98,7 +115,6 @@ export function mergeStoredNotifications(
     ...normalizedIncoming,
     id: normalizedCurrent.id,
     sourceNodeId: normalizedCurrent.sourceNodeId,
-    kind: mergedKinds[0],
     kinds: mergedKinds,
     detectedAt:
       new Date(normalizedIncoming.detectedAt).getTime() >=

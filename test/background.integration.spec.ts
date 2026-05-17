@@ -384,7 +384,6 @@ describe('background integration', () => {
       notifications: [
         expect.objectContaining({
           id: 'ISSUE_20',
-          kind: 'updated',
           kinds: ['updated'],
         }),
       ],
@@ -402,7 +401,6 @@ describe('background integration', () => {
       notifications: [
         {
           id: 'new:ISSUE_1',
-          kind: 'new',
           sourceNodeId: 'ISSUE_1',
           isPullRequest: false,
           owner: 'octo',
@@ -415,7 +413,6 @@ describe('background integration', () => {
         },
         {
           id: 'mention:PR_2',
-          kind: 'mention',
           sourceNodeId: 'PR_2',
           isPullRequest: true,
           owner: 'octo',
@@ -780,7 +777,6 @@ describe('background integration', () => {
       notifications: [
         {
           id: 'new:ISSUE_1',
-          kind: 'new',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -791,7 +787,6 @@ describe('background integration', () => {
         },
         {
           id: 'mention:ISSUE_2',
-          kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',

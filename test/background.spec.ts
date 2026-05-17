@@ -532,7 +532,6 @@ describe('background notification logic helpers', () => {
 
     expect(stored).toEqual({
       id: 'ISSUE_1',
-      kind: 'mention',
       kinds: ['mention'],
       sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
@@ -550,7 +549,6 @@ describe('background notification logic helpers', () => {
     expect(
       getStoredNotificationNodeId({
         id: 'mention:ISSUE_1',
-        kind: 'mention',
         sourceNodeId: '',
         isPullRequest: false,
         owner: 'octo',
@@ -569,7 +567,6 @@ describe('shared notification state helpers', () => {
   const existingNotifications: StoredNotification[] = [
     {
       id: 'new:ISSUE_1',
-      kind: 'new',
       sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
       owner: 'octo',
@@ -582,7 +579,6 @@ describe('shared notification state helpers', () => {
     },
     {
       id: 'mention:ISSUE_2',
-      kind: 'mention',
       sourceNodeId: 'ISSUE_2',
       isPullRequest: false,
       owner: 'octo',
@@ -610,7 +606,6 @@ describe('shared notification state helpers', () => {
       existingNotifications[0],
       {
         id: 'mention:ISSUE_1',
-        kind: 'mention',
         sourceNodeId: 'ISSUE_1',
         isPullRequest: false,
         owner: 'octo',
@@ -623,7 +618,6 @@ describe('shared notification state helpers', () => {
       },
       {
         id: 'thread:PR_3',
-        kind: 'thread',
         sourceNodeId: 'PR_3',
         isPullRequest: true,
         owner: 'octo',
