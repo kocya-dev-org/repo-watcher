@@ -527,12 +527,13 @@ describe('background notification logic helpers', () => {
     ).toBe(false);
   });
 
-  it('StoredNotification は kind と nodeId から一意 ID を作る', () => {
+  it('StoredNotification は item 単位の ID と kind 一覧を作る', () => {
     const stored = toStoredNotification(baseNode, 'mention', '2026-03-21T10:06:00.000Z');
 
     expect(stored).toEqual({
-      id: 'mention:ISSUE_1',
+      id: 'ISSUE_1',
       kind: 'mention',
+      kinds: ['mention'],
       sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
       owner: 'octo',
@@ -595,10 +596,8 @@ describe('shared notification state helpers', () => {
   ];
 
   it('既読追加は同じ ID を重複登録しない', () => {
-    expect(markNotificationAsRead([], 'mention:ISSUE_2')).toEqual(['mention:ISSUE_2']);
-    expect(markNotificationAsRead(['mention:ISSUE_2'], 'mention:ISSUE_2')).toEqual([
-      'mention:ISSUE_2',
-    ]);
+    expect(markNotificationAsRead([], 'mention:ISSUE_2')).toEqual(['ISSUE_2']);
+    expect(markNotificationAsRead(['mention:ISSUE_2'], 'mention:ISSUE_2')).toEqual(['ISSUE_2']);
   });
 
   it('未読件数は notifications と readNotificationIds から再計算する', () => {
@@ -606,9 +605,22 @@ describe('shared notification state helpers', () => {
     expect(calculateUnreadCount(existingNotifications, ['mention:ISSUE_2'])).toBe(1);
   });
 
-  it('reconcileNotificationState は既読通知を除去し、未読だけで badge を再計算する', () => {
+  it('reconcileNotificationState は同じ item の kind を統合しつつ既読を除去する', () => {
     const detectedNotifications: StoredNotification[] = [
       existingNotifications[0],
+      {
+        id: 'mention:ISSUE_1',
+        kind: 'mention',
+        sourceNodeId: 'ISSUE_1',
+        isPullRequest: false,
+        owner: 'octo',
+        repo: 'repo',
+        number: 1,
+        title: 'Issue 1',
+        url: 'https://github.com/octo/repo/issues/1',
+        detectedAt: '2026-03-21T10:05:00.000Z',
+        isPresentInLatestResult: true,
+      },
       {
         id: 'thread:PR_3',
         kind: 'thread',
@@ -631,13 +643,21 @@ describe('shared notification state helpers', () => {
     );
 
     expect(reconciled.notifications.map((notification) => notification.id)).toEqual([
-      'new:ISSUE_1',
-      'thread:PR_3',
+      'ISSUE_1',
+      'PR_3',
     ]);
+    expect(reconciled.notifications[0]?.kinds).toEqual(['new', 'mention']);
     expect(reconciled.readNotificationIds).toEqual([]);
     expect(reconciled.badgeCount).toBe(2);
-    expect(reconciled.addedNotifications.map((notification) => notification.id)).toEqual([
-      'thread:PR_3',
+    expect(reconciled.addedNotifications).toMatchObject([
+      {
+        id: 'ISSUE_1',
+        kinds: ['new', 'mention'],
+      },
+      {
+        id: 'PR_3',
+        kinds: ['thread'],
+      },
     ]);
   });
 });

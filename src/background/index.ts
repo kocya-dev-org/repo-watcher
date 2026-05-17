@@ -17,6 +17,7 @@ import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
 import {
   calculateUnreadCount,
+  getNotificationKinds,
   getStoredNotificationNodeId,
   reconcileNotificationState,
   type StoredNotification,
@@ -478,6 +479,23 @@ async function saveNotificationClickTargets(pairs: Record<string, string>) {
 async function showOSNotifications(notifications: StoredNotification[]) {
   const clickTargets: Record<string, string> = {};
 
+  const formatKindLabel = (kind: string) => {
+    switch (kind) {
+      case 'new':
+        return '新規';
+      case 'updated':
+        return '更新';
+      case 'mention':
+        return 'メンション';
+      case 'thread':
+        return 'スレッド';
+      case 'assignee':
+        return '担当';
+      default:
+        return kind;
+    }
+  };
+
   for (const notification of notifications) {
     const notificationId = `${NOTIFICATION_ID_PREFIX}${notification.id}:${notification.detectedAt}`;
     clickTargets[notificationId] = notification.url;
@@ -489,7 +507,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
           type: 'basic',
           iconUrl: NOTIFICATION_ICON_DATA_URL,
           title: `${notification.owner}/${notification.repo} #${notification.number}`,
-          message: `[${notification.kind}] ${notification.title}`,
+          message: `[${getNotificationKinds(notification).map(formatKindLabel).join(' / ')}] ${notification.title}`,
         },
         () => resolve(),
       );

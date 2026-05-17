@@ -262,8 +262,9 @@ export function toStoredNotification(
   const nodeId = node.id ?? `${owner}/${repo}#${node.number}`;
 
   return {
-    id: `${kind}:${nodeId}`,
+    id: nodeId,
     kind,
+    kinds: [kind],
     sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',
     owner,

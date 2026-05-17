@@ -13,6 +13,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
+  getNotificationKinds,
   pruneReadNotifications,
   toggleNotificationRead,
   type NotificationKind,
@@ -98,6 +99,15 @@ function formatKind(kind: NotificationKind): string {
     default:
       return kind;
   }
+}
+
+/**
+ * 通知種別一覧をポップアップ表示用の日本語ラベル配列に変換する。
+ * @param notification 通知データ
+ * @returns 日本語ラベル一覧
+ */
+function formatKinds(notification: StoredNotification): string[] {
+  return getNotificationKinds(notification).map((kind) => formatKind(kind));
 }
 
 /**
@@ -413,6 +423,8 @@ const App: React.FC = () => {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: '8px',
               marginBottom: '2px',
             }}
           >
@@ -426,14 +438,26 @@ const App: React.FC = () => {
             </span>
             <span
               style={{
-                fontSize: '10px',
-                color: '#fff',
-                backgroundColor: '#0969da',
-                borderRadius: '10px',
-                padding: '1px 6px',
+                display: 'flex',
+                gap: '4px',
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
               }}
             >
-              {formatKind(n.kind)}
+              {formatKinds(n).map((label) => (
+                <span
+                  key={`${n.id}:${label}`}
+                  style={{
+                    fontSize: '10px',
+                    color: '#fff',
+                    backgroundColor: '#0969da',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
             </span>
           </div>
           <div

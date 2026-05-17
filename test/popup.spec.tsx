@@ -52,8 +52,9 @@ describe('popup App', () => {
   it('通知を PR / Issue タブで切り替えて表示し、既定では PR タブを選択する', async () => {
     const notifications: StoredNotification[] = [
       {
-        id: 'new:PR_1',
+        id: 'PR_1',
         kind: 'new',
+        kinds: ['new', 'mention'],
         isPullRequest: true,
         owner: 'octo',
         repo: 'repo',
@@ -108,6 +109,7 @@ describe('popup App', () => {
     expect(view.container.textContent).not.toContain('Issue メンション');
     expect(view.container.textContent).not.toContain('担当通知');
     expect(view.container.textContent).toContain('新規');
+    expect(view.container.textContent).toContain('メンション');
     expect(view.container.querySelectorAll('[title="既読"]')).toHaveLength(0);
     expect(view.container.querySelectorAll('[title="未読"]')).toHaveLength(1);
 
@@ -172,7 +174,7 @@ describe('popup App', () => {
 
     expect(chromeMock.chrome.tabs.create).not.toHaveBeenCalled();
     expect(chromeMock.getLocalState()).toMatchObject({
-      readNotificationIds: ['new:PR_1'],
+      readNotificationIds: ['PR_1'],
       badgeCount: 1,
     });
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
@@ -253,7 +255,7 @@ describe('popup App', () => {
     await flushPromises();
 
     expect(chromeMock.getLocalState()).toMatchObject({
-      readNotificationIds: ['new:PR_1', 'mention:PR_2'],
+      readNotificationIds: ['PR_1', 'PR_2'],
       badgeCount: 1,
     });
     expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
@@ -286,7 +288,7 @@ describe('popup App', () => {
     await flushPromises();
 
     expect(chromeMock.getLocalState()).toMatchObject({
-      readNotificationIds: ['new:PR_1', 'mention:PR_2'],
+      readNotificationIds: ['PR_1', 'PR_2'],
       badgeCount: 1,
     });
     expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
@@ -440,7 +442,7 @@ describe('popup App', () => {
     expect(chromeMock.getLocalState()).toMatchObject({
       notifications: [
         {
-          id: 'mention:ISSUE_1',
+          id: 'ISSUE_1',
           kind: 'mention',
           isPullRequest: false,
           owner: 'octo',
@@ -495,7 +497,7 @@ describe('popup App', () => {
     expect(chromeMock.getLocalState()).toMatchObject({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
           kind: 'new',
           isPullRequest: true,
           owner: 'octo',

@@ -192,20 +192,20 @@ describe('background integration', () => {
 
     await importBackground();
     chromeMock.triggerAlarm('github-notify-watch');
-    await waitForCondition(() => chromeMock.getLocalState().badgeCount === 4);
+    await waitForCondition(() => chromeMock.getLocalState().badgeCount === 2);
 
     const state = chromeMock.getLocalState();
     expect(state).toMatchObject({
-      badgeCount: 4,
+      badgeCount: 2,
       readNotificationIds: [],
     });
     expect(new Date(state.lastCheckedAt as string).getTime()).toBeGreaterThan(
       new Date('2026-05-06T07:00:00.000Z').getTime(),
     );
     expect(state.lastCheckedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
-    expect(state.notifications as Array<unknown>).toHaveLength(4);
-    expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(4);
-    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '4' });
+    expect(state.notifications as Array<unknown>).toHaveLength(2);
+    expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(4);
     expect(
       backgroundMocks.client.mock.calls.some(
@@ -383,8 +383,9 @@ describe('background integration', () => {
       badgeCount: 1,
       notifications: [
         expect.objectContaining({
-          id: 'updated:ISSUE_20',
+          id: 'ISSUE_20',
           kind: 'updated',
+          kinds: ['updated'],
         }),
       ],
     });
@@ -476,17 +477,17 @@ describe('background integration', () => {
           }>
         ).some(
           (notification) =>
-            notification.id === 'mention:PR_2' && notification.isPresentInLatestResult === false,
+            notification.id === 'PR_2' && notification.isPresentInLatestResult === false,
         ),
     );
 
     expect(chromeMock.getLocalState().notifications).toMatchObject([
       {
-        id: 'new:ISSUE_1',
+        id: 'ISSUE_1',
         isPresentInLatestResult: true,
       },
       {
-        id: 'mention:PR_2',
+        id: 'PR_2',
         isPresentInLatestResult: false,
       },
     ]);
