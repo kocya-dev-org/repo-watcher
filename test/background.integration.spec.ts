@@ -206,6 +206,7 @@ describe('background integration', () => {
     expect(new Date(state.lastCheckedAt as string).getTime()).toBeGreaterThan(
       new Date('2026-05-06T07:00:00.000Z').getTime(),
     );
+    expect(state.lastCheckedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     expect(state.notifications as Array<unknown>).toHaveLength(4);
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(4);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '4' });

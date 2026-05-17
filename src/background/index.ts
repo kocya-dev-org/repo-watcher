@@ -430,6 +430,15 @@ function setBadge(count: number) {
 }
 
 /**
+ * Date を秒精度の UTC ISO8601 文字列へ変換する。
+ * @param value 変換対象の日時
+ * @returns ミリ秒を除いた UTC 文字列
+ */
+function toUtcIsoSeconds(value: Date): string {
+  return value.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+/**
  * GitHub API から `viewer.login` を取得する。
  *
  * 一度取得した値は runtimeState にキャッシュし、以降はキャッシュを返す。
@@ -597,8 +606,10 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   await hydrateRuntimeState();
   const client = createGithubClient(settings.pat);
 
-  const nowIso = new Date().toISOString();
-  const lastCheckedAt = runtimeState.lastCheckedAt ?? new Date(0).toISOString();
+  const nowIso = toUtcIsoSeconds(new Date());
+  const lastCheckedAt = runtimeState.lastCheckedAt
+    ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
+    : toUtcIsoSeconds(new Date(0));
   const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
   const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
   const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
