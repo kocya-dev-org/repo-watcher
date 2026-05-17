@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
-import {
-  REFRESH_WATCH_CYCLE_MESSAGE,
-  type RefreshWatchCycleResponse,
-} from '../shared/runtimeMessages';
 
 type WatchTargetRepo = {
   owner: string;
@@ -58,9 +54,6 @@ const OptionsApp: React.FC = () => {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasSavedPat, setHasSavedPat] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [isResettingLastCheckedAt, setIsResettingLastCheckedAt] = useState(false);
 
@@ -74,23 +67,6 @@ const OptionsApp: React.FC = () => {
     new Promise<string | null>((resolve) => {
       chrome.storage.local.get({ lastCheckedAt: null }, (items: { lastCheckedAt?: unknown }) => {
         resolve(typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null);
-      });
-    });
-
-  const requestWatchCycleRefresh = () =>
-    new Promise<RefreshWatchCycleResponse>((resolve, reject) => {
-      chrome.runtime.sendMessage({ type: REFRESH_WATCH_CYCLE_MESSAGE }, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-
-        if (!response) {
-          reject(new Error('background から応答がありませんでした。'));
-          return;
-        }
-
-        resolve(response as RefreshWatchCycleResponse);
       });
     });
 
@@ -226,31 +202,6 @@ const OptionsApp: React.FC = () => {
     })();
   };
 
-  const handleRefresh = () => {
-    void (async () => {
-      setIsRefreshing(true);
-      setRefreshMessage(null);
-      setRefreshError(null);
-      try {
-        const response = await requestWatchCycleRefresh();
-        if (!response.ok) {
-          setRefreshError(response.errorMessage);
-          setTimeout(() => setRefreshError(null), 4000);
-          return;
-        }
-
-        setRefreshMessage('保存済み設定で更新を実行しました');
-        setTimeout(() => setRefreshMessage(null), 2000);
-      } catch (error) {
-        console.error('更新に失敗しました:', error);
-        setRefreshError('更新に失敗しました');
-        setTimeout(() => setRefreshError(null), 4000);
-      } finally {
-        setIsRefreshing(false);
-      }
-    })();
-  };
-
   /**
    * 保存済みの最終チェック日時をクリアする。
    */
@@ -355,15 +306,14 @@ const OptionsApp: React.FC = () => {
             <button
               type="button"
               onClick={handleResetLastCheckedAt}
-              disabled={isSaving || isRefreshing || isResettingLastCheckedAt}
+              disabled={isSaving || isResettingLastCheckedAt}
               style={{
                 padding: '6px 12px',
                 borderRadius: '4px',
                 border: '1px solid #d0d7de',
                 backgroundColor: '#fff',
                 color: '#24292f',
-                cursor:
-                  isSaving || isRefreshing || isResettingLastCheckedAt ? 'default' : 'pointer',
+                cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
               }}
             >
               {isResettingLastCheckedAt ? 'リセット中...' : 'リセット'}
@@ -373,7 +323,7 @@ const OptionsApp: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="submit"
-            disabled={isSaving || isRefreshing}
+            disabled={isSaving}
             style={{
               padding: '6px 16px',
               borderRadius: '4px',
@@ -385,29 +335,9 @@ const OptionsApp: React.FC = () => {
           >
             {isSaving ? '保存中...' : '保存'}
           </button>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isSaving || isRefreshing}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '4px',
-              border: '1px solid #d0d7de',
-              backgroundColor: '#fff',
-              color: '#24292f',
-              cursor: isSaving || isRefreshing ? 'default' : 'pointer',
-            }}
-          >
-            {isRefreshing ? '更新中...' : '更新'}
-          </button>
           {saveMessage && <span style={{ color: '#1a7f37' }}>{saveMessage}</span>}
           {saveError && <span style={{ color: '#cf222e' }}>{saveError}</span>}
-          {refreshMessage && <span style={{ color: '#1a7f37' }}>{refreshMessage}</span>}
-          {refreshError && <span style={{ color: '#cf222e' }}>{refreshError}</span>}
         </div>
-        <p style={{ margin: '8px 0 0', color: '#57606a' }}>
-          更新ボタンは現在保存済みの設定で background の監視を 1 回実行します。
-        </p>
       </form>
     </div>
   );

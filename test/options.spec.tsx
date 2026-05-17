@@ -221,31 +221,4 @@ describe('options App', () => {
 
     await view.unmount();
   });
-
-  it('更新ボタン押下で保存済み設定の監視を 1 回実行する', async () => {
-    chromeMock.chrome.runtime.sendMessage.mockImplementationOnce(
-      (_message: unknown, callback?: (response: unknown) => void) => {
-        callback?.({ ok: true });
-      },
-    );
-
-    const view = await renderReact(<OptionsApp />);
-    await flushPromises();
-
-    const refreshButton = findButton(view.container, '更新');
-    expect(refreshButton).toBeTruthy();
-
-    await act(async () => {
-      refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-    await flushPromises();
-
-    expect(chromeMock.chrome.runtime.sendMessage).toHaveBeenCalledWith(
-      { type: 'refresh-watch-cycle' },
-      expect.any(Function),
-    );
-    expect(view.container.textContent).toContain('保存済み設定で更新を実行しました');
-
-    await view.unmount();
-  });
 });
