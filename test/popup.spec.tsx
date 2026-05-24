@@ -9,27 +9,19 @@ import { flushPromises, renderReact } from './helpers/react';
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
 
 function findClickableItem(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('li')).find((item) =>
-    item.textContent?.includes(text),
-  );
+  return Array.from(container.querySelectorAll('li')).find((item) => item.textContent?.includes(text));
 }
 
 function findLinkByText(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('a')).find((link) =>
-    link.textContent?.includes(text),
-  );
+  return Array.from(container.querySelectorAll('a')).find((link) => link.textContent?.includes(text));
 }
 
 function findButton(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('button')).find((button) =>
-    button.textContent?.includes(text),
-  );
+  return Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes(text));
 }
 
 function findTab(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('button[role="tab"]')).find(
-    (button) => button.textContent === text,
-  );
+  return Array.from(container.querySelectorAll('button[role="tab"]')).find((button) => button.textContent === text);
 }
 
 function findButtonByAriaLabel(container: HTMLElement, label: string) {
@@ -329,9 +321,7 @@ describe('popup App', () => {
     expect(contentLink?.getAttribute('target')).toBe('_blank');
 
     await act(async () => {
-      findClickableItem(view.container, '新規PR 通知')?.dispatchEvent(
-        new MouseEvent('click', { bubbles: true }),
-      );
+      findClickableItem(view.container, '新規PR 通知')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
@@ -382,12 +372,8 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    expect(findClickableItem(view.container, '残っている PR')?.style.backgroundColor).toBe(
-      'transparent',
-    );
-    expect(findClickableItem(view.container, 'close 済み PR')?.style.backgroundColor).toBe(
-      'rgb(246, 248, 250)',
-    );
+    expect(findClickableItem(view.container, '残っている PR')?.style.backgroundColor).toBe('transparent');
+    expect(findClickableItem(view.container, 'close 済み PR')?.style.backgroundColor).toBe('rgb(246, 248, 250)');
 
     await view.unmount();
   });
@@ -461,6 +447,7 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'PR_1',
+          sourceNodeId: 'PR_1',
           kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
@@ -472,6 +459,7 @@ describe('popup App', () => {
         },
         {
           id: 'ISSUE_1',
+          sourceNodeId: 'ISSUE_1',
           kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
@@ -515,11 +503,9 @@ describe('popup App', () => {
 
   it('読み込み中・空状態・メニュー表示を扱える', async () => {
     let localCallback: ((items: unknown) => void) | null = null;
-    chromeMock.chrome.storage.local.get.mockImplementationOnce(
-      (query: unknown, callback: (items: unknown) => void) => {
-        localCallback = callback;
-      },
-    );
+    chromeMock.chrome.storage.local.get.mockImplementationOnce((query: unknown, callback: (items: unknown) => void) => {
+      localCallback = callback;
+    });
     chromeMock.setSyncState({
       repos: [],
     });
@@ -618,7 +604,8 @@ describe('popup App', () => {
         chromeMock.setLocalState({
           notifications: [
             {
-              id: 'new:ISSUE_99',
+              id: 'ISSUE_99',
+              kinds: ['new'],
               isPullRequest: false,
               owner: 'octo',
               repo: 'repo',
@@ -638,9 +625,9 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const headerButtons = Array.from(
-      view.container.querySelectorAll('header button[aria-label]'),
-    ).map((button) => button.getAttribute('aria-label'));
+    const headerButtons = Array.from(view.container.querySelectorAll('header button[aria-label]')).map((button) =>
+      button.getAttribute('aria-label'),
+    );
     expect(headerButtons).toEqual(['Pause scheduled watch', 'Update', 'Mark all as read', 'Menu']);
 
     const refreshButton = findButtonByAriaLabel(view.container, 'Update');
@@ -713,7 +700,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo-a',
@@ -723,7 +711,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T08:00:00.000Z',
         },
         {
-          id: 'new:PR_2',
+          id: 'PR_2',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo-b',

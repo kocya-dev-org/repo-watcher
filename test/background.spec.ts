@@ -19,7 +19,6 @@ import {
 } from '../src/background/security';
 import {
   calculateUnreadCount,
-  getStoredNotificationNodeId,
   markNotificationAsRead,
   reconcileNotificationState,
   type StoredNotification,
@@ -32,9 +31,7 @@ function setupChromeMock() {
   const alarmsListeners: Array<(alarm: { name: string }) => void> = [];
   const runtimeInstalledListeners: Array<() => void> = [];
   const runtimeStartupListeners: Array<() => void> = [];
-  const storageChangedListeners: Array<
-    (changes: Record<string, unknown>, areaName: string) => void
-  > = [];
+  const storageChangedListeners: Array<(changes: Record<string, unknown>, areaName: string) => void> = [];
   const notificationClickedListeners: Array<(notificationId: string) => void> = [];
   const runtimeMessageListeners: Array<
     (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void
@@ -130,13 +127,7 @@ function setupChromeMock() {
       },
       onMessage: {
         addListener: vi.fn(
-          (
-            fn: (
-              message: unknown,
-              sender: unknown,
-              sendResponse: (response: unknown) => void,
-            ) => boolean | void,
-          ) => {
+          (fn: (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void) => {
             runtimeMessageListeners.push(fn);
           },
         ),
@@ -227,17 +218,13 @@ describe('background security helpers', () => {
   });
 
   it('異なる起動時刻では PAT を複号できない', async () => {
-    const encrypted = await encryptPat(
-      'github_pat_example_secret_value',
-      '2026-03-21T10:00:00.000Z',
-    );
+    const encrypted = await encryptPat('github_pat_example_secret_value', '2026-03-21T10:00:00.000Z');
 
     await expect(decryptPat(encrypted, '2026-03-21T11:00:00.000Z')).rejects.toThrowError();
   });
 
   it('認証情報を含む文字列をログ出力前に伏せる', () => {
-    const text =
-      'authorization: token github_pat_abcdefghijklmnopqrstuvwxyz bearer ghp_exampletoken';
+    const text = 'authorization: token github_pat_abcdefghijklmnopqrstuvwxyz bearer ghp_exampletoken';
 
     const redacted = redactSensitiveText(text);
 
@@ -331,12 +318,9 @@ describe('background notification logic helpers', () => {
 
   it('新規 PR/Issue 判定は createdAt が lastCheckedAt より後かで決まる', () => {
     expect(isNewNotificationCandidate(baseNode, lastCheckedAt)).toBe(true);
-    expect(
-      isNewNotificationCandidate(
-        { ...baseNode, createdAt: '2026-03-21T09:55:00.000Z' },
-        lastCheckedAt,
-      ),
-    ).toBe(false);
+    expect(isNewNotificationCandidate({ ...baseNode, createdAt: '2026-03-21T09:55:00.000Z' }, lastCheckedAt)).toBe(
+      false,
+    );
   });
 
   it('更新通知判定は既存項目が前回監視後に更新された場合のみ真になる', () => {
@@ -365,9 +349,7 @@ describe('background notification logic helpers', () => {
   });
 
   it('メンション判定は新しい本文または新しいコメントだけを対象にする', () => {
-    expect(
-      hasMentionNotification({ ...baseNode, body: 'hello @viewer' }, lastCheckedAt, 'viewer'),
-    ).toBe(true);
+    expect(hasMentionNotification({ ...baseNode, body: 'hello @viewer' }, lastCheckedAt, 'viewer')).toBe(true);
 
     expect(
       hasMentionNotification(
@@ -544,24 +526,6 @@ describe('background notification logic helpers', () => {
       isPresentInLatestResult: true,
     });
   });
-
-  it('sourceNodeId が欠ける旧データでも通知 ID から node ID を復元できる', () => {
-    expect(
-      getStoredNotificationNodeId({
-        id: 'ISSUE_1',
-        kinds: ['mention'],
-        sourceNodeId: '',
-        isPullRequest: false,
-        owner: 'octo',
-        repo: 'repo',
-        number: 42,
-        title: '通知テスト',
-        url: 'https://github.com/octo/repo/issues/42',
-        detectedAt: '2026-03-21T10:06:00.000Z',
-        isPresentInLatestResult: true,
-      }),
-    ).toBe('ISSUE_1');
-  });
 });
 
 describe('shared notification state helpers', () => {
@@ -635,16 +599,9 @@ describe('shared notification state helpers', () => {
       },
     ];
 
-    const reconciled = reconcileNotificationState(
-      existingNotifications,
-      ['ISSUE_2'],
-      detectedNotifications,
-    );
+    const reconciled = reconcileNotificationState(existingNotifications, ['ISSUE_2'], detectedNotifications);
 
-    expect(reconciled.notifications.map((notification) => notification.id)).toEqual([
-      'ISSUE_1',
-      'PR_3',
-    ]);
+    expect(reconciled.notifications.map((notification) => notification.id)).toEqual(['ISSUE_1', 'PR_3']);
     expect(reconciled.notifications[0]?.kinds).toEqual(['new', 'mention']);
     expect(reconciled.readNotificationIds).toEqual([]);
     expect(reconciled.badgeCount).toBe(2);

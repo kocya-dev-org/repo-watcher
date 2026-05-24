@@ -18,15 +18,11 @@ import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patSto
 import {
   calculateUnreadCount,
   getNotificationKinds,
-  getStoredNotificationNodeId,
   reconcileNotificationState,
   type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
-import {
-  isRefreshWatchCycleRequest,
-  type RefreshWatchCycleResponse,
-} from '../shared/runtimeMessages';
+import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 
 export type WatchTargetRepo = {
   owner: string;
@@ -248,12 +244,7 @@ function debugLog(message: string, payload?: unknown) {
  */
 function toErrorMessage(error: unknown): string {
   const sanitized = sanitizeError(error);
-  if (
-    sanitized &&
-    typeof sanitized === 'object' &&
-    'message' in sanitized &&
-    typeof sanitized.message === 'string'
-  ) {
+  if (sanitized && typeof sanitized === 'object' && 'message' in sanitized && typeof sanitized.message === 'string') {
     return sanitized.message;
   }
 
@@ -270,14 +261,9 @@ function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
       resolve({
         lastCheckedAt: typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null,
         viewerLogin: typeof items.viewerLogin === 'string' ? items.viewerLogin : null,
-        viewerLoginPatKey:
-          typeof items.viewerLoginPatKey === 'string' ? items.viewerLoginPatKey : null,
-        notifications: Array.isArray(items.notifications)
-          ? (items.notifications as StoredNotification[])
-          : [],
-        readNotificationIds: Array.isArray(items.readNotificationIds)
-          ? (items.readNotificationIds as string[])
-          : [],
+        viewerLoginPatKey: typeof items.viewerLoginPatKey === 'string' ? items.viewerLoginPatKey : null,
+        notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
+        readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
         badgeCount: Number(items.badgeCount ?? 0),
         notificationClickTargets:
           items.notificationClickTargets &&
@@ -531,7 +517,7 @@ async function fetchLatestOpenNotificationNodeIds(
   const nodeIds = Array.from(
     new Set(
       notifications
-        .map((notification) => getStoredNotificationNodeId(notification))
+        .map((notification) => notification.sourceNodeId)
         .filter((nodeId): nodeId is string => Boolean(nodeId)),
     ),
   );
@@ -548,8 +534,7 @@ async function fetchLatestOpenNotificationNodeIds(
       nodeIds: chunk,
     });
 
-    for (const node of ((result as { nodes?: NotificationStatusNode[] }).nodes ??
-      []) as NotificationStatusNode[]) {
+    for (const node of ((result as { nodes?: NotificationStatusNode[] }).nodes ?? []) as NotificationStatusNode[]) {
       if (
         (node.__typename === 'Issue' || node.__typename === 'PullRequest') &&
         typeof node.id === 'string' &&
@@ -575,95 +560,27 @@ function applyLatestResultStatus(
   latestOpenNodeIds: Set<string>,
 ): StoredNotification[] {
   return notifications.map((notification) => {
-    const sourceNodeId = getStoredNotificationNodeId(notification);
-    if (!sourceNodeId) {
-      return notification;
-    }
-
     return {
       ...notification,
-      sourceNodeId,
-      isPresentInLatestResult: latestOpenNodeIds.has(sourceNodeId),
+      sourceNodeId: notification.sourceNodeId,
+      isPresentInLatestResult: latestOpenNodeIds.has(notification.sourceNodeId!),
     };
   });
 }
 
 /**
- * 監視サイクル本体。
- *
- * 1. 設定読み込み
- * 2. PR / Issue の検索
- * 3. 新規作成または更新 / メンション / Assignee コメント / レビュースレッドコメントの検知
- * 4. 通知ストアとバッジの更新
- * 5. `lastCheckedAt` の更新
+ * 今日の0時の Date オブジェクトを返す。
+ * @returns 今日の0時の Date
  */
-async function runWatchCycle(): Promise<WatchCycleResult> {
-  const { settings, errorMessage } = await loadSettings();
-  if (!settings || !settings.pat || settings.repos.length === 0) {
-    debugLog('watch cycle skipped: settings are incomplete');
-    return {
-      status: 'skipped',
-      errorMessage: errorMessage ?? '設定が不足しているため更新できません。',
-    };
-  }
+const getTodayMidnight = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
 
-  await hydrateRuntimeState();
-  const client = createGithubClient(settings.pat);
-
-  const nowIso = toUtcIsoSeconds(new Date());
-  const getTodayMidnight = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  };
-  const lastCheckedAt = runtimeState.lastCheckedAt
-    ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
-    : toUtcIsoSeconds(getTodayMidnight());
-  const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
-  const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
-  const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
-  debugLog('watch cycle started', {
-    repoCount: settings.repos.length,
-    lastCheckedAt,
-    viewerLogin,
-    pullRequestQuery,
-    issueQuery,
-  });
-  const [pullRequests, issues] = await Promise.all([
-    searchIssuesAndPullRequests(client as any, pullRequestQuery, 'pull_request'),
-    searchIssuesAndPullRequests(client as any, issueQuery, 'issue'),
-  ]);
-  const issuesAndPrs = [...pullRequests, ...issues];
-
-  const detectedAt = nowIso;
-  const collected: StoredNotification[] = [];
-
-  for (const node of issuesAndPrs) {
-    const kinds: NotificationKind[] = [];
-    if (isNewNotificationCandidate(node, lastCheckedAt)) {
-      kinds.push('new');
-    }
-    if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
-      kinds.push('updated');
-    }
-
-    if (hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
-      kinds.push('mention');
-    }
-
-    if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
-      kinds.push('assignee');
-    }
-
-    const s = toStoredNotification(node, kinds, detectedAt);
-    if (s) collected.push(s);
-  }
-
-  // 自分のメンションを含む未解決レビュー スレッドへの新規コメント検知
-  const updatedPrIds = getUpdatedPullRequestIds(issuesAndPrs, lastCheckedAt);
-  if (updatedPrIds.length > 0) {
-    const reviewResult = await (client as any)(
-      `
+const getRelationalThreads = async (client: any, updatedPrIds: string[]) => {
+  return client(
+    `
       query WatchReviewThreads(
         $prIds: [ID!]!
       ) {
@@ -696,10 +613,81 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
         }
       }
       `,
-      {
-        prIds: updatedPrIds,
-      },
-    );
+    {
+      prIds: updatedPrIds,
+    },
+  );
+};
+
+/**
+ * 監視サイクル本体。
+ *
+ * 1. 設定読み込み
+ * 2. PR / Issue の検索
+ * 3. 新規作成または更新 / メンション / Assignee コメント / レビュースレッドコメントの検知
+ * 4. 通知ストアとバッジの更新
+ * 5. `lastCheckedAt` の更新
+ */
+async function runWatchCycle(): Promise<WatchCycleResult> {
+  const { settings, errorMessage } = await loadSettings();
+  if (!settings || !settings.pat || settings.repos.length === 0) {
+    debugLog('watch cycle skipped: settings are incomplete');
+    return {
+      status: 'skipped',
+      errorMessage: errorMessage ?? '設定が不足しているため更新できません。',
+    };
+  }
+
+  await hydrateRuntimeState();
+  const client = createGithubClient(settings.pat);
+
+  const lastCheckedAt = runtimeState.lastCheckedAt
+    ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
+    : toUtcIsoSeconds(getTodayMidnight());
+  const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
+  const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
+  const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
+  debugLog('watch cycle started', {
+    repoCount: settings.repos.length,
+    lastCheckedAt,
+    viewerLogin,
+    pullRequestQuery,
+    issueQuery,
+  });
+
+  // 前回チェック時以降でOpenされているPR / Issueを取得
+  const [pullRequests, issues] = await Promise.all([
+    searchIssuesAndPullRequests(client as any, pullRequestQuery, 'pull_request'),
+    searchIssuesAndPullRequests(client as any, issueQuery, 'issue'),
+  ]);
+  const issuesAndPrs = [...pullRequests, ...issues];
+
+  // 取得したPR / Issueの更新属性を判断
+  const detectedAt = toUtcIsoSeconds(new Date());
+  const collected: StoredNotification[] = [];
+
+  for (const node of issuesAndPrs) {
+    const kinds: NotificationKind[] = [];
+    if (isNewNotificationCandidate(node, lastCheckedAt)) {
+      kinds.push('new');
+    }
+    if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
+      kinds.push('updated');
+    }
+    if (hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
+      kinds.push('mention');
+    }
+    if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
+      kinds.push('assignee');
+    }
+    const s = toStoredNotification(node, kinds, detectedAt);
+    if (s) collected.push(s);
+  }
+
+  // 自分のメンションを含む未解決レビュー スレッドへの新規コメント検知
+  const updatedPrIds = getUpdatedPullRequestIds(issuesAndPrs, lastCheckedAt);
+  if (updatedPrIds.length > 0) {
+    const reviewResult = await getRelationalThreads(client, updatedPrIds);
     debugLog('WatchReviewThreads result', reviewResult);
 
     for (const pr of (reviewResult.nodes ?? []) as PullRequestReviewThreadsNode[]) {
@@ -712,6 +700,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     }
   }
 
+  // 更新属性がないものは除外
   const filteredCollected = collected.filter((n) => (n.kinds?.length ?? 0) > 0);
 
   const localState = await loadLocalRuntimeStorage();
@@ -720,33 +709,34 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     localState.readNotificationIds,
     filteredCollected,
   );
-  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(
-    client as any,
-    reconciled.notifications,
-  );
-  const notificationsWithLatestStatus = applyLatestResultStatus(
-    reconciled.notifications,
-    latestOpenNodeIds,
-  );
+  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client as any, reconciled.notifications);
+  const notificationsWithLatestStatus = applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
+
   debugLog('watch cycle notification summary', {
     addedNotifications: reconciled.addedNotifications.length,
     badgeCount: reconciled.badgeCount,
     activeNotifications: latestOpenNodeIds.size,
   });
 
+  // 検出結果を保存
   await saveLocalRuntimeStorage({
     notifications: notificationsWithLatestStatus,
     readNotificationIds: reconciled.readNotificationIds,
     badgeCount: reconciled.badgeCount,
   });
+
+  // バッジ更新
   setBadge(reconciled.badgeCount);
 
+  // OS通知発行
   if (reconciled.addedNotifications.length > 0) {
     await showOSNotifications(reconciled.addedNotifications);
   }
 
-  await saveLastCheckedAt(nowIso);
-  debugLog('watch cycle completed', { nowIso });
+  // 最終チェック時刻を更新
+  await saveLastCheckedAt(detectedAt);
+
+  debugLog('watch cycle completed', { detectedAt });
   return {
     status: 'completed',
   };

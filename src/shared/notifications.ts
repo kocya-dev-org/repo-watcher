@@ -1,17 +1,11 @@
 export type NotificationKind = 'new' | 'updated' | 'mention' | 'thread' | 'assignee';
 
-const NOTIFICATION_KIND_ORDER: NotificationKind[] = [
-  'new',
-  'updated',
-  'mention',
-  'thread',
-  'assignee',
-];
+const NOTIFICATION_KIND_ORDER: NotificationKind[] = ['new', 'updated', 'mention', 'thread', 'assignee'];
 
 export type StoredNotification = {
   id: string;
   kinds?: NotificationKind[];
-  sourceNodeId?: string;
+  sourceNodeId: string;
   isPullRequest: boolean;
   owner: string;
   repo: string;
@@ -28,30 +22,7 @@ export type StoredNotification = {
  * @returns 重複を除いた通知種別一覧
  */
 export function getNotificationKinds(notification: StoredNotification): NotificationKind[] {
-  return (
-    notification.kinds?.filter((kind): kind is NotificationKind =>
-      NOTIFICATION_KIND_ORDER.includes(kind),
-    ) ?? []
-  );
-}
-
-/**
- * 保存済み通知を現在の storage 形式へ正規化する。
- * @param notification 通知データ
- * @returns 正規化済み通知データ
- */
-export function normalizeStoredNotification(notification: StoredNotification): StoredNotification {
-  const normalizedId =
-    typeof notification.sourceNodeId === 'string' && notification.sourceNodeId.length > 0
-      ? notification.sourceNodeId
-      : notification.id;
-
-  return {
-    ...notification,
-    id: normalizedId,
-    kinds: getNotificationKinds(notification),
-    sourceNodeId: normalizedId,
-  };
+  return notification.kinds?.filter((kind): kind is NotificationKind => NOTIFICATION_KIND_ORDER.includes(kind)) ?? [];
 }
 
 /**
@@ -64,42 +35,22 @@ export function mergeStoredNotifications(
   current: StoredNotification,
   incoming: StoredNotification,
 ): StoredNotification {
-  const normalizedCurrent = normalizeStoredNotification(current);
-  const normalizedIncoming = normalizeStoredNotification(incoming);
   const mergedKinds = NOTIFICATION_KIND_ORDER.filter((kind) =>
-    [
-      ...getNotificationKinds(normalizedCurrent),
-      ...getNotificationKinds(normalizedIncoming),
-    ].includes(kind),
+    [...getNotificationKinds(current), ...getNotificationKinds(incoming)].includes(kind),
   );
 
   return {
-    ...normalizedCurrent,
-    ...normalizedIncoming,
-    id: normalizedCurrent.id,
-    sourceNodeId: normalizedCurrent.sourceNodeId,
+    ...current,
+    ...incoming,
+    id: current.id,
+    sourceNodeId: current.sourceNodeId,
     kinds: mergedKinds,
     detectedAt:
-      new Date(normalizedIncoming.detectedAt).getTime() >=
-      new Date(normalizedCurrent.detectedAt).getTime()
-        ? normalizedIncoming.detectedAt
-        : normalizedCurrent.detectedAt,
-    isPresentInLatestResult:
-      normalizedIncoming.isPresentInLatestResult ?? normalizedCurrent.isPresentInLatestResult,
+      new Date(incoming.detectedAt).getTime() >= new Date(current.detectedAt).getTime()
+        ? incoming.detectedAt
+        : current.detectedAt,
+    isPresentInLatestResult: incoming.isPresentInLatestResult ?? current.isPresentInLatestResult,
   };
-}
-
-/**
- * 通知が参照している Issue / Pull Request の node ID を返す。
- * @param notification 通知データ
- * @returns node ID。取得できない場合は null
- */
-export function getStoredNotificationNodeId(notification: StoredNotification): string | null {
-  if (typeof notification.sourceNodeId === 'string' && notification.sourceNodeId.length > 0) {
-    return notification.sourceNodeId;
-  }
-
-  return notification.id.length > 0 ? notification.id : null;
 }
 
 /**
@@ -108,13 +59,9 @@ export function getStoredNotificationNodeId(notification: StoredNotification): s
  * @param readNotificationIds 既読通知 ID 一覧
  * @returns 未読件数
  */
-export function calculateUnreadCount(
-  notifications: StoredNotification[],
-  readNotificationIds: string[],
-): number {
-  const normalizedNotifications = notifications.map(normalizeStoredNotification);
+export function calculateUnreadCount(notifications: StoredNotification[], readNotificationIds: string[]): number {
   const readSet = new Set(readNotificationIds);
-  return normalizedNotifications.filter((notification) => !readSet.has(notification.id)).length;
+  return notifications.filter((notification) => !readSet.has(notification.id)).length;
 }
 
 /**
@@ -123,10 +70,7 @@ export function calculateUnreadCount(
  * @param notificationId 追加する通知 ID
  * @returns 更新後の既読通知 ID 一覧
  */
-export function markNotificationAsRead(
-  readNotificationIds: string[],
-  notificationId: string,
-): string[] {
+export function markNotificationAsRead(readNotificationIds: string[], notificationId: string): string[] {
   if (readNotificationIds.includes(notificationId)) {
     return readNotificationIds;
   }
@@ -140,10 +84,7 @@ export function markNotificationAsRead(
  * @param notificationId 切り替える通知 ID
  * @returns 更新後の既読通知 ID 一覧
  */
-export function toggleNotificationRead(
-  readNotificationIds: string[],
-  notificationId: string,
-): string[] {
+export function toggleNotificationRead(readNotificationIds: string[], notificationId: string): string[] {
   if (readNotificationIds.includes(notificationId)) {
     return readNotificationIds.filter((id) => id !== notificationId);
   }
@@ -165,11 +106,8 @@ export function pruneReadNotifications(
   readNotificationIds: string[];
   badgeCount: number;
 } {
-  const normalizedNotifications = notifications.map(normalizeStoredNotification);
   const readSet = new Set(readNotificationIds);
-  const unreadNotifications = normalizedNotifications.filter(
-    (notification) => !readSet.has(notification.id),
-  );
+  const unreadNotifications = notifications.filter((notification) => !readSet.has(notification.id));
 
   return {
     notifications: unreadNotifications,
@@ -196,41 +134,31 @@ export function reconcileNotificationState(
   addedNotifications: StoredNotification[];
 } {
   const readSet = new Set(readNotificationIds);
-  const unreadExistingNotifications = pruneReadNotifications(
-    existingNotifications,
-    readNotificationIds,
-  ).notifications;
+  const unreadExistingNotifications = pruneReadNotifications(existingNotifications, readNotificationIds).notifications;
   const existingNotificationsById = new Map(
     unreadExistingNotifications.map((notification) => [notification.id, notification]),
   );
   const addedNotifications: StoredNotification[] = [];
 
   for (const notification of detectedNotifications) {
-    const normalizedNotification = normalizeStoredNotification(notification);
-    if (readSet.has(normalizedNotification.id)) {
+    if (readSet.has(notification.id)) {
       continue;
     }
 
-    const existingNotification = existingNotificationsById.get(normalizedNotification.id);
+    const existingNotification = existingNotificationsById.get(notification.id);
     if (existingNotification) {
-      const mergedNotification = mergeStoredNotifications(
-        existingNotification,
-        normalizedNotification,
-      );
+      const mergedNotification = mergeStoredNotifications(existingNotification, notification);
       existingNotificationsById.set(mergedNotification.id, mergedNotification);
 
-      if (
-        getNotificationKinds(mergedNotification).length !==
-        getNotificationKinds(existingNotification).length
-      ) {
+      if (getNotificationKinds(mergedNotification).length !== getNotificationKinds(existingNotification).length) {
         addedNotifications.push(mergedNotification);
       }
 
       continue;
     }
 
-    existingNotificationsById.set(normalizedNotification.id, normalizedNotification);
-    addedNotifications.push(normalizedNotification);
+    existingNotificationsById.set(notification.id, notification);
+    addedNotifications.push(notification);
   }
 
   const mergedNotifications = Array.from(existingNotificationsById.values());

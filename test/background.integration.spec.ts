@@ -28,10 +28,7 @@ async function importBackground() {
   await flushPromises();
 }
 
-async function waitForCondition(
-  predicate: () => boolean,
-  { timeoutMs = 2000, intervalMs = 10 } = {},
-) {
+async function waitForCondition(predicate: () => boolean, { timeoutMs = 2000, intervalMs = 10 } = {}) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (predicate()) {
@@ -218,20 +215,14 @@ describe('background integration', () => {
       backgroundMocks.client.mock.calls.some(
         ([query, variables]) =>
           (query as string).includes('WatchIssuesAndPRs') &&
-          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes(
-            'is:issue state:open',
-          ),
+          (variables as { repoQuery?: string } | undefined)?.repoQuery?.includes('is:issue state:open'),
       ),
     ).toBe(true);
+    expect(backgroundMocks.client.mock.calls.some(([query]) => (query as string).includes('WatchReviewThreads'))).toBe(
+      true,
+    );
     expect(
-      backgroundMocks.client.mock.calls.some(([query]) =>
-        (query as string).includes('WatchReviewThreads'),
-      ),
-    ).toBe(true);
-    expect(
-      backgroundMocks.client.mock.calls.some(([query]) =>
-        (query as string).includes('WatchNotificationStatuses'),
-      ),
+      backgroundMocks.client.mock.calls.some(([query]) => (query as string).includes('WatchNotificationStatuses')),
     ).toBe(true);
   });
 
@@ -400,7 +391,8 @@ describe('background integration', () => {
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
       notifications: [
         {
-          id: 'new:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['new'],
           sourceNodeId: 'ISSUE_1',
           isPullRequest: false,
           owner: 'octo',
@@ -412,7 +404,8 @@ describe('background integration', () => {
           isPresentInLatestResult: true,
         },
         {
-          id: 'mention:PR_2',
+          id: 'PR_2',
+          kinds: ['mention'],
           sourceNodeId: 'PR_2',
           isPullRequest: true,
           owner: 'octo',
@@ -472,10 +465,7 @@ describe('background integration', () => {
             id: string;
             isPresentInLatestResult?: boolean;
           }>
-        ).some(
-          (notification) =>
-            notification.id === 'PR_2' && notification.isPresentInLatestResult === false,
-        ),
+        ).some((notification) => notification.id === 'PR_2' && notification.isPresentInLatestResult === false),
     );
 
     expect(chromeMock.getLocalState().notifications).toMatchObject([
@@ -593,11 +583,9 @@ describe('background integration', () => {
       notifications: [],
     });
     expect(chromeMock.chrome.notifications.create).not.toHaveBeenCalled();
-    expect(
-      backgroundMocks.client.mock.calls.some(([query]) =>
-        (query as string).includes('WatchReviewThreads'),
-      ),
-    ).toBe(false);
+    expect(backgroundMocks.client.mock.calls.some(([query]) => (query as string).includes('WatchReviewThreads'))).toBe(
+      false,
+    );
   });
 
   it('定期監視が一時停止中のとき、アラーム発火では API を呼ばずに終了する', async () => {
@@ -717,10 +705,7 @@ describe('background integration', () => {
     chromeMock.triggerInstalled();
     await flushPromises();
 
-    expect(chromeMock.chrome.alarms.clear).toHaveBeenCalledWith(
-      'github-notify-watch',
-      expect.any(Function),
-    );
+    expect(chromeMock.chrome.alarms.clear).toHaveBeenCalledWith('github-notify-watch', expect.any(Function));
     expect(chromeMock.chrome.alarms.create).toHaveBeenCalledWith('github-notify-watch', {
       periodInMinutes: 15,
     });
@@ -752,20 +737,20 @@ describe('background integration', () => {
       readNotificationIds: [],
       badgeCount: 0,
       notificationClickTargets: {
-        'github-notify:new:ISSUE_1:2026-05-06T09:30:00.000Z': 'https://example.com/issues/1',
+        'github-notify:ISSUE_1:2026-05-06T09:30:00.000Z': 'https://example.com/issues/1',
       },
     });
 
     await importBackground();
 
-    chromeMock.triggerNotificationClicked('github-notify:new:ISSUE_1:2026-05-06T09:30:00.000Z');
+    chromeMock.triggerNotificationClicked('github-notify:ISSUE_1:2026-05-06T09:30:00.000Z');
     await flushPromises();
 
     expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({
       url: 'https://example.com/issues/1',
     });
     expect(chromeMock.chrome.notifications.clear).toHaveBeenCalledWith(
-      'github-notify:new:ISSUE_1:2026-05-06T09:30:00.000Z',
+      'github-notify:ISSUE_1:2026-05-06T09:30:00.000Z',
     );
     expect(chromeMock.getLocalState()).toMatchObject({
       notificationClickTargets: {},
@@ -776,7 +761,8 @@ describe('background integration', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['new'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -786,7 +772,8 @@ describe('background integration', () => {
           detectedAt: '2026-05-06T09:00:00.000Z',
         },
         {
-          id: 'mention:ISSUE_2',
+          id: 'ISSUE_2',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -796,7 +783,7 @@ describe('background integration', () => {
           detectedAt: '2026-05-06T09:05:00.000Z',
         },
       ],
-      readNotificationIds: ['mention:ISSUE_2'],
+      readNotificationIds: ['ISSUE_2'],
       badgeCount: 99,
       notificationClickTargets: {},
     });
