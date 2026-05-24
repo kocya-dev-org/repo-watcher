@@ -129,7 +129,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -139,7 +140,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T08:00:00.000Z',
         },
         {
-          id: 'mention:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -197,7 +199,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -207,7 +210,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T08:00:00.000Z',
         },
         {
-          id: 'mention:PR_2',
+          id: 'PR_2',
+          kinds: ['mention'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -217,7 +221,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T07:00:00.000Z',
         },
         {
-          id: 'mention:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -300,7 +305,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -323,7 +329,7 @@ describe('popup App', () => {
     expect(contentLink?.getAttribute('target')).toBe('_blank');
 
     await act(async () => {
-      findClickableItem(view.container, 'PR 通知')?.dispatchEvent(
+      findClickableItem(view.container, '新規PR 通知')?.dispatchEvent(
         new MouseEvent('click', { bubbles: true }),
       );
     });
@@ -343,7 +349,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           sourceNodeId: 'PR_1',
           isPullRequest: true,
           owner: 'octo',
@@ -355,7 +362,8 @@ describe('popup App', () => {
           isPresentInLatestResult: true,
         },
         {
-          id: 'mention:PR_2',
+          id: 'PR_2',
+          kinds: ['mention'],
           sourceNodeId: 'PR_2',
           isPullRequest: true,
           owner: 'octo',
@@ -388,7 +396,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -398,7 +407,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T08:00:00.000Z',
         },
         {
-          id: 'mention:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -430,6 +440,7 @@ describe('popup App', () => {
       notifications: [
         {
           id: 'ISSUE_1',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -449,7 +460,8 @@ describe('popup App', () => {
     chromeMock.setLocalState({
       notifications: [
         {
-          id: 'new:PR_1',
+          id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',
@@ -459,7 +471,8 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T08:00:00.000Z',
         },
         {
-          id: 'mention:ISSUE_1',
+          id: 'ISSUE_1',
+          kinds: ['mention'],
           isPullRequest: false,
           owner: 'octo',
           repo: 'repo',
@@ -469,19 +482,20 @@ describe('popup App', () => {
           detectedAt: '2026-05-06T07:00:00.000Z',
         },
       ],
-      readNotificationIds: ['mention:ISSUE_1'],
+      readNotificationIds: ['ISSUE_1'],
       badgeCount: 2,
     });
 
     const view = await renderReact(<App />);
     await flushPromises();
 
-    expect(view.container.textContent).toContain('PR 通知');
+    expect(view.container.textContent).toContain('新規PR 通知');
     expect(view.container.textContent).not.toContain('Issue メンション');
     expect(chromeMock.getLocalState()).toMatchObject({
       notifications: [
         {
           id: 'PR_1',
+          kinds: ['new'],
           isPullRequest: true,
           owner: 'octo',
           repo: 'repo',

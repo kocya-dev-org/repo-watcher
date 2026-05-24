@@ -23,52 +23,16 @@ export type StoredNotification = {
 };
 
 /**
- * 旧形式の通知 ID から通知種別を復元する。
- * @param notificationId 通知 ID
- * @returns 旧形式から復元した通知種別。判定できない場合は null
- */
-function getLegacyNotificationKind(notificationId: string): NotificationKind | null {
-  const separatorIndex = notificationId.indexOf(':');
-  if (separatorIndex <= 0) {
-    return null;
-  }
-
-  const kind = notificationId.slice(0, separatorIndex);
-  return NOTIFICATION_KIND_ORDER.includes(kind as NotificationKind)
-    ? (kind as NotificationKind)
-    : null;
-}
-
-/**
  * 保存済み通知から kind 一覧を正規化して返す。
  * @param notification 通知データ
  * @returns 重複を除いた通知種別一覧
  */
 export function getNotificationKinds(notification: StoredNotification): NotificationKind[] {
-  const mergedKinds = new Set<NotificationKind>(
-    [
-      ...(Array.isArray(notification.kinds) ? notification.kinds : []),
-      ...(getLegacyNotificationKind(notification.id)
-        ? [getLegacyNotificationKind(notification.id) as NotificationKind]
-        : []),
-    ].filter((kind): kind is NotificationKind => NOTIFICATION_KIND_ORDER.includes(kind)),
+  return (
+    notification.kinds?.filter((kind): kind is NotificationKind =>
+      NOTIFICATION_KIND_ORDER.includes(kind),
+    ) ?? []
   );
-
-  return NOTIFICATION_KIND_ORDER.filter((kind) => mergedKinds.has(kind));
-}
-
-/**
- * 通知 ID を item 単位の canonical な ID に正規化する。
- * @param notificationId 通知 ID
- * @returns 正規化後の通知 ID
- */
-export function normalizeNotificationId(notificationId: string): string {
-  const separatorIndex = notificationId.indexOf(':');
-  if (separatorIndex < 0 || separatorIndex === notificationId.length - 1) {
-    return notificationId;
-  }
-
-  return notificationId.slice(separatorIndex + 1);
 }
 
 /**
@@ -78,15 +42,14 @@ export function normalizeNotificationId(notificationId: string): string {
  */
 export function normalizeStoredNotification(notification: StoredNotification): StoredNotification {
   const normalizedId =
-    (typeof notification.sourceNodeId === 'string' && notification.sourceNodeId.length > 0
+    typeof notification.sourceNodeId === 'string' && notification.sourceNodeId.length > 0
       ? notification.sourceNodeId
-      : normalizeNotificationId(notification.id)) || notification.id;
-  const kinds = getNotificationKinds(notification);
+      : notification.id;
 
   return {
     ...notification,
     id: normalizedId,
-    kinds,
+    kinds: getNotificationKinds(notification),
     sourceNodeId: normalizedId,
   };
 }
@@ -136,7 +99,7 @@ export function getStoredNotificationNodeId(notification: StoredNotification): s
     return notification.sourceNodeId;
   }
 
-  return notification.id.length > 0 ? normalizeNotificationId(notification.id) : null;
+  return notification.id.length > 0 ? notification.id : null;
 }
 
 /**
@@ -150,7 +113,7 @@ export function calculateUnreadCount(
   readNotificationIds: string[],
 ): number {
   const normalizedNotifications = notifications.map(normalizeStoredNotification);
-  const readSet = new Set(readNotificationIds.map(normalizeNotificationId));
+  const readSet = new Set(readNotificationIds);
   return normalizedNotifications.filter((notification) => !readSet.has(notification.id)).length;
 }
 
@@ -164,14 +127,11 @@ export function markNotificationAsRead(
   readNotificationIds: string[],
   notificationId: string,
 ): string[] {
-  const normalizedId = normalizeNotificationId(notificationId);
-  const normalizedReadIds = readNotificationIds.map(normalizeNotificationId);
-
-  if (normalizedReadIds.includes(normalizedId)) {
-    return normalizedReadIds;
+  if (readNotificationIds.includes(notificationId)) {
+    return readNotificationIds;
   }
 
-  return [...normalizedReadIds, normalizedId];
+  return [...readNotificationIds, notificationId];
 }
 
 /**
@@ -184,14 +144,11 @@ export function toggleNotificationRead(
   readNotificationIds: string[],
   notificationId: string,
 ): string[] {
-  const normalizedId = normalizeNotificationId(notificationId);
-  const normalizedReadIds = readNotificationIds.map(normalizeNotificationId);
-
-  if (normalizedReadIds.includes(normalizedId)) {
-    return normalizedReadIds.filter((id) => id !== normalizedId);
+  if (readNotificationIds.includes(notificationId)) {
+    return readNotificationIds.filter((id) => id !== notificationId);
   }
 
-  return [...normalizedReadIds, normalizedId];
+  return [...readNotificationIds, notificationId];
 }
 
 /**
@@ -209,7 +166,7 @@ export function pruneReadNotifications(
   badgeCount: number;
 } {
   const normalizedNotifications = notifications.map(normalizeStoredNotification);
-  const readSet = new Set(readNotificationIds.map(normalizeNotificationId));
+  const readSet = new Set(readNotificationIds);
   const unreadNotifications = normalizedNotifications.filter(
     (notification) => !readSet.has(notification.id),
   );
@@ -238,7 +195,7 @@ export function reconcileNotificationState(
   badgeCount: number;
   addedNotifications: StoredNotification[];
 } {
-  const readSet = new Set(readNotificationIds.map(normalizeNotificationId));
+  const readSet = new Set(readNotificationIds);
   const unreadExistingNotifications = pruneReadNotifications(
     existingNotifications,
     readNotificationIds,

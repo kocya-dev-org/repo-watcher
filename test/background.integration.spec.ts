@@ -206,7 +206,7 @@ describe('background integration', () => {
     expect(state.notifications as Array<unknown>).toHaveLength(2);
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
-    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(4);
+    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(2);
     expect(
       backgroundMocks.client.mock.calls.some(
         ([query, variables]) =>

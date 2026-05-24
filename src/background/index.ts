@@ -20,6 +20,7 @@ import {
   getNotificationKinds,
   getStoredNotificationNodeId,
   reconcileNotificationState,
+  type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
 import {
@@ -634,31 +635,31 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   ]);
   const issuesAndPrs = [...pullRequests, ...issues];
 
-  // 各種イベントごとに一時配列へ振り分ける
-  const newItems: IssueOrPullRequestNode[] = [];
-  const updatedItems: IssueOrPullRequestNode[] = [];
-  const mentionItems: IssueOrPullRequestNode[] = [];
-  const assigneeCommentItems: IssueOrPullRequestNode[] = [];
+  const detectedAt = nowIso;
+  const collected: StoredNotification[] = [];
 
   for (const node of issuesAndPrs) {
+    const kinds: NotificationKind[] = [];
     if (isNewNotificationCandidate(node, lastCheckedAt)) {
-      newItems.push(node);
+      kinds.push('new');
     }
     if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
-      updatedItems.push(node);
+      kinds.push('updated');
     }
 
     if (hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
-      mentionItems.push(node);
+      kinds.push('mention');
     }
 
     if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
-      assigneeCommentItems.push(node);
+      kinds.push('assignee');
     }
+
+    const s = toStoredNotification(node, kinds, detectedAt);
+    if (s) collected.push(s);
   }
 
   // 自分のメンションを含む未解決レビュー スレッドへの新規コメント検知
-  const mentionThreadItems: PullRequestReviewThreadsNode[] = [];
   const updatedPrIds = getUpdatedPullRequestIds(issuesAndPrs, lastCheckedAt);
   if (updatedPrIds.length > 0) {
     const reviewResult = await (client as any)(
@@ -703,41 +704,21 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
 
     for (const pr of (reviewResult.nodes ?? []) as PullRequestReviewThreadsNode[]) {
       if (hasMentionThreadNotification(pr, lastCheckedAt, viewerLogin)) {
-        mentionThreadItems.push(pr);
+        const foundNode = collected.find((n) => n.sourceNodeId === pr.id);
+        if (foundNode) {
+          foundNode.kinds?.push('thread');
+        }
       }
     }
   }
 
-  // 通知一覧ストアへ反映（重複排除しつつ追加）
-  const detectedAt = nowIso;
-  const collected: StoredNotification[] = [];
-
-  for (const n of newItems) {
-    const s = toStoredNotification(n, 'new', detectedAt);
-    if (s) collected.push(s);
-  }
-  for (const n of updatedItems) {
-    const s = toStoredNotification(n, 'updated', detectedAt);
-    if (s) collected.push(s);
-  }
-  for (const n of mentionItems) {
-    const s = toStoredNotification(n, 'mention', detectedAt);
-    if (s) collected.push(s);
-  }
-  for (const n of assigneeCommentItems) {
-    const s = toStoredNotification(n, 'assignee', detectedAt);
-    if (s) collected.push(s);
-  }
-  for (const pr of mentionThreadItems) {
-    const s = toStoredNotification(pr, 'thread', detectedAt);
-    if (s) collected.push(s);
-  }
+  const filteredCollected = collected.filter((n) => (n.kinds?.length ?? 0) > 0);
 
   const localState = await loadLocalRuntimeStorage();
   const reconciled = reconcileNotificationState(
     localState.notifications,
     localState.readNotificationIds,
-    collected,
+    filteredCollected,
   );
   const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(
     client as any,
@@ -748,11 +729,6 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     latestOpenNodeIds,
   );
   debugLog('watch cycle notification summary', {
-    newItems: newItems.length,
-    updatedItems: updatedItems.length,
-    mentionItems: mentionItems.length,
-    assigneeCommentItems: assigneeCommentItems.length,
-    mentionThreadItems: mentionThreadItems.length,
     addedNotifications: reconciled.addedNotifications.length,
     badgeCount: reconciled.badgeCount,
     activeNotifications: latestOpenNodeIds.size,

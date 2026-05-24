@@ -244,13 +244,13 @@ export function hasMentionThreadNotification(
 /**
  * GraphQL ノードを popup / storage 共通の通知データへ正規化する。
  * @param node 通知元の Issue / Pull Request / review thread 付き PR
- * @param kind 通知種別
+ * @param kinds 通知の種別一覧
  * @param detectedAt 検知時刻
  * @returns 保存用通知データ、生成できない場合は null
  */
 export function toStoredNotification(
   node: IssueOrPullRequestNode | PullRequestReviewThreadsNode,
-  kind: NotificationKind,
+  kinds: NotificationKind[],
   detectedAt: string,
 ): StoredNotification | null {
   if (!node.repository) {
@@ -263,7 +263,7 @@ export function toStoredNotification(
 
   return {
     id: nodeId,
-    kinds: [kind],
+    kinds: kinds,
     sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',
     owner,

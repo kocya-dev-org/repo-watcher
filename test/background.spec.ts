@@ -528,7 +528,7 @@ describe('background notification logic helpers', () => {
   });
 
   it('StoredNotification は item 単位の ID と kind 一覧を作る', () => {
-    const stored = toStoredNotification(baseNode, 'mention', '2026-03-21T10:06:00.000Z');
+    const stored = toStoredNotification(baseNode, ['mention'], '2026-03-21T10:06:00.000Z');
 
     expect(stored).toEqual({
       id: 'ISSUE_1',
@@ -548,7 +548,8 @@ describe('background notification logic helpers', () => {
   it('sourceNodeId が欠ける旧データでも通知 ID から node ID を復元できる', () => {
     expect(
       getStoredNotificationNodeId({
-        id: 'mention:ISSUE_1',
+        id: 'ISSUE_1',
+        kinds: ['mention'],
         sourceNodeId: '',
         isPullRequest: false,
         owner: 'octo',
@@ -566,7 +567,8 @@ describe('background notification logic helpers', () => {
 describe('shared notification state helpers', () => {
   const existingNotifications: StoredNotification[] = [
     {
-      id: 'new:ISSUE_1',
+      id: 'ISSUE_1',
+      kinds: ['new'],
       sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
       owner: 'octo',
@@ -578,7 +580,8 @@ describe('shared notification state helpers', () => {
       isPresentInLatestResult: true,
     },
     {
-      id: 'mention:ISSUE_2',
+      id: 'ISSUE_2',
+      kinds: ['mention'],
       sourceNodeId: 'ISSUE_2',
       isPullRequest: false,
       owner: 'octo',
@@ -592,20 +595,21 @@ describe('shared notification state helpers', () => {
   ];
 
   it('既読追加は同じ ID を重複登録しない', () => {
-    expect(markNotificationAsRead([], 'mention:ISSUE_2')).toEqual(['ISSUE_2']);
-    expect(markNotificationAsRead(['mention:ISSUE_2'], 'mention:ISSUE_2')).toEqual(['ISSUE_2']);
+    expect(markNotificationAsRead([], 'ISSUE_2')).toEqual(['ISSUE_2']);
+    expect(markNotificationAsRead(['ISSUE_2'], 'ISSUE_2')).toEqual(['ISSUE_2']);
   });
 
   it('未読件数は notifications と readNotificationIds から再計算する', () => {
     expect(calculateUnreadCount(existingNotifications, [])).toBe(2);
-    expect(calculateUnreadCount(existingNotifications, ['mention:ISSUE_2'])).toBe(1);
+    expect(calculateUnreadCount(existingNotifications, ['ISSUE_2'])).toBe(1);
   });
 
   it('reconcileNotificationState は同じ item の kind を統合しつつ既読を除去する', () => {
     const detectedNotifications: StoredNotification[] = [
       existingNotifications[0],
       {
-        id: 'mention:ISSUE_1',
+        id: 'ISSUE_1',
+        kinds: ['mention'],
         sourceNodeId: 'ISSUE_1',
         isPullRequest: false,
         owner: 'octo',
@@ -617,7 +621,8 @@ describe('shared notification state helpers', () => {
         isPresentInLatestResult: true,
       },
       {
-        id: 'thread:PR_3',
+        id: 'PR_3',
+        kinds: ['thread'],
         sourceNodeId: 'PR_3',
         isPullRequest: true,
         owner: 'octo',
@@ -632,7 +637,7 @@ describe('shared notification state helpers', () => {
 
     const reconciled = reconcileNotificationState(
       existingNotifications,
-      ['mention:ISSUE_2'],
+      ['ISSUE_2'],
       detectedNotifications,
     );
 
