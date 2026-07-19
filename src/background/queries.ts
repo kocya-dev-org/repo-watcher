@@ -29,7 +29,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+          comments(first: 50) {
             nodes {
               body
               author { login }
@@ -54,7 +54,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+          comments(first: 50) {
             nodes {
               body
               author { login }
@@ -107,7 +107,7 @@ export const WATCH_REVIEW_THREADS_QUERY = `
           nodes {
             id
             isResolved
-            comments(first: 20, orderBy: { field: CREATED_AT, direction: ASC }) {
+            comments(first: 50) {
               nodes {
                 id
                 body
