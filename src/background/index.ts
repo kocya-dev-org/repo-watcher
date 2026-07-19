@@ -26,6 +26,12 @@ import {
 } from '../shared/notifications';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import type { WatchTargetRepo } from '../shared/repositories';
+import {
+  WATCH_ISSUES_AND_PRS_QUERY,
+  WATCH_NOTIFICATION_STATUS_QUERY,
+  WATCH_REVIEW_THREADS_QUERY,
+} from './queries';
+import { loadLocalRuntimeStorage, saveLocalRuntimeStorage } from './runtimeStorage';
 
 export type { WatchTargetRepo } from '../shared/repositories';
 
@@ -73,109 +79,10 @@ let runtimeState: RuntimeState = {
 };
 let runningWatchCycle: Promise<WatchCycleResult> | null = null;
 
-type LocalRuntimeStorage = {
-  lastCheckedAt: string | null;
-  viewerLogin: string | null;
-  viewerLoginPatKey: string | null;
-  notifications: StoredNotification[];
-  readNotificationIds: string[];
-  badgeCount: number;
-  notificationClickTargets: Record<string, string>;
-};
-
 const WATCH_ALARM_NAME = 'github-notify-watch';
 const NOTIFICATION_ID_PREFIX = 'github-notify:';
 const NOTIFICATION_ICON_DATA_URL =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
-const WATCH_ISSUES_AND_PRS_QUERY = `
-  query WatchIssuesAndPRs(
-    $repoQuery: String!
-  ) {
-    search(query: $repoQuery, type: ISSUE, first: 50) {
-      issueCount
-      nodes {
-        __typename
-        ... on Issue {
-          id
-          number
-          title
-          url
-          createdAt
-          updatedAt
-          repository {
-            name
-            owner { login }
-          }
-          author { login }
-          assignees(first: 10) {
-            nodes { login }
-          }
-          body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-            nodes {
-              body
-              author { login }
-              createdAt
-              updatedAt
-            }
-          }
-        }
-        ... on PullRequest {
-          id
-          number
-          title
-          url
-          createdAt
-          updatedAt
-          repository {
-            name
-            owner { login }
-          }
-          author { login }
-          assignees(first: 10) {
-            nodes { login }
-          }
-          body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-            nodes {
-              body
-              author { login }
-              createdAt
-              updatedAt
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-const WATCH_NOTIFICATION_STATUS_QUERY = `
-  query WatchNotificationStatuses(
-    $nodeIds: [ID!]!
-  ) {
-    nodes(ids: $nodeIds) {
-      __typename
-      ... on Issue {
-        id
-        closed
-      }
-      ... on PullRequest {
-        id
-        closed
-      }
-    }
-  }
-`;
-
-const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
-  lastCheckedAt: null,
-  viewerLogin: null,
-  viewerLoginPatKey: null,
-  notifications: [],
-  readNotificationIds: [],
-  badgeCount: 0,
-  notificationClickTargets: {},
-};
 /**
  * GitHub GraphQL クライアントを生成する。
  *
@@ -246,41 +153,6 @@ function toErrorMessage(error: unknown): string {
   }
 
   return '更新に失敗しました。';
-}
-
-/**
- * local storage からランタイム用の永続データを読み込む。
- * @returns ローカルストレージ上のランタイムデータ
- */
-function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(LOCAL_RUNTIME_DEFAULTS, (items) => {
-      resolve({
-        lastCheckedAt: typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null,
-        viewerLogin: typeof items.viewerLogin === 'string' ? items.viewerLogin : null,
-        viewerLoginPatKey: typeof items.viewerLoginPatKey === 'string' ? items.viewerLoginPatKey : null,
-        notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
-        readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
-        badgeCount: Number(items.badgeCount ?? 0),
-        notificationClickTargets:
-          items.notificationClickTargets &&
-          typeof items.notificationClickTargets === 'object' &&
-          !Array.isArray(items.notificationClickTargets)
-            ? (items.notificationClickTargets as Record<string, string>)
-            : {},
-      });
-    });
-  });
-}
-
-/**
- * local storage にランタイム用のデータを書き込む。
- * @param items 保存する項目
- */
-function saveLocalRuntimeStorage(items: Partial<LocalRuntimeStorage>): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(items, () => resolve());
-  });
 }
 
 /**
@@ -559,44 +431,9 @@ const getTodayMidnight = () => {
 };
 
 const getRelationalThreads = async (client: any, updatedPrIds: string[]) => {
-  return client(
-    `
-      query WatchReviewThreads(
-        $prIds: [ID!]!
-      ) {
-        nodes(ids: $prIds) {
-          __typename
-          ... on PullRequest {
-            id
-            number
-            url
-            title
-            repository {
-              name
-              owner { login }
-            }
-            reviewThreads(first: 20) {
-              nodes {
-                id
-                isResolved
-                comments(first: 20, orderBy: { field: CREATED_AT, direction: ASC }) {
-                  nodes {
-                    id
-                    body
-                    author { login }
-                    createdAt
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      `,
-    {
-      prIds: updatedPrIds,
-    },
-  );
+  return client(WATCH_REVIEW_THREADS_QUERY, {
+    prIds: updatedPrIds,
+  });
 };
 
 /**

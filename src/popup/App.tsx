@@ -14,8 +14,6 @@ import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
   formatBadgeText,
-  formatNotificationKindLabel,
-  getNotificationKinds,
   pruneReadNotifications,
   toggleNotificationRead,
   type StoredNotification,
@@ -26,6 +24,7 @@ import {
 } from '../shared/runtimeMessages';
 import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
 import { COLORS } from '../shared/colors';
+import NotificationItem from './NotificationItem';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -94,15 +93,6 @@ function groupByType(items: StoredNotification[]): GroupedNotifications {
   issues.sort(byDetectedDesc);
 
   return { prs, issues };
-}
-
-/**
- * 通知種別一覧をポップアップ表示用の日本語ラベル配列に変換する。
- * @param notification 通知データ
- * @returns 日本語ラベル一覧
- */
-function formatKinds(notification: StoredNotification): string[] {
-  return getNotificationKinds(notification).map((kind) => formatNotificationKindLabel(kind));
 }
 
 /**
@@ -387,116 +377,6 @@ const App: React.FC = () => {
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
-
-  const renderNotificationItem = (n: StoredNotification) => {
-    const isMissingFromLatestResult = n.isPresentInLatestResult === false;
-    const repositoryColor = getNotificationColor(n, repositoryColorMap);
-
-    return (
-      <li
-        key={n.id}
-        aria-label={`リポジトリ色:${repositoryColor}`}
-        style={{
-          padding: '6px 8px 6px 5px',
-          borderLeft: `3px solid ${repositoryColor}`,
-          borderBottom: `1px solid ${COLORS.borderSubtle}`,
-          display: 'flex',
-          alignItems: 'center',
-          backgroundColor: isMissingFromLatestResult ? COLORS.bgSubtle : 'transparent',
-          borderRadius: 0,
-        }}
-      >
-        <IconButton
-          onClick={() => toggleReadAndUpdate(n.id)}
-          size="small"
-          sx={{
-            marginRight: '6px',
-            padding: 0,
-            color: readIds.has(n.id) ? COLORS.fgMuted : COLORS.successEmphasis,
-            flexShrink: 0,
-          }}
-          title={readIds.has(n.id) ? '既読' : '未読'}
-          aria-label={readIds.has(n.id) ? '既読' : '未読'}
-        >
-          {readIds.has(n.id) ? (
-            <CheckBoxIcon fontSize="small" />
-          ) : (
-            <CheckBoxOutlineBlankIcon fontSize="small" />
-          )}
-        </IconButton>
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '8px',
-              marginBottom: '2px',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '11px',
-                color: isMissingFromLatestResult ? COLORS.fgSubtle : COLORS.fgNeutral,
-              }}
-            >
-              {n.owner}/{n.repo} #{n.number}
-            </span>
-            <span
-              style={{
-                display: 'flex',
-                gap: '4px',
-                flexWrap: 'wrap',
-                justifyContent: 'flex-end',
-              }}
-            >
-              {formatKinds(n).map((label) => (
-                <span
-                  key={`${n.id}:${label}`}
-                  style={{
-                    fontSize: '10px',
-                    color: COLORS.bgDefault,
-                    backgroundColor: COLORS.accent,
-                    borderRadius: '10px',
-                    padding: '1px 6px',
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            <a
-              href={n.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: isMissingFromLatestResult ? COLORS.fgMuted : COLORS.accent,
-                textDecoration: 'underline',
-              }}
-            >
-              {n.title}
-            </a>
-          </div>
-        </div>
-      </li>
-    );
-  };
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
@@ -825,7 +705,15 @@ const App: React.FC = () => {
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {activeNotifications.map(renderNotificationItem)}
+                {activeNotifications.map((n) => (
+                  <NotificationItem
+                    key={n.id}
+                    notification={n}
+                    isRead={readIds.has(n.id)}
+                    repositoryColor={getNotificationColor(n, repositoryColorMap)}
+                    onToggleRead={toggleReadAndUpdate}
+                  />
+                ))}
               </ul>
             </section>
           )}
