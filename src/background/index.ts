@@ -35,6 +35,9 @@ import { loadLocalRuntimeStorage, saveLocalRuntimeStorage } from './runtimeStora
 
 export type { WatchTargetRepo } from '../shared/repositories';
 
+/** PAT を設定済みの GitHub GraphQL クライアント。 */
+type GithubGraphqlClient = ReturnType<typeof graphql.defaults>;
+
 type SyncSettings = {
   repos: WatchTargetRepo[];
   intervalMinutes: number;
@@ -90,7 +93,7 @@ const NOTIFICATION_ICON_DATA_URL =
  * @param pat GitHub Personal Access Token
  * @returns GraphQL クライアント
  */
-function createGithubClient(pat: string) {
+function createGithubClient(pat: string): GithubGraphqlClient {
   return graphql.defaults({
     headers: {
       authorization: `bearer ${pat}`,
@@ -106,11 +109,13 @@ function createGithubClient(pat: string) {
  * @returns 取得したノード一覧
  */
 async function searchIssuesAndPullRequests(
-  client: any,
+  client: GithubGraphqlClient,
   repoQuery: string,
   target: WatchSearchTarget,
 ): Promise<IssueOrPullRequestNode[]> {
-  const searchResult = await client(WATCH_ISSUES_AND_PRS_QUERY, {
+  const searchResult = await client<{
+    search?: { issueCount?: number; nodes?: IssueOrPullRequestNode[] };
+  }>(WATCH_ISSUES_AND_PRS_QUERY, {
     repoQuery,
   });
   debugLog('WatchIssuesAndPRs result', {
@@ -177,9 +182,9 @@ async function loadSyncSettings(): Promise<SyncSettings> {
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         isWatchPaused: false,
       },
-      (items: any) => {
+      (items: { repos?: unknown; intervalMinutes?: unknown; isWatchPaused?: unknown }) => {
         const settings: SyncSettings = {
-          repos: items.repos,
+          repos: items.repos as WatchTargetRepo[],
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           isWatchPaused: Boolean(items.isWatchPaused),
         };
@@ -286,7 +291,7 @@ function toUtcIsoSeconds(value: Date): string {
  * @param client GraphQL クライアント
  * @returns ログイン中ユーザーのログイン ID
  */
-async function ensureViewerLogin(client: any, pat: string): Promise<string> {
+async function ensureViewerLogin(client: GithubGraphqlClient, pat: string): Promise<string> {
   const patCacheKey = await buildPatCacheKey(pat);
   if (runtimeState.viewerLogin && runtimeState.viewerLoginPatKey === patCacheKey) {
     return runtimeState.viewerLogin as string;
@@ -299,8 +304,8 @@ async function ensureViewerLogin(client: any, pat: string): Promise<string> {
     return localState.viewerLogin;
   }
 
-  const result = await client(`query GetViewer { viewer { login } }`);
-  runtimeState.viewerLogin = (result as any).viewer.login;
+  const result = await client<{ viewer: { login: string } }>(`query GetViewer { viewer { login } }`);
+  runtimeState.viewerLogin = result.viewer.login;
   runtimeState.viewerLoginPatKey = patCacheKey;
   await saveLocalRuntimeStorage({
     viewerLogin: runtimeState.viewerLogin,
@@ -362,7 +367,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
  * @returns 最新 API 結果に残っている node ID 集合
  */
 async function fetchLatestOpenNotificationNodeIds(
-  client: any,
+  client: GithubGraphqlClient,
   notifications: StoredNotification[],
 ): Promise<Set<string>> {
   const nodeIds = Array.from(
@@ -430,8 +435,8 @@ const getTodayMidnight = () => {
   return today;
 };
 
-const getRelationalThreads = async (client: any, updatedPrIds: string[]) => {
-  return client(WATCH_REVIEW_THREADS_QUERY, {
+const getRelationalThreads = async (client: GithubGraphqlClient, updatedPrIds: string[]) => {
+  return client<{ nodes?: PullRequestReviewThreadsNode[] }>(WATCH_REVIEW_THREADS_QUERY, {
     prIds: updatedPrIds,
   });
 };
@@ -461,7 +466,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const lastCheckedAt = runtimeState.lastCheckedAt
     ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
     : toUtcIsoSeconds(getTodayMidnight());
-  const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
+  const viewerLogin = await ensureViewerLogin(client, settings.pat);
   const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
   const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
   debugLog('watch cycle started', {
@@ -474,8 +479,8 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
 
   // 前回チェック時以降でOpenされているPR / Issueを取得
   const [pullRequests, issues] = await Promise.all([
-    searchIssuesAndPullRequests(client as any, pullRequestQuery, 'pull_request'),
-    searchIssuesAndPullRequests(client as any, issueQuery, 'issue'),
+    searchIssuesAndPullRequests(client, pullRequestQuery, 'pull_request'),
+    searchIssuesAndPullRequests(client, issueQuery, 'issue'),
   ]);
   const issuesAndPrs = [...pullRequests, ...issues];
 
@@ -526,7 +531,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     localState.readNotificationIds,
     filteredCollected,
   );
-  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client as any, reconciled.notifications);
+  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
   const notificationsWithLatestStatus = applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
 
   debugLog('watch cycle notification summary', {
