@@ -23,7 +23,7 @@ import {
   REFRESH_WATCH_CYCLE_MESSAGE,
   type RefreshWatchCycleResponse,
 } from '../shared/runtimeMessages';
-import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
+import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -102,15 +102,7 @@ function buildRepositoryColorMap(repos: WatchTargetRepo[]): Map<string, string> 
   const colorMap = new Map<string, string>();
 
   for (const repo of repos) {
-    if (
-      repo &&
-      typeof repo.owner === 'string' &&
-      repo.owner.length > 0 &&
-      typeof repo.name === 'string' &&
-      repo.name.length > 0 &&
-      typeof repo.color === 'string' &&
-      repo.color.length > 0
-    ) {
+    if (isValidRepo(repo) && typeof repo.color === 'string' && repo.color.length > 0) {
       colorMap.set(`${repo.owner}/${repo.name}`, repo.color);
     }
   }
@@ -138,16 +130,7 @@ function getNotificationColor(
  */
 function listRepositoryOptions(repos: WatchTargetRepo[]): NotificationRepositoryOption[] {
   const repositoryValues = new Set(
-    repos
-      .filter(
-        (repo) =>
-          repo &&
-          typeof repo.owner === 'string' &&
-          repo.owner.length > 0 &&
-          typeof repo.name === 'string' &&
-          repo.name.length > 0,
-      )
-      .map((repo) => `${repo.owner}/${repo.name}`),
+    repos.filter(isValidRepo).map((repo) => `${repo.owner}/${repo.name}`),
   );
 
   return Array.from(repositoryValues)
@@ -223,16 +206,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
         isWatchPaused: false,
       },
       (items) => {
-        const repos = Array.isArray(items.repos)
-          ? (items.repos as WatchTargetRepo[]).filter(
-              (repo) =>
-                repo &&
-                typeof repo.owner === 'string' &&
-                repo.owner.length > 0 &&
-                typeof repo.name === 'string' &&
-                repo.name.length > 0,
-            )
-          : [];
+        const repos = Array.isArray(items.repos) ? items.repos.filter(isValidRepo) : [];
 
         resolve({
           repos,
