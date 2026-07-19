@@ -335,6 +335,55 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('通知項目の左端に設定済みリポジトリの色で縦ラインを描画する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'colored',
+          number: 10,
+          title: '色付き PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_2',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'plain',
+          number: 11,
+          title: 'デフォルト色 PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'colored', color: '#ff0000' }],
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const coloredItem = findClickableItem(view.container, '色付き PR');
+    const plainItem = findClickableItem(view.container, 'デフォルト色 PR');
+    expect(coloredItem?.style.borderLeftWidth).toBe('3px');
+    expect(coloredItem?.style.borderLeftStyle).toBe('solid');
+    expect(coloredItem?.style.borderLeftColor).toBe('rgb(255, 0, 0)');
+    expect(coloredItem?.getAttribute('aria-label')).toBe('リポジトリ色:#ff0000');
+    expect(plainItem?.style.borderLeftWidth).toBe('3px');
+    expect(plainItem?.style.borderLeftColor).toBe('rgb(9, 105, 218)');
+    expect(plainItem?.getAttribute('aria-label')).toBe('リポジトリ色:#0969da');
+
+    await view.unmount();
+  });
+
   it('最新の API 結果にない通知は薄いグレー背景で表示する', async () => {
     chromeMock.setLocalState({
       notifications: [
