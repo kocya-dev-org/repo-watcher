@@ -17,6 +17,8 @@ import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
 import {
   calculateUnreadCount,
+  formatBadgeText,
+  formatNotificationKindLabel,
   getNotificationKinds,
   reconcileNotificationState,
   type NotificationKind,
@@ -24,8 +26,17 @@ import {
 } from '../shared/notifications';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import type { WatchTargetRepo } from '../shared/repositories';
+import {
+  WATCH_ISSUES_AND_PRS_QUERY,
+  WATCH_NOTIFICATION_STATUS_QUERY,
+  WATCH_REVIEW_THREADS_QUERY,
+} from './queries';
+import { loadLocalRuntimeStorage, saveLocalRuntimeStorage } from './runtimeStorage';
 
 export type { WatchTargetRepo } from '../shared/repositories';
+
+/** PAT を設定済みの GitHub GraphQL クライアント。 */
+type GithubGraphqlClient = ReturnType<typeof graphql.defaults>;
 
 type SyncSettings = {
   repos: WatchTargetRepo[];
@@ -71,109 +82,10 @@ let runtimeState: RuntimeState = {
 };
 let runningWatchCycle: Promise<WatchCycleResult> | null = null;
 
-type LocalRuntimeStorage = {
-  lastCheckedAt: string | null;
-  viewerLogin: string | null;
-  viewerLoginPatKey: string | null;
-  notifications: StoredNotification[];
-  readNotificationIds: string[];
-  badgeCount: number;
-  notificationClickTargets: Record<string, string>;
-};
-
 const WATCH_ALARM_NAME = 'github-notify-watch';
 const NOTIFICATION_ID_PREFIX = 'github-notify:';
 const NOTIFICATION_ICON_DATA_URL =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
-const WATCH_ISSUES_AND_PRS_QUERY = `
-  query WatchIssuesAndPRs(
-    $repoQuery: String!
-  ) {
-    search(query: $repoQuery, type: ISSUE, first: 50) {
-      issueCount
-      nodes {
-        __typename
-        ... on Issue {
-          id
-          number
-          title
-          url
-          createdAt
-          updatedAt
-          repository {
-            name
-            owner { login }
-          }
-          author { login }
-          assignees(first: 10) {
-            nodes { login }
-          }
-          body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-            nodes {
-              body
-              author { login }
-              createdAt
-              updatedAt
-            }
-          }
-        }
-        ... on PullRequest {
-          id
-          number
-          title
-          url
-          createdAt
-          updatedAt
-          repository {
-            name
-            owner { login }
-          }
-          author { login }
-          assignees(first: 10) {
-            nodes { login }
-          }
-          body
-          comments(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
-            nodes {
-              body
-              author { login }
-              createdAt
-              updatedAt
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-const WATCH_NOTIFICATION_STATUS_QUERY = `
-  query WatchNotificationStatuses(
-    $nodeIds: [ID!]!
-  ) {
-    nodes(ids: $nodeIds) {
-      __typename
-      ... on Issue {
-        id
-        closed
-      }
-      ... on PullRequest {
-        id
-        closed
-      }
-    }
-  }
-`;
-
-const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
-  lastCheckedAt: null,
-  viewerLogin: null,
-  viewerLoginPatKey: null,
-  notifications: [],
-  readNotificationIds: [],
-  badgeCount: 0,
-  notificationClickTargets: {},
-};
 /**
  * GitHub GraphQL クライアントを生成する。
  *
@@ -181,7 +93,7 @@ const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
  * @param pat GitHub Personal Access Token
  * @returns GraphQL クライアント
  */
-function createGithubClient(pat: string) {
+function createGithubClient(pat: string): GithubGraphqlClient {
   return graphql.defaults({
     headers: {
       authorization: `bearer ${pat}`,
@@ -197,11 +109,13 @@ function createGithubClient(pat: string) {
  * @returns 取得したノード一覧
  */
 async function searchIssuesAndPullRequests(
-  client: any,
+  client: GithubGraphqlClient,
   repoQuery: string,
   target: WatchSearchTarget,
 ): Promise<IssueOrPullRequestNode[]> {
-  const searchResult = await client(WATCH_ISSUES_AND_PRS_QUERY, {
+  const searchResult = await client<{
+    search?: { issueCount?: number; nodes?: IssueOrPullRequestNode[] };
+  }>(WATCH_ISSUES_AND_PRS_QUERY, {
     repoQuery,
   });
   debugLog('WatchIssuesAndPRs result', {
@@ -220,12 +134,9 @@ async function searchIssuesAndPullRequests(
  * @param payload 追加の詳細情報
  */
 function debugLog(message: string, payload?: unknown) {
-  /*
   if (!DEBUG_LOG_ENABLED) {
     return;
   }
-    */
-  console.info(!DEBUG_LOG_ENABLED);
 
   if (payload === undefined) {
     console.info('[github-notify-ext]', message);
@@ -250,41 +161,6 @@ function toErrorMessage(error: unknown): string {
 }
 
 /**
- * local storage からランタイム用の永続データを読み込む。
- * @returns ローカルストレージ上のランタイムデータ
- */
-function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(LOCAL_RUNTIME_DEFAULTS, (items) => {
-      resolve({
-        lastCheckedAt: typeof items.lastCheckedAt === 'string' ? items.lastCheckedAt : null,
-        viewerLogin: typeof items.viewerLogin === 'string' ? items.viewerLogin : null,
-        viewerLoginPatKey: typeof items.viewerLoginPatKey === 'string' ? items.viewerLoginPatKey : null,
-        notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
-        readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
-        badgeCount: Number(items.badgeCount ?? 0),
-        notificationClickTargets:
-          items.notificationClickTargets &&
-          typeof items.notificationClickTargets === 'object' &&
-          !Array.isArray(items.notificationClickTargets)
-            ? (items.notificationClickTargets as Record<string, string>)
-            : {},
-      });
-    });
-  });
-}
-
-/**
- * local storage にランタイム用のデータを書き込む。
- * @param items 保存する項目
- */
-function saveLocalRuntimeStorage(items: Partial<LocalRuntimeStorage>): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(items, () => resolve());
-  });
-}
-
-/**
  * 永続化されているランタイム状態をメモリへ読み戻す。
  */
 async function hydrateRuntimeState() {
@@ -306,9 +182,9 @@ async function loadSyncSettings(): Promise<SyncSettings> {
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         isWatchPaused: false,
       },
-      (items: any) => {
+      (items: { repos?: unknown; intervalMinutes?: unknown; isWatchPaused?: unknown }) => {
         const settings: SyncSettings = {
-          repos: items.repos,
+          repos: items.repos as WatchTargetRepo[],
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           isWatchPaused: Boolean(items.isWatchPaused),
         };
@@ -393,8 +269,7 @@ async function saveLastCheckedAt(iso: string) {
  * @param count バッジに表示する未読通知数
  */
 function setBadge(count: number) {
-  const text = count > 0 ? String(count) : '';
-  chrome.action.setBadgeText({ text });
+  chrome.action.setBadgeText({ text: formatBadgeText(count) });
   if (count > 0) {
     chrome.action.setBadgeBackgroundColor({ color: '#d93025' });
   }
@@ -416,7 +291,7 @@ function toUtcIsoSeconds(value: Date): string {
  * @param client GraphQL クライアント
  * @returns ログイン中ユーザーのログイン ID
  */
-async function ensureViewerLogin(client: any, pat: string): Promise<string> {
+async function ensureViewerLogin(client: GithubGraphqlClient, pat: string): Promise<string> {
   const patCacheKey = await buildPatCacheKey(pat);
   if (runtimeState.viewerLogin && runtimeState.viewerLoginPatKey === patCacheKey) {
     return runtimeState.viewerLogin as string;
@@ -429,8 +304,8 @@ async function ensureViewerLogin(client: any, pat: string): Promise<string> {
     return localState.viewerLogin;
   }
 
-  const result = await client(`query GetViewer { viewer { login } }`);
-  runtimeState.viewerLogin = (result as any).viewer.login;
+  const result = await client<{ viewer: { login: string } }>(`query GetViewer { viewer { login } }`);
+  runtimeState.viewerLogin = result.viewer.login;
   runtimeState.viewerLoginPatKey = patCacheKey;
   await saveLocalRuntimeStorage({
     viewerLogin: runtimeState.viewerLogin,
@@ -464,23 +339,6 @@ async function saveNotificationClickTargets(pairs: Record<string, string>) {
 async function showOSNotifications(notifications: StoredNotification[]) {
   const clickTargets: Record<string, string> = {};
 
-  const formatKindLabel = (kind: string) => {
-    switch (kind) {
-      case 'new':
-        return '新規';
-      case 'updated':
-        return '更新';
-      case 'mention':
-        return 'メンション';
-      case 'thread':
-        return 'スレッド';
-      case 'assignee':
-        return '担当';
-      default:
-        return kind;
-    }
-  };
-
   for (const notification of notifications) {
     const notificationId = `${NOTIFICATION_ID_PREFIX}${notification.id}:${notification.detectedAt}`;
     clickTargets[notificationId] = notification.url;
@@ -492,7 +350,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
           type: 'basic',
           iconUrl: NOTIFICATION_ICON_DATA_URL,
           title: `${notification.owner}/${notification.repo} #${notification.number}`,
-          message: `[${getNotificationKinds(notification).map(formatKindLabel).join(' / ')}] ${notification.title}`,
+          message: `[${getNotificationKinds(notification).map(formatNotificationKindLabel).join(' / ')}] ${notification.title}`,
         },
         () => resolve(),
       );
@@ -509,7 +367,7 @@ async function showOSNotifications(notifications: StoredNotification[]) {
  * @returns 最新 API 結果に残っている node ID 集合
  */
 async function fetchLatestOpenNotificationNodeIds(
-  client: any,
+  client: GithubGraphqlClient,
   notifications: StoredNotification[],
 ): Promise<Set<string>> {
   const nodeIds = Array.from(
@@ -560,8 +418,9 @@ function applyLatestResultStatus(
   return notifications.map((notification) => {
     return {
       ...notification,
-      sourceNodeId: notification.sourceNodeId,
-      isPresentInLatestResult: latestOpenNodeIds.has(notification.sourceNodeId!),
+      isPresentInLatestResult: notification.sourceNodeId
+        ? latestOpenNodeIds.has(notification.sourceNodeId)
+        : false,
     };
   });
 }
@@ -576,45 +435,10 @@ const getTodayMidnight = () => {
   return today;
 };
 
-const getRelationalThreads = async (client: any, updatedPrIds: string[]) => {
-  return client(
-    `
-      query WatchReviewThreads(
-        $prIds: [ID!]!
-      ) {
-        nodes(ids: $prIds) {
-          __typename
-          ... on PullRequest {
-            id
-            number
-            url
-            title
-            repository {
-              name
-              owner { login }
-            }
-            reviewThreads(first: 20) {
-              nodes {
-                id
-                isResolved
-                comments(first: 20, orderBy: { field: CREATED_AT, direction: ASC }) {
-                  nodes {
-                    id
-                    body
-                    author { login }
-                    createdAt
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      `,
-    {
-      prIds: updatedPrIds,
-    },
-  );
+const getRelationalThreads = async (client: GithubGraphqlClient, updatedPrIds: string[]) => {
+  return client<{ nodes?: PullRequestReviewThreadsNode[] }>(WATCH_REVIEW_THREADS_QUERY, {
+    prIds: updatedPrIds,
+  });
 };
 
 /**
@@ -642,7 +466,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const lastCheckedAt = runtimeState.lastCheckedAt
     ? toUtcIsoSeconds(new Date(runtimeState.lastCheckedAt))
     : toUtcIsoSeconds(getTodayMidnight());
-  const viewerLogin = await ensureViewerLogin(client as any, settings.pat);
+  const viewerLogin = await ensureViewerLogin(client, settings.pat);
   const pullRequestQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'pull_request');
   const issueQuery = buildRepoQuery(settings.repos, lastCheckedAt, 'issue');
   debugLog('watch cycle started', {
@@ -655,8 +479,8 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
 
   // 前回チェック時以降でOpenされているPR / Issueを取得
   const [pullRequests, issues] = await Promise.all([
-    searchIssuesAndPullRequests(client as any, pullRequestQuery, 'pull_request'),
-    searchIssuesAndPullRequests(client as any, issueQuery, 'issue'),
+    searchIssuesAndPullRequests(client, pullRequestQuery, 'pull_request'),
+    searchIssuesAndPullRequests(client, issueQuery, 'issue'),
   ]);
   const issuesAndPrs = [...pullRequests, ...issues];
 
@@ -707,7 +531,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     localState.readNotificationIds,
     filteredCollected,
   );
-  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client as any, reconciled.notifications);
+  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
   const notificationsWithLatestStatus = applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
 
   debugLog('watch cycle notification summary', {

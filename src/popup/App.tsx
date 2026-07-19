@@ -13,17 +13,18 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
-  getNotificationKinds,
+  formatBadgeText,
   pruneReadNotifications,
   toggleNotificationRead,
-  type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
 import {
   REFRESH_WATCH_CYCLE_MESSAGE,
   type RefreshWatchCycleResponse,
 } from '../shared/runtimeMessages';
-import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
+import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
+import { COLORS } from '../shared/colors';
+import NotificationItem from './NotificationItem';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -48,6 +49,25 @@ type NotificationRepositoryOption = {
 };
 
 type BulkReadState = 'all_read' | 'all_unread' | 'partial';
+
+/** ヘッダーの枠付きアイコンボタン共通 sx */
+const headerIconButtonSx = {
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: '6px',
+  color: COLORS.fgDefault,
+  padding: '4px',
+};
+
+/** メニュー内のテキストボタン共通スタイル (padding などは呼び出し側で追加する) */
+const menuButtonBaseStyle: React.CSSProperties = {
+  width: '100%',
+  textAlign: 'left',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  fontSize: '12px',
+  color: COLORS.fgDefault,
+};
 
 /**
  * 通知一覧を PR と Issue に振り分け、検出日時の降順で整列する。
@@ -76,37 +96,6 @@ function groupByType(items: StoredNotification[]): GroupedNotifications {
 }
 
 /**
- * 通知種別をポップアップ表示用の日本語ラベルに変換する。
- * @param kind 通知種別
- * @returns 日本語ラベル
- */
-function formatKind(kind: NotificationKind): string {
-  switch (kind) {
-    case 'new':
-      return '新規';
-    case 'updated':
-      return '更新';
-    case 'mention':
-      return 'メンション';
-    case 'thread':
-      return 'スレッド';
-    case 'assignee':
-      return '担当';
-    default:
-      return kind;
-  }
-}
-
-/**
- * 通知種別一覧をポップアップ表示用の日本語ラベル配列に変換する。
- * @param notification 通知データ
- * @returns 日本語ラベル一覧
- */
-function formatKinds(notification: StoredNotification): string[] {
-  return getNotificationKinds(notification).map((kind) => formatKind(kind));
-}
-
-/**
  * 通知に対応するリポジトリ識別子を返す。
  * @param notification 通知データ
  * @returns owner/repo 形式の識別子
@@ -124,15 +113,7 @@ function buildRepositoryColorMap(repos: WatchTargetRepo[]): Map<string, string> 
   const colorMap = new Map<string, string>();
 
   for (const repo of repos) {
-    if (
-      repo &&
-      typeof repo.owner === 'string' &&
-      repo.owner.length > 0 &&
-      typeof repo.name === 'string' &&
-      repo.name.length > 0 &&
-      typeof repo.color === 'string' &&
-      repo.color.length > 0
-    ) {
+    if (isValidRepo(repo) && typeof repo.color === 'string' && repo.color.length > 0) {
       colorMap.set(`${repo.owner}/${repo.name}`, repo.color);
     }
   }
@@ -160,16 +141,7 @@ function getNotificationColor(
  */
 function listRepositoryOptions(repos: WatchTargetRepo[]): NotificationRepositoryOption[] {
   const repositoryValues = new Set(
-    repos
-      .filter(
-        (repo) =>
-          repo &&
-          typeof repo.owner === 'string' &&
-          repo.owner.length > 0 &&
-          typeof repo.name === 'string' &&
-          repo.name.length > 0,
-      )
-      .map((repo) => `${repo.owner}/${repo.name}`),
+    repos.filter(isValidRepo).map((repo) => `${repo.owner}/${repo.name}`),
   );
 
   return Array.from(repositoryValues)
@@ -245,16 +217,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
         isWatchPaused: false,
       },
       (items) => {
-        const repos = Array.isArray(items.repos)
-          ? (items.repos as WatchTargetRepo[]).filter(
-              (repo) =>
-                repo &&
-                typeof repo.owner === 'string' &&
-                repo.owner.length > 0 &&
-                typeof repo.name === 'string' &&
-                repo.name.length > 0,
-            )
-          : [];
+        const repos = Array.isArray(items.repos) ? items.repos.filter(isValidRepo) : [];
 
         resolve({
           repos,
@@ -322,7 +285,7 @@ const App: React.FC = () => {
     ) {
       chrome.storage.local.set(finalizedLocalState);
       chrome.action.setBadgeText({
-        text: finalizedLocalState.badgeCount > 0 ? String(finalizedLocalState.badgeCount) : '',
+        text: formatBadgeText(finalizedLocalState.badgeCount),
       });
     }
 
@@ -367,7 +330,7 @@ const App: React.FC = () => {
 
       chrome.storage.local.set(finalized);
       chrome.action.setBadgeText({
-        text: finalized.badgeCount > 0 ? String(finalized.badgeCount) : '',
+        text: formatBadgeText(finalized.badgeCount),
       });
     },
     [],
@@ -389,7 +352,7 @@ const App: React.FC = () => {
         badgeCount: newBadgeCount,
       },
       () => {
-        chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
+        chrome.action.setBadgeText({ text: formatBadgeText(newBadgeCount) });
       },
     );
   };
@@ -414,116 +377,6 @@ const App: React.FC = () => {
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
-
-  const renderNotificationItem = (n: StoredNotification) => {
-    const isMissingFromLatestResult = n.isPresentInLatestResult === false;
-    const repositoryColor = getNotificationColor(n, repositoryColorMap);
-
-    return (
-      <li
-        key={n.id}
-        aria-label={`リポジトリ色:${repositoryColor}`}
-        style={{
-          padding: '6px 8px 6px 5px',
-          borderLeft: `3px solid ${repositoryColor}`,
-          borderBottom: '1px solid #eee',
-          display: 'flex',
-          alignItems: 'center',
-          backgroundColor: isMissingFromLatestResult ? '#f6f8fa' : 'transparent',
-          borderRadius: 0,
-        }}
-      >
-        <IconButton
-          onClick={() => toggleReadAndUpdate(n.id)}
-          size="small"
-          sx={{
-            marginRight: '6px',
-            padding: 0,
-            color: readIds.has(n.id) ? '#57606a' : '#2da44e',
-            flexShrink: 0,
-          }}
-          title={readIds.has(n.id) ? '既読' : '未読'}
-          aria-label={readIds.has(n.id) ? '既読' : '未読'}
-        >
-          {readIds.has(n.id) ? (
-            <CheckBoxIcon fontSize="small" />
-          ) : (
-            <CheckBoxOutlineBlankIcon fontSize="small" />
-          )}
-        </IconButton>
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '8px',
-              marginBottom: '2px',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '11px',
-                color: isMissingFromLatestResult ? '#6e7781' : '#555',
-              }}
-            >
-              {n.owner}/{n.repo} #{n.number}
-            </span>
-            <span
-              style={{
-                display: 'flex',
-                gap: '4px',
-                flexWrap: 'wrap',
-                justifyContent: 'flex-end',
-              }}
-            >
-              {formatKinds(n).map((label) => (
-                <span
-                  key={`${n.id}:${label}`}
-                  style={{
-                    fontSize: '10px',
-                    color: '#fff',
-                    backgroundColor: '#0969da',
-                    borderRadius: '10px',
-                    padding: '1px 6px',
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            <a
-              href={n.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: isMissingFromLatestResult ? '#57606a' : '#0969da',
-                textDecoration: 'underline',
-              }}
-            >
-              {n.title}
-            </a>
-          </div>
-        </div>
-      </li>
-    );
-  };
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
@@ -642,12 +495,7 @@ const App: React.FC = () => {
             onClick={toggleScheduledWatchPause}
             size="small"
             disabled={!settings}
-            sx={{
-              border: '1px solid #d0d7de',
-              borderRadius: '6px',
-              color: settings?.isWatchPaused ? '#1a7f37' : '#24292f',
-              padding: '4px',
-            }}
+            sx={{ ...headerIconButtonSx, color: settings?.isWatchPaused ? COLORS.success : COLORS.fgDefault }}
           >
             {settings?.isWatchPaused ? (
               <PlayArrowIcon fontSize="small" />
@@ -663,12 +511,7 @@ const App: React.FC = () => {
             }}
             size="small"
             disabled={isRefreshing}
-            sx={{
-              border: '1px solid #d0d7de',
-              borderRadius: '6px',
-              color: '#24292f',
-              padding: '4px',
-            }}
+            sx={headerIconButtonSx}
           >
             <RefreshIcon
               fontSize="small"
@@ -691,12 +534,7 @@ const App: React.FC = () => {
             onClick={toggleBulkReadState}
             size="small"
             disabled={activeNotifications.length === 0}
-            sx={{
-              border: '1px solid #d0d7de',
-              borderRadius: '6px',
-              color: '#24292f',
-              padding: '4px',
-            }}
+            sx={headerIconButtonSx}
           >
             {bulkReadState === 'all_read' ? (
               <CheckBoxIcon fontSize="small" />
@@ -710,12 +548,7 @@ const App: React.FC = () => {
             aria-label="Menu"
             onClick={() => setIsMenuOpen((prev) => !prev)}
             size="small"
-            sx={{
-              border: '1px solid #d0d7de',
-              borderRadius: '6px',
-              color: '#24292f',
-              padding: '4px',
-            }}
+            sx={headerIconButtonSx}
           >
             <MenuIcon fontSize="small" />
           </IconButton>
@@ -727,8 +560,8 @@ const App: React.FC = () => {
               top: '28px',
               right: 0,
               width: '300px',
-              backgroundColor: '#fff',
-              border: '1px solid #d0d7de',
+              backgroundColor: COLORS.bgDefault,
+              border: `1px solid ${COLORS.border}`,
               borderRadius: '8px',
               boxShadow: '0 8px 24px rgba(140,149,159,0.2)',
               padding: '8px',
@@ -740,21 +573,15 @@ const App: React.FC = () => {
               onClick={() => setIsRepositoryMenuOpen((current) => !current)}
               aria-label="Repository"
               style={{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
+                ...menuButtonBaseStyle,
                 padding: '6px 4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                color: '#24292f',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               <span>Repository</span>
-              <span style={{ fontSize: '10px', color: '#57606a' }}>
+              <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>
                 {isRepositoryMenuOpen ? '▲' : '▼'}
               </span>
             </button>
@@ -765,11 +592,11 @@ const App: React.FC = () => {
                   marginBottom: '4px',
                   marginLeft: '8px',
                   paddingLeft: '8px',
-                  borderLeft: '1px solid #d8dee4',
+                  borderLeft: `1px solid ${COLORS.borderMuted}`,
                 }}
               >
                 {repositoryOptions.length === 0 ? (
-                  <div style={{ padding: '6px 4px', fontSize: '11px', color: '#57606a' }}>
+                  <div style={{ padding: '6px 4px', fontSize: '11px', color: COLORS.fgMuted }}>
                     No configured repositories
                   </div>
                 ) : (
@@ -780,14 +607,8 @@ const App: React.FC = () => {
                       onClick={() => toggleRepositorySelection(option.value)}
                       aria-label={`Repository:${option.value}`}
                       style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        border: 'none',
-                        background: 'transparent',
+                        ...menuButtonBaseStyle,
                         padding: '3px 4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        color: '#24292f',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
@@ -811,16 +632,7 @@ const App: React.FC = () => {
             <button
               type="button"
               onClick={openOptions}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
-                padding: '6px 4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                color: '#24292f',
-              }}
+              style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}
             >
               Open Settings
             </button>
@@ -828,9 +640,9 @@ const App: React.FC = () => {
               style={{
                 marginTop: '6px',
                 paddingTop: '6px',
-                borderTop: '1px solid #d8dee4',
+                borderTop: `1px solid ${COLORS.borderMuted}`,
                 fontSize: '11px',
-                color: '#57606a',
+                color: COLORS.fgMuted,
               }}
             >
               Version: {manifestVersion}
@@ -839,7 +651,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      {refreshError && <p style={{ margin: '0 0 8px', color: '#d1242f' }}>{refreshError}</p>}
+      {refreshError && <p style={{ margin: '0 0 8px', color: COLORS.dangerAlt }}>{refreshError}</p>}
 
       {isLoading ? (
         <p style={{ margin: 0 }}>Loading...</p>
@@ -856,7 +668,7 @@ const App: React.FC = () => {
               sx={{
                 minHeight: 0,
                 '& .MuiTabs-indicator': {
-                  backgroundColor: '#0969da',
+                  backgroundColor: COLORS.accent,
                   height: 3,
                 },
               }}
@@ -893,7 +705,15 @@ const App: React.FC = () => {
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {activeNotifications.map(renderNotificationItem)}
+                {activeNotifications.map((n) => (
+                  <NotificationItem
+                    key={n.id}
+                    notification={n}
+                    isRead={readIds.has(n.id)}
+                    repositoryColor={getNotificationColor(n, repositoryColorMap)}
+                    onToggleRead={toggleReadAndUpdate}
+                  />
+                ))}
               </ul>
             </section>
           )}

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateUnreadCount,
+  formatBadgeText,
+  formatNotificationKindLabel,
   getNotificationKinds,
   markNotificationAsRead,
   mergeStoredNotifications,
@@ -188,5 +190,31 @@ describe('markNotificationAsRead', () => {
     const readNotificationIds = ['ISSUE_1'];
 
     expect(markNotificationAsRead(readNotificationIds, 'ISSUE_1')).toBe(readNotificationIds);
+  });
+});
+
+describe('formatNotificationKindLabel', () => {
+  it('各通知種別を日本語ラベルへ変換する', () => {
+    expect(formatNotificationKindLabel('new')).toBe('新規');
+    expect(formatNotificationKindLabel('updated')).toBe('更新');
+    expect(formatNotificationKindLabel('mention')).toBe('メンション');
+    expect(formatNotificationKindLabel('thread')).toBe('スレッド');
+    expect(formatNotificationKindLabel('assignee')).toBe('担当');
+  });
+
+  it('未知の種別はそのまま返す', () => {
+    expect(formatNotificationKindLabel('unknown' as NotificationKind)).toBe('unknown');
+  });
+});
+
+describe('formatBadgeText', () => {
+  it('1 以上ならカウント文字列を返す', () => {
+    expect(formatBadgeText(1)).toBe('1');
+    expect(formatBadgeText(42)).toBe('42');
+  });
+
+  it('0 以下なら空文字を返す', () => {
+    expect(formatBadgeText(0)).toBe('');
+    expect(formatBadgeText(-1)).toBe('');
   });
 });
