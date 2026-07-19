@@ -156,11 +156,13 @@ describe('background watch logic (sanity)', () => {
 
   it('WatchTargetRepo 型が期待通りに扱える', () => {
     const repos: WatchTargetRepo[] = [
-      { owner: 'owner1', name: 'repo1' },
+      { owner: 'owner1', name: 'repo1', color: '#ff0000' },
       { owner: 'owner2', name: 'repo2' },
     ];
     expect(repos).toHaveLength(2);
     expect(repos[0].owner).toBe('owner1');
+    expect(repos[0].color).toBe('#ff0000');
+    expect(repos[1].color).toBeUndefined();
   });
 
   it('background スクリプトが読み込まれると onInstalled / onAlarm リスナーが登録される', async () => {

@@ -23,7 +23,7 @@ import {
   REFRESH_WATCH_CYCLE_MESSAGE,
   type RefreshWatchCycleResponse,
 } from '../shared/runtimeMessages';
-import type { WatchTargetRepo } from '../shared/repositories';
+import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -113,6 +113,44 @@ function formatKinds(notification: StoredNotification): string[] {
  */
 function getNotificationRepositoryValue(notification: StoredNotification): string {
   return `${notification.owner}/${notification.repo}`;
+}
+
+/**
+ * 設定済みリポジトリ一覧から `owner/repo` をキーとする表示色マップを生成する。
+ * @param repos 設定済みリポジトリ一覧
+ * @returns `owner/repo` から表示色 (HEX) への対応表
+ */
+function buildRepositoryColorMap(repos: WatchTargetRepo[]): Map<string, string> {
+  const colorMap = new Map<string, string>();
+
+  for (const repo of repos) {
+    if (
+      repo &&
+      typeof repo.owner === 'string' &&
+      repo.owner.length > 0 &&
+      typeof repo.name === 'string' &&
+      repo.name.length > 0 &&
+      typeof repo.color === 'string' &&
+      repo.color.length > 0
+    ) {
+      colorMap.set(`${repo.owner}/${repo.name}`, repo.color);
+    }
+  }
+
+  return colorMap;
+}
+
+/**
+ * 通知に対応するリポジトリの表示色を返す。
+ * @param notification 通知データ
+ * @param colorMap `owner/repo` から表示色への対応表
+ * @returns 該当リポジトリの表示色。未設定時はデフォルト色
+ */
+function getNotificationColor(
+  notification: StoredNotification,
+  colorMap: Map<string, string>,
+): string {
+  return colorMap.get(getNotificationRepositoryValue(notification)) ?? DEFAULT_REPO_COLOR;
 }
 
 /**
@@ -366,6 +404,9 @@ const App: React.FC = () => {
   };
 
   const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
+  const repositoryColorMap = settings
+    ? buildRepositoryColorMap(settings.repos)
+    : new Map<string, string>();
   const filteredNotifications = filterNotificationsByRepositories(
     notifications,
     selectedRepositories,
@@ -376,17 +417,20 @@ const App: React.FC = () => {
 
   const renderNotificationItem = (n: StoredNotification) => {
     const isMissingFromLatestResult = n.isPresentInLatestResult === false;
+    const repositoryColor = getNotificationColor(n, repositoryColorMap);
 
     return (
       <li
         key={n.id}
+        aria-label={`リポジトリ色:${repositoryColor}`}
         style={{
-          padding: '6px 8px',
+          padding: '6px 8px 6px 5px',
+          borderLeft: `3px solid ${repositoryColor}`,
           borderBottom: '1px solid #eee',
           display: 'flex',
           alignItems: 'center',
           backgroundColor: isMissingFromLatestResult ? '#f6f8fa' : 'transparent',
-          borderRadius: '6px',
+          borderRadius: 0,
         }}
       >
         <IconButton
