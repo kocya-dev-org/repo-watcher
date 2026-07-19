@@ -17,6 +17,7 @@ import { buildPatCacheKey, sanitizeError } from './security';
 import { loadDecryptedPat, rotateEncryptedPatForStartup } from '../shared/patStorage';
 import {
   calculateUnreadCount,
+  formatBadgeText,
   formatNotificationKindLabel,
   getNotificationKinds,
   reconcileNotificationState,
@@ -391,8 +392,7 @@ async function saveLastCheckedAt(iso: string) {
  * @param count バッジに表示する未読通知数
  */
 function setBadge(count: number) {
-  const text = count > 0 ? String(count) : '';
-  chrome.action.setBadgeText({ text });
+  chrome.action.setBadgeText({ text: formatBadgeText(count) });
   if (count > 0) {
     chrome.action.setBadgeBackgroundColor({ color: '#d93025' });
   }

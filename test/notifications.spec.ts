@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateUnreadCount,
+  formatBadgeText,
   formatNotificationKindLabel,
   getNotificationKinds,
   markNotificationAsRead,
@@ -203,5 +204,17 @@ describe('formatNotificationKindLabel', () => {
 
   it('未知の種別はそのまま返す', () => {
     expect(formatNotificationKindLabel('unknown' as NotificationKind)).toBe('unknown');
+  });
+});
+
+describe('formatBadgeText', () => {
+  it('1 以上ならカウント文字列を返す', () => {
+    expect(formatBadgeText(1)).toBe('1');
+    expect(formatBadgeText(42)).toBe('42');
+  });
+
+  it('0 以下なら空文字を返す', () => {
+    expect(formatBadgeText(0)).toBe('');
+    expect(formatBadgeText(-1)).toBe('');
   });
 });

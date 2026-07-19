@@ -17,6 +17,17 @@ export type StoredNotification = {
 };
 
 /**
+ * 未読件数から拡張機能バッジの表示テキストを生成する。
+ *
+ * 0 件のときは空文字を返してバッジを非表示にする。
+ * @param count 未読通知数
+ * @returns バッジ表示用テキスト
+ */
+export function formatBadgeText(count: number): string {
+  return count > 0 ? String(count) : '';
+}
+
+/**
  * 通知種別を UI 表示用の日本語ラベルに変換する。
  * @param kind 通知種別
  * @returns 日本語ラベル

@@ -13,6 +13,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
+  formatBadgeText,
   formatNotificationKindLabel,
   getNotificationKinds,
   pruneReadNotifications,
@@ -274,7 +275,7 @@ const App: React.FC = () => {
     ) {
       chrome.storage.local.set(finalizedLocalState);
       chrome.action.setBadgeText({
-        text: finalizedLocalState.badgeCount > 0 ? String(finalizedLocalState.badgeCount) : '',
+        text: formatBadgeText(finalizedLocalState.badgeCount),
       });
     }
 
@@ -319,7 +320,7 @@ const App: React.FC = () => {
 
       chrome.storage.local.set(finalized);
       chrome.action.setBadgeText({
-        text: finalized.badgeCount > 0 ? String(finalized.badgeCount) : '',
+        text: formatBadgeText(finalized.badgeCount),
       });
     },
     [],
@@ -341,7 +342,7 @@ const App: React.FC = () => {
         badgeCount: newBadgeCount,
       },
       () => {
-        chrome.action.setBadgeText({ text: newBadgeCount > 0 ? String(newBadgeCount) : '' });
+        chrome.action.setBadgeText({ text: formatBadgeText(newBadgeCount) });
       },
     );
   };
