@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateUnreadCount,
+  formatNotificationKindLabel,
   getNotificationKinds,
   markNotificationAsRead,
   mergeStoredNotifications,
@@ -188,5 +189,19 @@ describe('markNotificationAsRead', () => {
     const readNotificationIds = ['ISSUE_1'];
 
     expect(markNotificationAsRead(readNotificationIds, 'ISSUE_1')).toBe(readNotificationIds);
+  });
+});
+
+describe('formatNotificationKindLabel', () => {
+  it('各通知種別を日本語ラベルへ変換する', () => {
+    expect(formatNotificationKindLabel('new')).toBe('新規');
+    expect(formatNotificationKindLabel('updated')).toBe('更新');
+    expect(formatNotificationKindLabel('mention')).toBe('メンション');
+    expect(formatNotificationKindLabel('thread')).toBe('スレッド');
+    expect(formatNotificationKindLabel('assignee')).toBe('担当');
+  });
+
+  it('未知の種別はそのまま返す', () => {
+    expect(formatNotificationKindLabel('unknown' as NotificationKind)).toBe('unknown');
   });
 });

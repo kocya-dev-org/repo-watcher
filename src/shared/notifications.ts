@@ -17,6 +17,28 @@ export type StoredNotification = {
 };
 
 /**
+ * 通知種別を UI 表示用の日本語ラベルに変換する。
+ * @param kind 通知種別
+ * @returns 日本語ラベル
+ */
+export function formatNotificationKindLabel(kind: NotificationKind): string {
+  switch (kind) {
+    case 'new':
+      return '新規';
+    case 'updated':
+      return '更新';
+    case 'mention':
+      return 'メンション';
+    case 'thread':
+      return 'スレッド';
+    case 'assignee':
+      return '担当';
+    default:
+      return kind;
+  }
+}
+
+/**
  * 保存済み通知から kind 一覧を正規化して返す。
  * @param notification 通知データ
  * @returns 重複を除いた通知種別一覧

@@ -13,10 +13,10 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
+  formatNotificationKindLabel,
   getNotificationKinds,
   pruneReadNotifications,
   toggleNotificationRead,
-  type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
 import {
@@ -76,34 +76,12 @@ function groupByType(items: StoredNotification[]): GroupedNotifications {
 }
 
 /**
- * 通知種別をポップアップ表示用の日本語ラベルに変換する。
- * @param kind 通知種別
- * @returns 日本語ラベル
- */
-function formatKind(kind: NotificationKind): string {
-  switch (kind) {
-    case 'new':
-      return '新規';
-    case 'updated':
-      return '更新';
-    case 'mention':
-      return 'メンション';
-    case 'thread':
-      return 'スレッド';
-    case 'assignee':
-      return '担当';
-    default:
-      return kind;
-  }
-}
-
-/**
  * 通知種別一覧をポップアップ表示用の日本語ラベル配列に変換する。
  * @param notification 通知データ
  * @returns 日本語ラベル一覧
  */
 function formatKinds(notification: StoredNotification): string[] {
-  return getNotificationKinds(notification).map((kind) => formatKind(kind));
+  return getNotificationKinds(notification).map((kind) => formatNotificationKindLabel(kind));
 }
 
 /**
