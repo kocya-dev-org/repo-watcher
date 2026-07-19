@@ -220,12 +220,9 @@ async function searchIssuesAndPullRequests(
  * @param payload 追加の詳細情報
  */
 function debugLog(message: string, payload?: unknown) {
-  /*
   if (!DEBUG_LOG_ENABLED) {
     return;
   }
-    */
-  console.info(!DEBUG_LOG_ENABLED);
 
   if (payload === undefined) {
     console.info('[github-notify-ext]', message);
