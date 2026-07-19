@@ -541,8 +541,9 @@ function applyLatestResultStatus(
   return notifications.map((notification) => {
     return {
       ...notification,
-      sourceNodeId: notification.sourceNodeId,
-      isPresentInLatestResult: latestOpenNodeIds.has(notification.sourceNodeId!),
+      isPresentInLatestResult: notification.sourceNodeId
+        ? latestOpenNodeIds.has(notification.sourceNodeId)
+        : false,
     };
   });
 }
