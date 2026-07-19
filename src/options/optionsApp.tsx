@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
+import { COLORS } from '../shared/colors';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
 import RepositoryDialog from './RepositoryDialog';
@@ -11,6 +12,28 @@ type SettingsForm = {
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
+
+/** 白背景の副次ボタン共通スタイル (cursor は呼び出し側で上書きする) */
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: '4px',
+  border: `1px solid ${COLORS.border}`,
+  backgroundColor: COLORS.bgDefault,
+  color: COLORS.fgDefault,
+};
+
+/** アクセント色の主要ボタン共通スタイル */
+const primaryButtonStyle: React.CSSProperties = {
+  padding: '6px 16px',
+  borderRadius: '4px',
+  border: 'none',
+  backgroundColor: COLORS.accent,
+  color: COLORS.bgDefault,
+  cursor: 'pointer',
+};
+
+/** 説明文の共通スタイル */
+const descriptionStyle: React.CSSProperties = { margin: '4px 0', color: COLORS.fgNeutral };
 
 /**
  * ISO8601 文字列を options 画面表示用の日時文字列へ整形する。
@@ -205,18 +228,18 @@ const OptionsApp: React.FC = () => {
       <form onSubmit={handleSubmit}>
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>API キー (PAT)</h2>
-          <p style={{ margin: '4px 0', color: '#555' }}>
+          <p style={descriptionStyle}>
             GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。
           </p>
-          <p style={{ margin: '4px 0', color: '#555' }}>
+          <p style={descriptionStyle}>
             対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues:
             Read-only`、`Pull requests: Read-only` のみにしてください。
           </p>
-          <p style={{ margin: '4px 0', color: '#555' }}>
+          <p style={descriptionStyle}>
             `Contents` の write、`Administration`、`Actions`、`Webhooks` など、この拡張で使わない
             権限は付与しないでください。
           </p>
-          <p style={{ margin: '4px 0', color: hasSavedPat ? '#1a7f37' : '#57606a' }}>
+          <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
             現在の状態: {hasSavedPat ? 'PAT 設定済み' : 'PAT 未設定'}
           </p>
           <input
@@ -231,14 +254,7 @@ const OptionsApp: React.FC = () => {
               type="button"
               onClick={handleClearPat}
               disabled={isSaving || !hasSavedPat}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: '1px solid #d0d7de',
-                backgroundColor: '#fff',
-                color: '#24292f',
-                cursor: hasSavedPat ? 'pointer' : 'not-allowed',
-              }}
+              style={{ ...secondaryButtonStyle, cursor: hasSavedPat ? 'pointer' : 'not-allowed' }}
             >
               保存済み PAT を削除
             </button>
@@ -247,20 +263,13 @@ const OptionsApp: React.FC = () => {
 
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視対象リポジトリ</h2>
-          <p style={{ margin: '4px 0', color: '#555' }}>
+          <p style={descriptionStyle}>
             監視対象リポジトリと表示色を設定してください。
           </p>
           <button
             type="button"
             onClick={() => setIsRepositoryDialogOpen(true)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '4px',
-              border: '1px solid #d0d7de',
-              backgroundColor: '#fff',
-              color: '#24292f',
-              cursor: 'pointer',
-            }}
+            style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
           >
             リポジトリ設定
           </button>
@@ -274,7 +283,7 @@ const OptionsApp: React.FC = () => {
 
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視間隔</h2>
-          <p style={{ margin: '4px 0', color: '#555' }}>通知の検出間隔を分単位で指定します。</p>
+          <p style={descriptionStyle}>通知の検出間隔を分単位で指定します。</p>
           <input
             type="number"
             min={1}
@@ -294,11 +303,7 @@ const OptionsApp: React.FC = () => {
               onClick={handleResetLastCheckedAt}
               disabled={isSaving || isResettingLastCheckedAt}
               style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: '1px solid #d0d7de',
-                backgroundColor: '#fff',
-                color: '#24292f',
+                ...secondaryButtonStyle,
                 cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
               }}
             >
@@ -307,22 +312,11 @@ const OptionsApp: React.FC = () => {
           </div>
         </section>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="submit"
-            disabled={isSaving}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '4px',
-              border: 'none',
-              backgroundColor: '#0969da',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
-          >
+          <button type="submit" disabled={isSaving} style={primaryButtonStyle}>
             {isSaving ? '保存中...' : '保存'}
           </button>
-          {saveMessage && <span style={{ color: '#1a7f37' }}>{saveMessage}</span>}
-          {saveError && <span style={{ color: '#cf222e' }}>{saveError}</span>}
+          {saveMessage && <span style={{ color: COLORS.success }}>{saveMessage}</span>}
+          {saveError && <span style={{ color: COLORS.danger }}>{saveError}</span>}
         </div>
       </form>
       {isRepositoryDialogOpen && (
