@@ -376,6 +376,7 @@ describe('popup App', () => {
     expect(coloredItem?.style.borderLeftWidth).toBe('3px');
     expect(coloredItem?.style.borderLeftStyle).toBe('solid');
     expect(coloredItem?.style.borderLeftColor).toBe('rgb(255, 0, 0)');
+    expect(coloredItem?.style.borderRadius).toBe('0');
     expect(coloredItem?.getAttribute('aria-label')).toBe('リポジトリ色:#ff0000');
     expect(plainItem?.style.borderLeftWidth).toBe('3px');
     expect(plainItem?.style.borderLeftColor).toBe('rgb(9, 105, 218)');

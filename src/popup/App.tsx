@@ -430,7 +430,7 @@ const App: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           backgroundColor: isMissingFromLatestResult ? '#f6f8fa' : 'transparent',
-          borderRadius: '6px',
+          borderRadius: 0,
         }}
       >
         <IconButton
