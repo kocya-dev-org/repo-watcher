@@ -131,9 +131,7 @@ export async function main(
     return 0;
   } catch (error) {
     const message =
-      error instanceof Error
-        ? sanitizeMessage(error.message, parsedArgs.authorization)
-        : 'GraphQL request failed.';
+      error instanceof Error ? sanitizeMessage(error.message, parsedArgs.authorization) : 'GraphQL request failed.';
     io.stderr(`GraphQL request failed: ${message}\n`);
     return 1;
   }

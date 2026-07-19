@@ -96,9 +96,7 @@ describe('shared patStorage lifecycle', () => {
     const state = chromeMock.getLocalState();
     const reencrypted = state.encryptedPat;
     expect(reencrypted).toBeTruthy();
-    await expect(decryptPat(reencrypted as never, currentStartupAt)).resolves.toBe(
-      'github_pat_fallback',
-    );
+    await expect(decryptPat(reencrypted as never, currentStartupAt)).resolves.toBe('github_pat_fallback');
   });
 
   it('loadDecryptedPat は fallback でも失敗したら encryptedPat を破棄する', async () => {
@@ -198,8 +196,6 @@ describe('shared patStorage lifecycle', () => {
       patPreviousStartupAt: previousStartupAt,
       patCurrentStartupAt: nextStartupAt,
     });
-    await expect(decryptPat(state.encryptedPat as never, nextStartupAt)).resolves.toBe(
-      'github_pat_rotated',
-    );
+    await expect(decryptPat(state.encryptedPat as never, nextStartupAt)).resolves.toBe('github_pat_rotated');
   });
 });

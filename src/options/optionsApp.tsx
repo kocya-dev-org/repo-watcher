@@ -232,8 +232,8 @@ const OptionsApp: React.FC = () => {
             GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。
           </p>
           <p style={descriptionStyle}>
-            対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues:
-            Read-only`、`Pull requests: Read-only` のみにしてください。
+            対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull
+            requests: Read-only` のみにしてください。
           </p>
           <p style={descriptionStyle}>
             `Contents` の write、`Administration`、`Actions`、`Webhooks` など、この拡張で使わない
@@ -263,9 +263,7 @@ const OptionsApp: React.FC = () => {
 
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視対象リポジトリ</h2>
-          <p style={descriptionStyle}>
-            監視対象リポジトリと表示色を設定してください。
-          </p>
+          <p style={descriptionStyle}>監視対象リポジトリと表示色を設定してください。</p>
           <button
             type="button"
             onClick={() => setIsRepositoryDialogOpen(true)}

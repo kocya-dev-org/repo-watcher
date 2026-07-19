@@ -18,15 +18,10 @@ export type RefreshWatchCycleResponse =
  * @param value 判定対象の message
  * @returns 手動更新要求の形なら true
  */
-export function isRefreshWatchCycleRequest(
-  value: unknown,
-): value is RefreshWatchCycleRequest {
+export function isRefreshWatchCycleRequest(value: unknown): value is RefreshWatchCycleRequest {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  return (
-    'type' in value &&
-    (value as RefreshWatchCycleRequest).type === REFRESH_WATCH_CYCLE_MESSAGE
-  );
+  return 'type' in value && (value as RefreshWatchCycleRequest).type === REFRESH_WATCH_CYCLE_MESSAGE;
 }

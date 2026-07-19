@@ -26,11 +26,7 @@ import {
 } from '../shared/notifications';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import type { WatchTargetRepo } from '../shared/repositories';
-import {
-  WATCH_ISSUES_AND_PRS_QUERY,
-  WATCH_NOTIFICATION_STATUS_QUERY,
-  WATCH_REVIEW_THREADS_QUERY,
-} from './queries';
+import { WATCH_ISSUES_AND_PRS_QUERY, WATCH_NOTIFICATION_STATUS_QUERY, WATCH_REVIEW_THREADS_QUERY } from './queries';
 import { loadLocalRuntimeStorage, saveLocalRuntimeStorage } from './runtimeStorage';
 
 export type { WatchTargetRepo } from '../shared/repositories';
@@ -418,9 +414,7 @@ function applyLatestResultStatus(
   return notifications.map((notification) => {
     return {
       ...notification,
-      isPresentInLatestResult: notification.sourceNodeId
-        ? latestOpenNodeIds.has(notification.sourceNodeId)
-        : false,
+      isPresentInLatestResult: notification.sourceNodeId ? latestOpenNodeIds.has(notification.sourceNodeId) : false,
     };
   });
 }

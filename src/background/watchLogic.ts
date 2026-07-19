@@ -95,13 +95,8 @@ function includesMention(text: string | null | undefined, viewerLogin: string): 
  * @param target 検索対象の種別
  * @returns GitHub search API に渡すクエリ文字列
  */
-export function buildRepoQuery(
-  repos: WatchTargetRepo[],
-  lastCheckedAt: string,
-  target: WatchSearchTarget,
-): string {
-  const repoPart =
-    repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
+export function buildRepoQuery(repos: WatchTargetRepo[], lastCheckedAt: string, target: WatchSearchTarget): string {
+  const repoPart = repos.length === 0 ? '' : repos.map((repo) => `repo:${repo.owner}/${repo.name}`).join(' ');
   const statePart = target === 'pull_request' ? 'is:pr is:open' : 'is:issue state:open';
   const conditionPart = `updated:>${lastCheckedAt}`; // ここでは先頭の説明しか検知できない。追加コメントは対象外。
 
@@ -114,10 +109,7 @@ export function buildRepoQuery(
  * @param lastCheckedAt 前回監視時刻
  * @returns 作成日時が前回監視時刻より後なら true
  */
-export function isNewNotificationCandidate(
-  node: IssueOrPullRequestNode,
-  lastCheckedAt: string,
-): boolean {
+export function isNewNotificationCandidate(node: IssueOrPullRequestNode, lastCheckedAt: string): boolean {
   return isDateAfter(node.createdAt, lastCheckedAt);
 }
 
@@ -127,10 +119,7 @@ export function isNewNotificationCandidate(
  * @param lastCheckedAt 前回監視時刻
  * @returns 作成済み項目が前回監視後に更新されていれば true
  */
-export function isUpdatedNotificationCandidate(
-  node: IssueOrPullRequestNode,
-  lastCheckedAt: string,
-): boolean {
+export function isUpdatedNotificationCandidate(node: IssueOrPullRequestNode, lastCheckedAt: string): boolean {
   return !isDateAfter(node.createdAt, lastCheckedAt) && isDateAfter(node.updatedAt, lastCheckedAt);
 }
 
@@ -146,17 +135,14 @@ export function hasAssigneeCommentNotification(
   lastCheckedAt: string,
   viewerLogin: string,
 ): boolean {
-  const hasAssignee =
-    node.assignees?.nodes?.some((assignee) => assignee.login === viewerLogin) ?? false;
+  const hasAssignee = node.assignees?.nodes?.some((assignee) => assignee.login === viewerLogin) ?? false;
 
   if (!hasAssignee) {
     return false;
   }
 
   return (
-    node.comments?.nodes?.some((comment) =>
-      isDateAfter(comment.updatedAt ?? comment.createdAt, lastCheckedAt),
-    ) ?? false
+    node.comments?.nodes?.some((comment) => isDateAfter(comment.updatedAt ?? comment.createdAt, lastCheckedAt)) ?? false
   );
 }
 
@@ -190,16 +176,10 @@ export function hasMentionNotification(
  * @param lastCheckedAt 前回監視時刻
  * @returns 更新済み Pull Request の node ID 一覧
  */
-export function getUpdatedPullRequestIds(
-  nodes: IssueOrPullRequestNode[],
-  lastCheckedAt: string,
-): string[] {
+export function getUpdatedPullRequestIds(nodes: IssueOrPullRequestNode[], lastCheckedAt: string): string[] {
   return nodes
     .filter(
-      (node) =>
-        node.__typename === 'PullRequest' &&
-        Boolean(node.id) &&
-        isDateAfter(node.updatedAt, lastCheckedAt),
+      (node) => node.__typename === 'PullRequest' && Boolean(node.id) && isDateAfter(node.updatedAt, lastCheckedAt),
     )
     .map((node) => node.id as string);
 }
@@ -229,13 +209,9 @@ export function hasMentionThreadNotification(
     }
 
     const hadMentionBefore = comments.some(
-      (comment) =>
-        !isDateAfter(comment.createdAt, lastCheckedAt) &&
-        includesMention(comment.body, viewerLogin),
+      (comment) => !isDateAfter(comment.createdAt, lastCheckedAt) && includesMention(comment.body, viewerLogin),
     );
-    const hasNewCommentAfter = comments.some((comment) =>
-      isDateAfter(comment.createdAt, lastCheckedAt),
-    );
+    const hasNewCommentAfter = comments.some((comment) => isDateAfter(comment.createdAt, lastCheckedAt));
 
     return hadMentionBefore && hasNewCommentAfter;
   });

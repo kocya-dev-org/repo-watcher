@@ -4,11 +4,7 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import IconButton from '@mui/material/IconButton';
 
 import { COLORS } from '../shared/colors';
-import {
-  formatNotificationKindLabel,
-  getNotificationKinds,
-  type StoredNotification,
-} from '../shared/notifications';
+import { formatNotificationKindLabel, getNotificationKinds, type StoredNotification } from '../shared/notifications';
 
 type NotificationItemProps = {
   notification: StoredNotification;
@@ -24,12 +20,7 @@ type NotificationItemProps = {
  * @param repositoryColor リポジトリ色 (縦ライン)
  * @param onToggleRead 既読/未読切り替えハンドラ
  */
-const NotificationItem: React.FC<NotificationItemProps> = ({
-  notification,
-  isRead,
-  repositoryColor,
-  onToggleRead,
-}) => {
+const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRead, repositoryColor, onToggleRead }) => {
   const isMissingFromLatestResult = notification.isPresentInLatestResult === false;
   const kindLabels = getNotificationKinds(notification).map((kind) => formatNotificationKindLabel(kind));
 

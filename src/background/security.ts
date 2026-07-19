@@ -84,18 +84,10 @@ function base64ToBytes(value: string): Uint8Array {
  * @param iterations PBKDF2 の反復回数
  * @returns 導出した暗号鍵
  */
-async function derivePatEncryptionKey(
-  startupTime: string,
-  salt: Uint8Array,
-  iterations: number,
-): Promise<CryptoKey> {
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(startupTime),
-    'PBKDF2',
-    false,
-    ['deriveKey'],
-  );
+async function derivePatEncryptionKey(startupTime: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(startupTime), 'PBKDF2', false, [
+    'deriveKey',
+  ]);
 
   return crypto.subtle.deriveKey(
     {
@@ -163,10 +155,7 @@ export async function encryptPat(pat: string, startupTime: string): Promise<Encr
  * @param startupTime 鍵導出に使う起動時刻
  * @returns 複号した PAT
  */
-export async function decryptPat(
-  payload: EncryptedPatPayload,
-  startupTime: string,
-): Promise<string> {
+export async function decryptPat(payload: EncryptedPatPayload, startupTime: string): Promise<string> {
   const salt = base64ToBytes(payload.salt);
   const iv = base64ToBytes(payload.iv);
   const ciphertext = base64ToBytes(payload.ciphertext);

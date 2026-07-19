@@ -60,10 +60,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
           リポジトリ設定
         </h2>
         {editableRepos.map((repo, index) => (
-          <div
-            key={index}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}
-          >
+          <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <input
               aria-label={`リポジトリ ${index + 1}`}
               type="text"
@@ -86,12 +83,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <button
             type="button"
-            onClick={() =>
-              setEditableRepos((current) => [
-                ...current,
-                { text: '', color: DEFAULT_REPO_COLOR },
-              ])
-            }
+            onClick={() => setEditableRepos((current) => [...current, { text: '', color: DEFAULT_REPO_COLOR }])}
           >
             追加
           </button>

@@ -42,10 +42,8 @@ export function loadStoredPatState(): Promise<StoredPatState> {
     chrome.storage.local.get(PAT_STORAGE_DEFAULTS, (items) => {
       resolve({
         encryptedPat: isEncryptedPatPayload(items.encryptedPat) ? items.encryptedPat : null,
-        patCurrentStartupAt:
-          typeof items.patCurrentStartupAt === 'string' ? items.patCurrentStartupAt : null,
-        patPreviousStartupAt:
-          typeof items.patPreviousStartupAt === 'string' ? items.patPreviousStartupAt : null,
+        patCurrentStartupAt: typeof items.patCurrentStartupAt === 'string' ? items.patCurrentStartupAt : null,
+        patPreviousStartupAt: typeof items.patPreviousStartupAt === 'string' ? items.patPreviousStartupAt : null,
       });
     });
   });

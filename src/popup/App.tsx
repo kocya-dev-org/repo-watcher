@@ -18,10 +18,7 @@ import {
   toggleNotificationRead,
   type StoredNotification,
 } from '../shared/notifications';
-import {
-  REFRESH_WATCH_CYCLE_MESSAGE,
-  type RefreshWatchCycleResponse,
-} from '../shared/runtimeMessages';
+import { REFRESH_WATCH_CYCLE_MESSAGE, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
 import { COLORS } from '../shared/colors';
 import NotificationItem from './NotificationItem';
@@ -127,10 +124,7 @@ function buildRepositoryColorMap(repos: WatchTargetRepo[]): Map<string, string> 
  * @param colorMap `owner/repo` から表示色への対応表
  * @returns 該当リポジトリの表示色。未設定時はデフォルト色
  */
-function getNotificationColor(
-  notification: StoredNotification,
-  colorMap: Map<string, string>,
-): string {
+function getNotificationColor(notification: StoredNotification, colorMap: Map<string, string>): string {
   return colorMap.get(getNotificationRepositoryValue(notification)) ?? DEFAULT_REPO_COLOR;
 }
 
@@ -140,9 +134,7 @@ function getNotificationColor(
  * @returns Select 表示用のリポジトリ選択肢
  */
 function listRepositoryOptions(repos: WatchTargetRepo[]): NotificationRepositoryOption[] {
-  const repositoryValues = new Set(
-    repos.filter(isValidRepo).map((repo) => `${repo.owner}/${repo.name}`),
-  );
+  const repositoryValues = new Set(repos.filter(isValidRepo).map((repo) => `${repo.owner}/${repo.name}`));
 
   return Array.from(repositoryValues)
     .sort((left, right) => left.localeCompare(right))
@@ -198,12 +190,8 @@ function loadPopupLocalState(): Promise<PopupLocalState> {
   return new Promise((resolve) => {
     chrome.storage.local.get({ notifications: [], readNotificationIds: [] }, (items) => {
       resolve({
-        notifications: Array.isArray(items.notifications)
-          ? (items.notifications as StoredNotification[])
-          : [],
-        readNotificationIds: Array.isArray(items.readNotificationIds)
-          ? (items.readNotificationIds as string[])
-          : [],
+        notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
+        readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
       });
     });
   });
@@ -270,14 +258,8 @@ const App: React.FC = () => {
   const manifestVersion = chrome.runtime.getManifest().version;
 
   const reloadPopupState = useCallback(async () => {
-    const [localState, popupSettings] = await Promise.all([
-      loadPopupLocalState(),
-      loadPopupSettings(),
-    ]);
-    const finalizedLocalState = pruneReadNotifications(
-      localState.notifications,
-      localState.readNotificationIds,
-    );
+    const [localState, popupSettings] = await Promise.all([loadPopupLocalState(), loadPopupSettings()]);
+    const finalizedLocalState = pruneReadNotifications(localState.notifications, localState.readNotificationIds);
 
     if (
       finalizedLocalState.readNotificationIds.length !== localState.readNotificationIds.length ||
@@ -289,18 +271,14 @@ const App: React.FC = () => {
       });
     }
 
-    const availableRepositoryValues = new Set(
-      listRepositoryOptions(popupSettings.repos).map((option) => option.value),
-    );
+    const availableRepositoryValues = new Set(listRepositoryOptions(popupSettings.repos).map((option) => option.value));
 
     notificationsRef.current = finalizedLocalState.notifications;
     readIdsRef.current = new Set(finalizedLocalState.readNotificationIds);
     setNotifications(finalizedLocalState.notifications);
     setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
-    setSelectedRepositories((current) =>
-      current.filter((value) => availableRepositoryValues.has(value)),
-    );
+    setSelectedRepositories((current) => current.filter((value) => availableRepositoryValues.has(value)));
     if (availableRepositoryValues.size === 0) {
       setIsRepositoryMenuOpen(false);
     }
@@ -323,10 +301,7 @@ const App: React.FC = () => {
 
   useEffect(
     () => () => {
-      const finalized = pruneReadNotifications(
-        notificationsRef.current,
-        Array.from(readIdsRef.current),
-      );
+      const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
 
       chrome.storage.local.set(finalized);
       chrome.action.setBadgeText({
@@ -367,13 +342,8 @@ const App: React.FC = () => {
   };
 
   const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
-  const repositoryColorMap = settings
-    ? buildRepositoryColorMap(settings.repos)
-    : new Map<string, string>();
-  const filteredNotifications = filterNotificationsByRepositories(
-    notifications,
-    selectedRepositories,
-  );
+  const repositoryColorMap = settings ? buildRepositoryColorMap(settings.repos) : new Map<string, string>();
+  const filteredNotifications = filterNotificationsByRepositories(notifications, selectedRepositories);
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
@@ -446,9 +416,7 @@ const App: React.FC = () => {
       : bulkReadState === 'partial'
         ? 'Mark visible list as read'
         : 'Mark all as read';
-  const watchPauseButtonLabel = settings?.isWatchPaused
-    ? 'Resume scheduled watch'
-    : 'Pause scheduled watch';
+  const watchPauseButtonLabel = settings?.isWatchPaused ? 'Resume scheduled watch' : 'Pause scheduled watch';
   const refreshButtonLabel = isRefreshing ? 'Updating...' : 'Update';
 
   /**
@@ -497,11 +465,7 @@ const App: React.FC = () => {
             disabled={!settings}
             sx={{ ...headerIconButtonSx, color: settings?.isWatchPaused ? COLORS.success : COLORS.fgDefault }}
           >
-            {settings?.isWatchPaused ? (
-              <PlayArrowIcon fontSize="small" />
-            ) : (
-              <PauseIcon fontSize="small" />
-            )}
+            {settings?.isWatchPaused ? <PlayArrowIcon fontSize="small" /> : <PauseIcon fontSize="small" />}
           </IconButton>
           <IconButton
             aria-label={refreshButtonLabel}
@@ -581,9 +545,7 @@ const App: React.FC = () => {
               }}
             >
               <span>Repository</span>
-              <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>
-                {isRepositoryMenuOpen ? '▲' : '▼'}
-              </span>
+              <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>{isRepositoryMenuOpen ? '▲' : '▼'}</span>
             </button>
             {isRepositoryMenuOpen && (
               <div
@@ -629,11 +591,7 @@ const App: React.FC = () => {
                 )}
               </div>
             )}
-            <button
-              type="button"
-              onClick={openOptions}
-              style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}
-            >
+            <button type="button" onClick={openOptions} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
               Open Settings
             </button>
             <div

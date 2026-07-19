@@ -22,9 +22,7 @@ vi.mock('../src/shared/patStorage', () => ({
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
 
 function findButton(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('button')).find((button) =>
-    button.textContent?.includes(text),
-  );
+  return Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes(text));
 }
 
 function formatLocalDateTime(value: string) {
@@ -37,10 +35,7 @@ function formatLocalDateTime(value: string) {
 }
 
 async function setTextValue(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
-  const prototype =
-    element instanceof HTMLTextAreaElement
-      ? HTMLTextAreaElement.prototype
-      : HTMLInputElement.prototype;
+  const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
 
   await act(async () => {
@@ -89,12 +84,8 @@ describe('options App', () => {
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector(
-      'input[type="password"]',
-    ) as HTMLInputElement;
-    const repoList = view.container.querySelector(
-      '[aria-label="監視対象リポジトリ一覧"]',
-    ) as HTMLElement;
+    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
+    const repoList = view.container.querySelector('[aria-label="監視対象リポジトリ一覧"]') as HTMLElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
 
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
@@ -125,10 +116,7 @@ describe('options App', () => {
     });
     await flushPromises();
 
-    expect(chromeMock.chrome.storage.local.set).toHaveBeenCalledWith(
-      { lastCheckedAt: null },
-      expect.any(Function),
-    );
+    expect(chromeMock.chrome.storage.local.set).toHaveBeenCalledWith({ lastCheckedAt: null }, expect.any(Function));
     expect(view.container.textContent).toContain('未設定');
 
     await view.unmount();
@@ -173,8 +161,8 @@ describe('options App', () => {
       colorInputs[0].dispatchEvent(new Event('input', { bubbles: true }));
       colorInputs[0].dispatchEvent(new Event('change', { bubbles: true }));
     });
-    const deleteButtons = Array.from(view.container.querySelectorAll('[role="dialog"] button')).filter(
-      (button) => button.textContent?.includes('削除'),
+    const deleteButtons = Array.from(view.container.querySelectorAll('[role="dialog"] button')).filter((button) =>
+      button.textContent?.includes('削除'),
     );
     await act(async () => {
       deleteButtons[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -192,9 +180,7 @@ describe('options App', () => {
       settingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     const cancelButton = findButton(view.container, 'キャンセル');
-    const dialogRepoInput = view.container.querySelector(
-      '[role="dialog"] input[type="text"]',
-    ) as HTMLInputElement;
+    const dialogRepoInput = view.container.querySelector('[role="dialog"] input[type="text"]') as HTMLInputElement;
     await setTextValue(dialogRepoInput, 'changed/repo');
     await act(async () => {
       cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -218,9 +204,7 @@ describe('options App', () => {
 
     expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
       {
-        repos: [
-          { owner: 'octo', name: 'repo1', color: '#ff0000' },
-        ],
+        repos: [{ owner: 'octo', name: 'repo1', color: '#ff0000' }],
         intervalMinutes: 30,
       },
       expect.any(Function),
@@ -264,9 +248,7 @@ describe('options App', () => {
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector(
-      'input[type="password"]',
-    ) as HTMLInputElement;
+    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(passwordInput, 'github_pat_error');
