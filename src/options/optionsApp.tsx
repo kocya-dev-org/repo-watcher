@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react';
 
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
-
-type WatchTargetRepo = {
-  owner: string;
-  name: string;
-};
+import type { WatchTargetRepo } from '../shared/repositories';
+import RepositoryDialog from './RepositoryDialog';
 
 type SettingsForm = {
   pat: string;
-  reposText: string;
+  repos: WatchTargetRepo[];
   intervalMinutes: number;
 };
 
@@ -42,12 +39,12 @@ function formatLastCheckedAt(value: string | null): string {
  *
  * - sync storage から通常設定を読み込みフォームへ反映
  * - PAT は local storage へ暗号化して保存
- * - 監視対象リポジトリの owner/repo 形式テキストを配列に変換
+ * - 監視対象リポジトリ設定を sync storage から読み込む
  */
 const OptionsApp: React.FC = () => {
   const [form, setForm] = useState<SettingsForm>({
     pat: '',
-    reposText: '',
+    repos: [],
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +53,7 @@ const OptionsApp: React.FC = () => {
   const [hasSavedPat, setHasSavedPat] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [isResettingLastCheckedAt, setIsResettingLastCheckedAt] = useState(false);
+  const [isRepositoryDialogOpen, setIsRepositoryDialogOpen] = useState(false);
 
   const loadPatStatus = () => hasReadablePat();
 
@@ -92,10 +90,9 @@ const OptionsApp: React.FC = () => {
       },
       (items: any) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
-        const reposText = repos.map((r) => `${r.owner}/${r.name}`).join('\n');
         setForm({
           pat: '',
-          reposText,
+          repos,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
         });
       },
@@ -115,31 +112,8 @@ const OptionsApp: React.FC = () => {
   };
 
   /**
-   * テキストエリアの内容から監視対象リポジトリ一覧を解析する。
-   *
-   * 各行は `owner/repo` 形式を想定し、不正な行は無視する。
-   * @param text 入力テキスト
-   * @returns 監視対象リポジトリ配列
-   */
-  const parseRepos = (text: string): WatchTargetRepo[] => {
-    const lines = text
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    const result: WatchTargetRepo[] = [];
-    for (const line of lines) {
-      const [owner, name] = line.split('/');
-      if (!owner || !name) continue;
-      result.push({ owner, name });
-    }
-    return result;
-  };
-
-  /**
    * 設定フォームの送信ハンドラ。
    *
-   * - テキストからリポジトリ一覧を解析
    * - 通常設定を sync storage に保存
    * - 入力された PAT があれば暗号化して local storage に保存
    * - 保存完了メッセージを一時的に表示
@@ -151,12 +125,10 @@ const OptionsApp: React.FC = () => {
       setSaveMessage(null);
       setSaveError(null);
       try {
-        const repos = parseRepos(form.reposText);
-
         await new Promise<void>((resolve) => {
           chrome.storage.sync.set(
             {
-              repos,
+              repos: form.repos,
               intervalMinutes: form.intervalMinutes,
             },
             () => resolve(),
@@ -276,14 +248,28 @@ const OptionsApp: React.FC = () => {
         <section style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視対象リポジトリ</h2>
           <p style={{ margin: '4px 0', color: '#555' }}>
-            1 行に 1 リポジトリずつ、<code>owner/repo</code> 形式で入力してください。
+            監視対象リポジトリと表示色を設定してください。
           </p>
-          <textarea
-            value={form.reposText}
-            onChange={(e) => handleChange({ reposText: e.target.value })}
-            rows={6}
-            style={{ width: '100%', padding: '6px', boxSizing: 'border-box', resize: 'vertical' }}
-          />
+          <button
+            type="button"
+            onClick={() => setIsRepositoryDialogOpen(true)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '4px',
+              border: '1px solid #d0d7de',
+              backgroundColor: '#fff',
+              color: '#24292f',
+              cursor: 'pointer',
+            }}
+          >
+            リポジトリ設定
+          </button>
+          <div
+            aria-label="監視対象リポジトリ一覧"
+            style={{ whiteSpace: 'pre-line', marginTop: '8px', minHeight: '20px' }}
+          >
+            {form.repos.map((repo) => `${repo.owner}/${repo.name}`).join('\n')}
+          </div>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
@@ -339,6 +325,16 @@ const OptionsApp: React.FC = () => {
           {saveError && <span style={{ color: '#cf222e' }}>{saveError}</span>}
         </div>
       </form>
+      {isRepositoryDialogOpen && (
+        <RepositoryDialog
+          repos={form.repos}
+          onOk={(repos) => {
+            handleChange({ repos });
+            setIsRepositoryDialogOpen(false);
+          }}
+          onCancel={() => setIsRepositoryDialogOpen(false)}
+        />
+      )}
     </div>
   );
 };
