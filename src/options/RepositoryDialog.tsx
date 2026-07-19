@@ -8,12 +8,20 @@ type RepositoryDialogProps = {
   onCancel: () => void;
 };
 
+type EditableRepository = {
+  text: string;
+  color: string;
+};
+
 const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCancel }) => {
-  const [editableRepos, setEditableRepos] = useState<WatchTargetRepo[]>(() =>
-    repos.map((repo) => ({ ...repo, color: repo.color ?? DEFAULT_REPO_COLOR })),
+  const [editableRepos, setEditableRepos] = useState<EditableRepository[]>(() =>
+    repos.map((repo) => ({
+      text: `${repo.owner}/${repo.name}`,
+      color: repo.color ?? DEFAULT_REPO_COLOR,
+    })),
   );
 
-  const updateRepo = (index: number, patch: Partial<WatchTargetRepo>) => {
+  const updateRepo = (index: number, patch: Partial<EditableRepository>) => {
     setEditableRepos((current) =>
       current.map((repo, repoIndex) => (repoIndex === index ? { ...repo, ...patch } : repo)),
     );
@@ -59,11 +67,8 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
             <input
               aria-label={`リポジトリ ${index + 1}`}
               type="text"
-              value={repo.owner && repo.name ? `${repo.owner}/${repo.name}` : ''}
-              onChange={(event) => {
-                const [owner = '', ...nameParts] = event.target.value.split('/');
-                updateRepo(index, { owner, name: nameParts.join('/') });
-              }}
+              value={repo.text}
+              onChange={(event) => updateRepo(index, { text: event.target.value })}
               placeholder="owner/repo"
               style={{ flex: 1, minWidth: 0, padding: '6px' }}
             />
@@ -84,7 +89,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
             onClick={() =>
               setEditableRepos((current) => [
                 ...current,
-                { owner: '', name: '', color: DEFAULT_REPO_COLOR },
+                { text: '', color: DEFAULT_REPO_COLOR },
               ])
             }
           >
@@ -94,7 +99,17 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
           <button type="button" onClick={onCancel}>
             キャンセル
           </button>
-          <button type="button" onClick={() => onOk(editableRepos)}>
+          <button
+            type="button"
+            onClick={() => {
+              const validRepos = editableRepos.flatMap((repo) => {
+                const [owner = '', ...nameParts] = repo.text.trim().split('/');
+                const name = nameParts.join('/');
+                return owner && name ? [{ owner, name, color: repo.color }] : [];
+              });
+              onOk(validRepos);
+            }}
+          >
             OK
           </button>
         </div>

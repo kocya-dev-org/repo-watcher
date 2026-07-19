@@ -152,6 +152,7 @@ describe('options App', () => {
     await act(async () => {
       addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     const repoInputs = view.container.querySelectorAll(
       '[role="dialog"] input[type="text"]',
@@ -159,10 +160,13 @@ describe('options App', () => {
     const colorInputs = view.container.querySelectorAll(
       '[role="dialog"] input[type="color"]',
     ) as NodeListOf<HTMLInputElement>;
-    expect(repoInputs).toHaveLength(2);
-    expect(colorInputs).toHaveLength(2);
+    expect(repoInputs).toHaveLength(3);
+    expect(colorInputs).toHaveLength(3);
 
+    await setTextValue(repoInputs[0], 'octo');
+    expect(repoInputs[0].value).toBe('octo');
     await setTextValue(repoInputs[0], 'octo/repo1');
+    await setTextValue(repoInputs[1], 'partial');
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
       setter?.call(colorInputs[0], '#ff0000');
@@ -175,7 +179,7 @@ describe('options App', () => {
     await act(async () => {
       deleteButtons[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    expect(view.container.querySelectorAll('[role="dialog"] input[type="text"]')).toHaveLength(1);
+    expect(view.container.querySelectorAll('[role="dialog"] input[type="text"]')).toHaveLength(2);
 
     const okButton = findButton(view.container, 'OK');
     await act(async () => {
