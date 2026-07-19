@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WatchTargetRepo } from '../src/background/index';
 import {
   buildRepoQuery,
+  getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
   hasMentionNotification,
   hasMentionThreadNotification,
@@ -262,6 +263,53 @@ describe('background security helpers', () => {
         },
       ],
     });
+  });
+
+  it('文字列入力は redact 済みメッセージ付きの Error として返す', () => {
+    const sanitized = sanitizeError('token ghp_exampletoken failed');
+
+    expect(sanitized).toEqual({
+      name: 'Error',
+      message: 'token [REDACTED] failed',
+    });
+  });
+
+  it('null 入力は UnknownError を返す', () => {
+    expect(sanitizeError(null)).toEqual({
+      name: 'UnknownError',
+      message: 'Unknown error',
+    });
+  });
+
+  it('非オブジェクト入力（数値）は UnknownError を返す', () => {
+    expect(sanitizeError(42)).toEqual({
+      name: 'UnknownError',
+      message: 'Unknown error',
+    });
+  });
+
+  it('errors が配列でない場合は graphQLErrors を含めない', () => {
+    const sanitized = sanitizeError({
+      name: 'GraphqlResponseError',
+      message: 'boom',
+      errors: 'not-an-array',
+    });
+
+    expect(sanitized).toEqual({
+      name: 'GraphqlResponseError',
+      message: 'boom',
+    });
+    expect(sanitized).not.toHaveProperty('graphQLErrors');
+  });
+
+  it('name が文字列でない場合は Error にフォールバックし機密メッセージを伏せる', () => {
+    const sanitized = sanitizeError({
+      message: 'authorization: token github_pat_abcdefghijklmnopqrstuvwxyz denied',
+    });
+
+    expect(sanitized.name).toBe('Error');
+    expect(sanitized.message).not.toContain('github_pat_abcdefghijklmnopqrstuvwxyz');
+    expect(sanitized.message).toContain('[REDACTED]');
   });
 });
 
@@ -525,6 +573,116 @@ describe('background notification logic helpers', () => {
       detectedAt: '2026-03-21T10:06:00.000Z',
       isPresentInLatestResult: true,
     });
+  });
+
+  it('buildRepoQuery は repos が空のとき repo: プレフィックスを含まない', () => {
+    const query = buildRepoQuery([], lastCheckedAt, 'pull_request');
+
+    expect(query).not.toContain('repo:');
+    expect(query).toBe(`is:pr is:open updated:>${lastCheckedAt}`);
+  });
+
+  it('getUpdatedPullRequestIds は id を持ち更新された PullRequest だけを返す', () => {
+    const nodes = [
+      {
+        ...baseNode,
+        __typename: 'PullRequest' as const,
+        id: 'PR_UPDATED',
+        createdAt: '2026-03-21T09:00:00.000Z',
+        updatedAt: '2026-03-21T10:05:00.000Z',
+      },
+      {
+        ...baseNode,
+        __typename: 'PullRequest' as const,
+        id: 'PR_NOT_UPDATED',
+        createdAt: '2026-03-21T09:00:00.000Z',
+        updatedAt: '2026-03-21T09:30:00.000Z',
+      },
+      {
+        ...baseNode,
+        __typename: 'Issue' as const,
+        id: 'ISSUE_UPDATED',
+        createdAt: '2026-03-21T09:00:00.000Z',
+        updatedAt: '2026-03-21T10:05:00.000Z',
+      },
+      {
+        ...baseNode,
+        __typename: 'PullRequest' as const,
+        id: undefined,
+        createdAt: '2026-03-21T09:00:00.000Z',
+        updatedAt: '2026-03-21T10:05:00.000Z',
+      },
+    ];
+
+    expect(getUpdatedPullRequestIds(nodes, lastCheckedAt)).toEqual(['PR_UPDATED']);
+  });
+
+  it('toStoredNotification は repository が欠如する場合 null を返す', () => {
+    const nodeWithoutRepository = {
+      ...baseNode,
+      repository: undefined as never,
+    };
+
+    expect(toStoredNotification(nodeWithoutRepository, ['new'], '2026-03-21T10:06:00.000Z')).toBeNull();
+  });
+
+  it('toStoredNotification は id 欠如時にフォールバック ID を生成する', () => {
+    const nodeWithoutId = {
+      ...baseNode,
+      id: undefined,
+    };
+
+    const stored = toStoredNotification(nodeWithoutId, ['new'], '2026-03-21T10:06:00.000Z');
+
+    expect(stored?.id).toBe('octo/repo#42');
+    expect(stored?.sourceNodeId).toBe('octo/repo#42');
+  });
+
+  it('hasMentionNotification は大文字小文字を区別せずメンションを検出する', () => {
+    expect(hasMentionNotification({ ...baseNode, body: 'hello @VIEWER' }, lastCheckedAt, 'viewer')).toBe(true);
+    expect(hasMentionNotification({ ...baseNode, body: 'hello @viewer' }, lastCheckedAt, 'VIEWER')).toBe(true);
+  });
+
+  it('hasMentionNotification は updatedAt 欠如時に createdAt へフォールバックする', () => {
+    expect(
+      hasMentionNotification(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          comments: {
+            nodes: [
+              {
+                body: 'new @viewer',
+                createdAt: '2026-03-21T10:06:00.000Z',
+                updatedAt: null,
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(true);
+
+    expect(
+      hasMentionNotification(
+        {
+          ...baseNode,
+          createdAt: '2026-03-21T09:55:00.000Z',
+          comments: {
+            nodes: [
+              {
+                body: 'old @viewer',
+                createdAt: '2026-03-21T09:56:00.000Z',
+                updatedAt: null,
+              },
+            ],
+          },
+        },
+        lastCheckedAt,
+        'viewer',
+      ),
+    ).toBe(false);
   });
 });
 
