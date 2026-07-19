@@ -23,11 +23,9 @@ import {
   type StoredNotification,
 } from '../shared/notifications';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
+import type { WatchTargetRepo } from '../shared/repositories';
 
-export type WatchTargetRepo = {
-  owner: string;
-  name: string;
-};
+export type { WatchTargetRepo } from '../shared/repositories';
 
 type SyncSettings = {
   repos: WatchTargetRepo[];

@@ -23,6 +23,7 @@ import {
   REFRESH_WATCH_CYCLE_MESSAGE,
   type RefreshWatchCycleResponse,
 } from '../shared/runtimeMessages';
+import type { WatchTargetRepo } from '../shared/repositories';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -30,11 +31,6 @@ type GroupedNotifications = {
 };
 
 type NotificationTab = 'pull_request' | 'issue';
-
-type WatchTargetRepo = {
-  owner: string;
-  name: string;
-};
 
 type PopupSettings = {
   repos: WatchTargetRepo[];

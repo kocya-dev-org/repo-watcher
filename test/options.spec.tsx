@@ -92,12 +92,14 @@ describe('options App', () => {
     const passwordInput = view.container.querySelector(
       'input[type="password"]',
     ) as HTMLInputElement;
-    const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
+    const repoList = view.container.querySelector(
+      '[aria-label="監視対象リポジトリ一覧"]',
+    ) as HTMLElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
 
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
     expect(passwordInput.placeholder).toContain('変更する場合のみ新しい PAT を入力');
-    expect(textarea.value).toBe('octo/repo1\nhubot/repo2');
+    expect(repoList.textContent).toBe('octo/repo1\nhubot/repo2');
     expect(numberInput.value).toBe('15');
     expect(view.container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
@@ -132,21 +134,79 @@ describe('options App', () => {
     await view.unmount();
   });
 
-  it('フォーム送信時に repos / interval / PAT を保存する', async () => {
+  it('リポジトリ設定ダイアログの変更を保存でき、キャンセルは反映しない', async () => {
     patStorageMocks.hasReadablePat.mockResolvedValue(false);
 
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const passwordInput = view.container.querySelector(
-      'input[type="password"]',
+    const settingsButton = findButton(view.container, 'リポジトリ設定');
+    expect(settingsButton).toBeTruthy();
+
+    await act(async () => {
+      settingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(view.container.querySelector('[role="dialog"]')).toBeTruthy();
+
+    const addButton = findButton(view.container, '追加');
+    await act(async () => {
+      addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const repoInputs = view.container.querySelectorAll(
+      '[role="dialog"] input[type="text"]',
+    ) as NodeListOf<HTMLInputElement>;
+    const colorInputs = view.container.querySelectorAll(
+      '[role="dialog"] input[type="color"]',
+    ) as NodeListOf<HTMLInputElement>;
+    expect(repoInputs).toHaveLength(3);
+    expect(colorInputs).toHaveLength(3);
+
+    await setTextValue(repoInputs[0], 'octo');
+    expect(repoInputs[0].value).toBe('octo');
+    await setTextValue(repoInputs[0], 'octo/repo1');
+    await setTextValue(repoInputs[1], 'partial');
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(colorInputs[0], '#ff0000');
+      colorInputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+      colorInputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const deleteButtons = Array.from(view.container.querySelectorAll('[role="dialog"] button')).filter(
+      (button) => button.textContent?.includes('削除'),
+    );
+    await act(async () => {
+      deleteButtons[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(view.container.querySelectorAll('[role="dialog"] input[type="text"]')).toHaveLength(2);
+
+    const okButton = findButton(view.container, 'OK');
+    await act(async () => {
+      okButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(view.container.querySelector('[role="dialog"]')).toBeNull();
+    expect(view.container.textContent).toContain('octo/repo1');
+
+    await act(async () => {
+      settingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const cancelButton = findButton(view.container, 'キャンセル');
+    const dialogRepoInput = view.container.querySelector(
+      '[role="dialog"] input[type="text"]',
     ) as HTMLInputElement;
-    const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement;
+    await setTextValue(dialogRepoInput, 'changed/repo');
+    await act(async () => {
+      cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(view.container.textContent).toContain('octo/repo1');
+    expect(view.container.textContent).not.toContain('changed/repo');
+
+    const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
     const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(passwordInput, 'github_pat_new_value');
-    await setTextValue(textarea, 'octo/repo1\ninvalid\nhubot/repo2');
     await setTextValue(numberInput, '30');
 
     patStorageMocks.hasReadablePat.mockResolvedValue(true);
@@ -159,8 +219,7 @@ describe('options App', () => {
     expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
       {
         repos: [
-          { owner: 'octo', name: 'repo1' },
-          { owner: 'hubot', name: 'repo2' },
+          { owner: 'octo', name: 'repo1', color: '#ff0000' },
         ],
         intervalMinutes: 30,
       },
