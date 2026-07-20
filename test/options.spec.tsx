@@ -76,6 +76,7 @@ describe('options App', () => {
         { owner: 'hubot', name: 'repo2' },
       ],
       intervalMinutes: 15,
+      notifyDraftPr: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-17T01:02:03Z',
@@ -92,7 +93,10 @@ describe('options App', () => {
     expect(passwordInput.placeholder).toContain('変更する場合のみ新しい PAT を入力');
     expect(repoList.textContent).toBe('octo/repo1\nhubot/repo2');
     expect(numberInput.value).toBe('15');
-    expect(view.container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
+    const draftCheckbox = view.container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(draftCheckbox.checked).toBe(false);
+    expect(view.container.textContent).toContain('通知設定');
+    expect(view.container.textContent).toContain('ドラフトPRも通知する');
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
 
     await view.unmount();
@@ -206,6 +210,7 @@ describe('options App', () => {
       {
         repos: [{ owner: 'octo', name: 'repo1', color: '#ff0000' }],
         intervalMinutes: 30,
+        notifyDraftPr: true,
       },
       expect.any(Function),
     );

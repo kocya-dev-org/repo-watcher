@@ -20,6 +20,7 @@ import {
 } from '../src/background/security';
 import {
   calculateUnreadCount,
+  filterNotificationsByDraftSetting,
   markNotificationAsRead,
   reconcileNotificationState,
   type StoredNotification,
@@ -577,6 +578,21 @@ describe('background notification logic helpers', () => {
     });
   });
 
+  it('toStoredNotification は Pull Request の isDraft を反映する', () => {
+    const stored = toStoredNotification(
+      {
+        ...baseNode,
+        __typename: 'PullRequest',
+        id: 'PR_1',
+        isDraft: true,
+      },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+    );
+
+    expect(stored?.isDraft).toBe(true);
+  });
+
   it('buildRepoQuery は repos が空のとき repo: プレフィックスを含まない', () => {
     const query = buildRepoQuery([], lastCheckedAt, 'pull_request');
 
@@ -726,6 +742,30 @@ describe('shared notification state helpers', () => {
   it('未読件数は notifications と readNotificationIds から再計算する', () => {
     expect(calculateUnreadCount(existingNotifications, [])).toBe(2);
     expect(calculateUnreadCount(existingNotifications, ['ISSUE_2'])).toBe(1);
+  });
+
+  it('filterNotificationsByDraftSetting は設定に応じてドラフト PR だけを除外する', () => {
+    const notifications: StoredNotification[] = [
+      existingNotifications[0],
+      {
+        ...existingNotifications[1],
+        id: 'PR_DRAFT',
+        isPullRequest: true,
+        isDraft: true,
+      },
+      {
+        ...existingNotifications[1],
+        id: 'PR_READY',
+        isPullRequest: true,
+        isDraft: false,
+      },
+    ];
+
+    expect(filterNotificationsByDraftSetting(notifications, true)).toEqual(notifications);
+    expect(filterNotificationsByDraftSetting(notifications, false).map((notification) => notification.id)).toEqual([
+      'ISSUE_1',
+      'PR_READY',
+    ]);
   });
 
   it('reconcileNotificationState は同じ item の kind を統合しつつ既読を除去する', () => {

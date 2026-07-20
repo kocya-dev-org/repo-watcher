@@ -13,6 +13,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
+  filterNotificationsByDraftSetting,
   formatBadgeText,
   pruneReadNotifications,
   toggleNotificationRead,
@@ -33,6 +34,7 @@ type NotificationTab = 'pull_request' | 'issue';
 type PopupSettings = {
   repos: WatchTargetRepo[];
   isWatchPaused: boolean;
+  notifyDraftPr: boolean;
 };
 
 type PopupLocalState = {
@@ -203,6 +205,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
       {
         repos: [],
         isWatchPaused: false,
+        notifyDraftPr: true,
       },
       (items) => {
         const repos = Array.isArray(items.repos) ? items.repos.filter(isValidRepo) : [];
@@ -210,6 +213,7 @@ function loadPopupSettings(): Promise<PopupSettings> {
         resolve({
           repos,
           isWatchPaused: Boolean(items.isWatchPaused),
+          notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
         });
       },
     );
@@ -260,15 +264,21 @@ const App: React.FC = () => {
   const reloadPopupState = useCallback(async () => {
     const [localState, popupSettings] = await Promise.all([loadPopupLocalState(), loadPopupSettings()]);
     const finalizedLocalState = pruneReadNotifications(localState.notifications, localState.readNotificationIds);
+    const badgeNotifications = filterNotificationsByDraftSetting(
+      finalizedLocalState.notifications,
+      popupSettings.notifyDraftPr,
+    );
+    const badgeCount = calculateUnreadCount(badgeNotifications, finalizedLocalState.readNotificationIds);
 
     if (
       finalizedLocalState.readNotificationIds.length !== localState.readNotificationIds.length ||
       finalizedLocalState.notifications.length !== localState.notifications.length
     ) {
-      chrome.storage.local.set(finalizedLocalState);
-      chrome.action.setBadgeText({
-        text: formatBadgeText(finalizedLocalState.badgeCount),
-      });
+      chrome.storage.local.set({ ...finalizedLocalState, badgeCount });
+      chrome.action.setBadgeText({ text: formatBadgeText(badgeCount) });
+    } else if (finalizedLocalState.badgeCount !== badgeCount) {
+      chrome.storage.local.set({ badgeCount });
+      chrome.action.setBadgeText({ text: formatBadgeText(badgeCount) });
     }
 
     const availableRepositoryValues = new Set(listRepositoryOptions(popupSettings.repos).map((option) => option.value));
@@ -284,6 +294,19 @@ const App: React.FC = () => {
     }
     setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    const handleStorageChanged = (_changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+      if (areaName === 'sync') {
+        void reloadPopupState();
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChanged);
+    return () => {
+      chrome.storage.onChanged.removeListener?.(handleStorageChanged);
+    };
+  }, [reloadPopupState]);
 
   useEffect(() => {
     let isActive = true;
@@ -303,9 +326,13 @@ const App: React.FC = () => {
     () => () => {
       const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
 
-      chrome.storage.local.set(finalized);
-      chrome.action.setBadgeText({
-        text: formatBadgeText(finalized.badgeCount),
+      void loadPopupSettings().then((popupSettings) => {
+        const badgeNotifications = filterNotificationsByDraftSetting(finalized.notifications, popupSettings.notifyDraftPr);
+        const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
+        chrome.storage.local.set({ ...finalized, badgeCount });
+        chrome.action.setBadgeText({
+          text: formatBadgeText(badgeCount),
+        });
       });
     },
     [],
@@ -316,7 +343,9 @@ const App: React.FC = () => {
    * @param nextReadIds 更新後の既読通知 ID 一覧
    */
   const applyReadIds = (nextReadIds: string[]) => {
-    const newBadgeCount = calculateUnreadCount(notificationsRef.current, nextReadIds);
+    const notifyDraftPr = settings?.notifyDraftPr ?? true;
+    const badgeNotifications = filterNotificationsByDraftSetting(notificationsRef.current, notifyDraftPr);
+    const newBadgeCount = calculateUnreadCount(badgeNotifications, nextReadIds);
 
     readIdsRef.current = new Set(nextReadIds);
     setReadIds(new Set(readIdsRef.current));
@@ -343,7 +372,8 @@ const App: React.FC = () => {
 
   const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
   const repositoryColorMap = settings ? buildRepositoryColorMap(settings.repos) : new Map<string, string>();
-  const filteredNotifications = filterNotificationsByRepositories(notifications, selectedRepositories);
+  const draftFilteredNotifications = filterNotificationsByDraftSetting(notifications, settings?.notifyDraftPr ?? true);
+  const filteredNotifications = filterNotificationsByRepositories(draftFilteredNotifications, selectedRepositories);
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);

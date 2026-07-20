@@ -9,6 +9,7 @@ type SettingsForm = {
   pat: string;
   repos: WatchTargetRepo[];
   intervalMinutes: number;
+  notifyDraftPr: boolean;
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
@@ -69,6 +70,7 @@ const OptionsApp: React.FC = () => {
     pat: '',
     repos: [],
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
+    notifyDraftPr: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -110,6 +112,7 @@ const OptionsApp: React.FC = () => {
       {
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
+        notifyDraftPr: true,
       },
       (items: any) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
@@ -117,6 +120,7 @@ const OptionsApp: React.FC = () => {
           pat: '',
           repos,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
+          notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
         });
       },
     );
@@ -153,6 +157,7 @@ const OptionsApp: React.FC = () => {
             {
               repos: form.repos,
               intervalMinutes: form.intervalMinutes,
+              notifyDraftPr: form.notifyDraftPr,
             },
             () => resolve(),
           );
@@ -259,6 +264,19 @@ const OptionsApp: React.FC = () => {
               保存済み PAT を削除
             </button>
           </div>
+        </section>
+
+        <section style={{ marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>通知設定</h2>
+          <label>
+            <input
+              type="checkbox"
+              checked={form.notifyDraftPr}
+              onChange={(e) => handleChange({ notifyDraftPr: e.target.checked })}
+            />{' '}
+            ドラフトPRも通知する
+          </label>
+          <p style={descriptionStyle}>OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。</p>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
