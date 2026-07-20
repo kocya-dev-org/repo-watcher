@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['./test/helpers/i18nSetup.ts'],
     coverage: {
       all: true,
       include: ['src/**/*.{ts,tsx}'],

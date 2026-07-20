@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import IconButton from '@mui/material/IconButton';
@@ -21,8 +22,9 @@ type NotificationItemProps = {
  * @param onToggleRead 既読/未読切り替えハンドラ
  */
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRead, repositoryColor, onToggleRead }) => {
+  const { t } = useTranslation();
   const isMissingFromLatestResult = notification.isPresentInLatestResult === false;
-  const kindLabels = getNotificationKinds(notification).map((kind) => formatNotificationKindLabel(kind));
+  const kindLabels = getNotificationKinds(notification).map((kind) => t(formatNotificationKindLabel(kind)));
 
   return (
     <li
@@ -46,8 +48,8 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
           color: isRead ? COLORS.fgMuted : COLORS.successEmphasis,
           flexShrink: 0,
         }}
-        title={isRead ? '既読' : '未読'}
-        aria-label={isRead ? '既読' : '未読'}
+        title={isRead ? t('readState.read') : t('readState.unread')}
+        aria-label={isRead ? t('readState.read') : t('readState.unread')}
       >
         {isRead ? <CheckBoxIcon fontSize="small" /> : <CheckBoxOutlineBlankIcon fontSize="small" />}
       </IconButton>

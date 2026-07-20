@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { COLORS } from '../shared/colors';
 import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
@@ -22,6 +23,7 @@ const generateRandomColor = (): string =>
     .padStart(6, '0')}`;
 
 const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCancel }) => {
+  const { t } = useTranslation();
   const [editableRepos, setEditableRepos] = useState<EditableRepository[]>(() =>
     repos.map((repo) => ({
       text: `${repo.owner}/${repo.name}`,
@@ -67,12 +69,12 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
         }}
       >
         <h2 id="repository-dialog-title" style={{ fontSize: '16px', margin: '0 0 12px' }}>
-          リポジトリ設定
+          {t('repoDialog.title')}
         </h2>
         {editableRepos.map((repo, index) => (
           <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <input
-              aria-label={`リポジトリ ${index + 1}`}
+              aria-label={t('repoDialog.repoAriaLabel', { index: index + 1 })}
               type="text"
               value={repo.text}
               onChange={(event) => updateRepo(index, { text: event.target.value })}
@@ -87,7 +89,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               }}
             />
             <input
-              aria-label={`表示色 ${index + 1}`}
+              aria-label={t('repoDialog.colorAriaLabel', { index: index + 1 })}
               type="color"
               value={repo.color ?? DEFAULT_REPO_COLOR}
               onChange={(event) => updateRepo(index, { color: event.target.value })}
@@ -97,7 +99,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               onClick={() => deleteRepo(index)}
               style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
             >
-              削除
+              {t('repoDialog.delete')}
             </button>
           </div>
         ))}
@@ -107,11 +109,11 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
             onClick={() => setEditableRepos((current) => [...current, { text: '', color: generateRandomColor() }])}
             style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
           >
-            追加
+            {t('repoDialog.add')}
           </button>
           <span style={{ flex: 1 }} />
           <button type="button" onClick={onCancel} style={{ ...secondaryButtonStyle, cursor: 'pointer' }}>
-            キャンセル
+            {t('repoDialog.cancel')}
           </button>
           <button
             type="button"
@@ -125,7 +127,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
             }}
             style={primaryButtonStyle}
           >
-            OK
+            {t('repoDialog.ok')}
           </button>
         </div>
       </div>

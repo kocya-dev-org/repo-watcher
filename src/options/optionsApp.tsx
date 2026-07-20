@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { COLORS } from '../shared/colors';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
@@ -21,16 +22,16 @@ const descriptionStyle: React.CSSProperties = { margin: '4px 0', color: COLORS.f
 /**
  * ISO8601 文字列を options 画面表示用の日時文字列へ整形する。
  * @param value local storage に保存された `lastCheckedAt`
- * @returns `YYYY/MM/DD HH:mm:ss` 形式、または未設定表示
+ * @returns `YYYY/MM/DD HH:mm:ss` 形式、または null
  */
-function formatLastCheckedAt(value: string | null): string {
+function formatLastCheckedAt(value: string | null): string | null {
   if (!value) {
-    return '未設定';
+    return null;
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '未設定';
+    return null;
   }
 
   const pad = (part: number) => String(part).padStart(2, '0');
@@ -48,6 +49,7 @@ function formatLastCheckedAt(value: string | null): string {
  * - 監視対象リポジトリ設定を sync storage から読み込む
  */
 const OptionsApp: React.FC = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<SettingsForm>({
     pat: '',
     repos: [],
@@ -96,7 +98,7 @@ const OptionsApp: React.FC = () => {
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         notifyDraftPr: true,
       },
-      (items: any) => {
+      (items: { repos?: unknown; intervalMinutes?: unknown; notifyDraftPr?: unknown }) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
         setForm({
           pat: '',
@@ -151,11 +153,11 @@ const OptionsApp: React.FC = () => {
 
         setHasSavedPat(await loadPatStatus());
         setForm((prev) => ({ ...prev, pat: '' }));
-        setSaveMessage('保存しました');
+        setSaveMessage(t('save.success'));
         setTimeout(() => setSaveMessage(null), 2000);
       } catch (error) {
         console.error('保存に失敗しました:', error);
-        setSaveError('保存に失敗しました');
+        setSaveError(t('save.error'));
         setTimeout(() => setSaveError(null), 4000);
       } finally {
         setIsSaving(false);
@@ -172,11 +174,11 @@ const OptionsApp: React.FC = () => {
         await clearEncryptedPat();
         setHasSavedPat(await loadPatStatus());
         setForm((prev) => ({ ...prev, pat: '' }));
-        setSaveMessage('PAT を削除しました');
+        setSaveMessage(t('pat.deleteSuccess'));
         setTimeout(() => setSaveMessage(null), 2000);
       } catch (error) {
         console.error('PAT の削除に失敗しました:', error);
-        setSaveError('PAT の削除に失敗しました');
+        setSaveError(t('pat.deleteError'));
         setTimeout(() => setSaveError(null), 4000);
       } finally {
         setIsSaving(false);
@@ -211,30 +213,24 @@ const OptionsApp: React.FC = () => {
         fontSize: '13px',
       }}
     >
-      <h1 style={{ fontSize: '18px', marginBottom: '12px' }}>GitHub Notify 設定</h1>
+      <h1 style={{ fontSize: '18px', marginBottom: '12px' }}>{t('appTitle')}</h1>
       <form onSubmit={handleSubmit}>
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>API キー (PAT)</h2>
-          <p style={descriptionStyle}>
-            GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。
-          </p>
-          <p style={descriptionStyle}>
-            対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull
-            requests: Read-only` のみにしてください。
-          </p>
-          <p style={descriptionStyle}>
-            `Contents` の write、`Administration`、`Actions`、`Webhooks` など、この拡張で使わない
-            権限は付与しないでください。
-          </p>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('pat.heading')}</h2>
+          <p style={descriptionStyle}>{t('pat.description1')}</p>
+          <p style={descriptionStyle}>{t('pat.description2')}</p>
+          <p style={descriptionStyle}>{t('pat.description3')}</p>
           <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
-            現在の状態: {hasSavedPat ? 'PAT 設定済み' : 'PAT 未設定'}
+            {t('pat.status', {
+              status: hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'),
+            })}
           </p>
           <input
             type="password"
             value={form.pat}
             onChange={(e) => handleChange({ pat: e.target.value })}
             style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
-            placeholder={hasSavedPat ? '変更する場合のみ新しい PAT を入力' : 'PAT を入力'}
+            placeholder={hasSavedPat ? t('pat.placeholderChange') : t('pat.placeholderEnter')}
           />
           <div style={{ marginTop: '8px' }}>
             <button
@@ -243,36 +239,36 @@ const OptionsApp: React.FC = () => {
               disabled={isSaving || !hasSavedPat}
               style={{ ...secondaryButtonStyle, cursor: hasSavedPat ? 'pointer' : 'not-allowed' }}
             >
-              保存済み PAT を削除
+              {t('pat.clearButton')}
             </button>
           </div>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>通知設定</h2>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('notifySettings.heading')}</h2>
           <label>
             <input
               type="checkbox"
               checked={form.notifyDraftPr}
               onChange={(e) => handleChange({ notifyDraftPr: e.target.checked })}
             />{' '}
-            ドラフトPRも通知する
+            {t('notifySettings.draftLabel')}
           </label>
-          <p style={descriptionStyle}>OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。</p>
+          <p style={descriptionStyle}>{t('notifySettings.draftDescription')}</p>
         </section>
 
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視対象リポジトリ</h2>
-          <p style={descriptionStyle}>監視対象リポジトリと表示色を設定してください。</p>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('repos.heading')}</h2>
+          <p style={descriptionStyle}>{t('repos.description')}</p>
           <button
             type="button"
             onClick={() => setIsRepositoryDialogOpen(true)}
             style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
           >
-            リポジトリ設定
+            {t('repos.settingsButton')}
           </button>
           <div
-            aria-label="監視対象リポジトリ一覧"
+            aria-label={t('repos.listAriaLabel')}
             style={{ whiteSpace: 'pre-line', marginTop: '8px', minHeight: '20px' }}
           >
             {form.repos.map((repo) => `${repo.owner}/${repo.name}`).join('\n')}
@@ -280,8 +276,8 @@ const OptionsApp: React.FC = () => {
         </section>
 
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>監視間隔</h2>
-          <p style={descriptionStyle}>通知の検出間隔を分単位で指定します。</p>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('interval.heading')}</h2>
+          <p style={descriptionStyle}>{t('interval.description')}</p>
           <input
             type="number"
             min={1}
@@ -289,13 +285,13 @@ const OptionsApp: React.FC = () => {
             onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
             style={{ width: '80px', padding: '4px' }}
           />{' '}
-          分
+          {t('interval.unit')}
         </section>
 
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>最終チェック日</h2>
+          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('lastChecked.heading')}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt)}</span>
+            <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt) ?? t('lastChecked.unset')}</span>
             <button
               type="button"
               onClick={handleResetLastCheckedAt}
@@ -305,13 +301,13 @@ const OptionsApp: React.FC = () => {
                 cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
               }}
             >
-              {isResettingLastCheckedAt ? 'リセット中...' : 'リセット'}
+              {isResettingLastCheckedAt ? t('lastChecked.resetting') : t('lastChecked.reset')}
             </button>
           </div>
         </section>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button type="submit" disabled={isSaving} style={primaryButtonStyle}>
-            {isSaving ? '保存中...' : '保存'}
+            {isSaving ? t('save.saving') : t('save.submit')}
           </button>
           {saveMessage && <span style={{ color: COLORS.success }}>{saveMessage}</span>}
           {saveError && <span style={{ color: COLORS.danger }}>{saveError}</span>}
