@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 
+import { COLORS } from '../shared/colors';
 import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
+import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
 type RepositoryDialogProps = {
   repos: WatchTargetRepo[];
@@ -51,9 +53,11 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
           maxHeight: '80vh',
           overflowY: 'auto',
           padding: '16px',
-          backgroundColor: '#fff',
+          backgroundColor: COLORS.bgDefault,
           borderRadius: '6px',
           boxSizing: 'border-box',
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: '13px',
         }}
       >
         <h2 id="repository-dialog-title" style={{ fontSize: '16px', margin: '0 0 12px' }}>
@@ -67,7 +71,14 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               value={repo.text}
               onChange={(event) => updateRepo(index, { text: event.target.value })}
               placeholder="owner/repo"
-              style={{ flex: 1, minWidth: 0, padding: '6px' }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '6px',
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+              }}
             />
             <input
               aria-label={`表示色 ${index + 1}`}
@@ -75,7 +86,11 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               value={repo.color ?? DEFAULT_REPO_COLOR}
               onChange={(event) => updateRepo(index, { color: event.target.value })}
             />
-            <button type="button" onClick={() => deleteRepo(index)}>
+            <button
+              type="button"
+              onClick={() => deleteRepo(index)}
+              style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
+            >
               削除
             </button>
           </div>
@@ -84,11 +99,12 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
           <button
             type="button"
             onClick={() => setEditableRepos((current) => [...current, { text: '', color: DEFAULT_REPO_COLOR }])}
+            style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
           >
             追加
           </button>
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={onCancel}>
+          <button type="button" onClick={onCancel} style={{ ...secondaryButtonStyle, cursor: 'pointer' }}>
             キャンセル
           </button>
           <button
@@ -101,6 +117,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               });
               onOk(validRepos);
             }}
+            style={primaryButtonStyle}
           >
             OK
           </button>
