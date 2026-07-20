@@ -4,6 +4,7 @@ import { COLORS } from '../shared/colors';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
 import RepositoryDialog from './RepositoryDialog';
+import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
 type SettingsForm = {
   pat: string;
@@ -13,25 +14,6 @@ type SettingsForm = {
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
-
-/** 白背景の副次ボタン共通スタイル (cursor は呼び出し側で上書きする) */
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: '6px 12px',
-  borderRadius: '4px',
-  border: `1px solid ${COLORS.border}`,
-  backgroundColor: COLORS.bgDefault,
-  color: COLORS.fgDefault,
-};
-
-/** アクセント色の主要ボタン共通スタイル */
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '6px 16px',
-  borderRadius: '4px',
-  border: 'none',
-  backgroundColor: COLORS.accent,
-  color: COLORS.bgDefault,
-  cursor: 'pointer',
-};
 
 /** 説明文の共通スタイル */
 const descriptionStyle: React.CSSProperties = { margin: '4px 0', color: COLORS.fgNeutral };
