@@ -27,6 +27,7 @@ type GithubRepositoryRef = {
 export type IssueOrPullRequestNode = {
   __typename: 'Issue' | 'PullRequest';
   id?: string | null;
+  isDraft?: boolean | null;
   number: number;
   title: string;
   url: string;
@@ -242,6 +243,7 @@ export function toStoredNotification(
     kinds: kinds,
     sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',
+    ...(node.__typename === 'PullRequest' ? { isDraft: Boolean((node as IssueOrPullRequestNode).isDraft) } : {}),
     owner,
     repo,
     number: typeof node.number === 'number' ? node.number : 0,

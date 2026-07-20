@@ -7,6 +7,7 @@ export type StoredNotification = {
   kinds?: NotificationKind[];
   sourceNodeId: string;
   isPullRequest: boolean;
+  isDraft?: boolean;
   owner: string;
   repo: string;
   number: number;
@@ -83,7 +84,25 @@ export function mergeStoredNotifications(
         ? incoming.detectedAt
         : current.detectedAt,
     isPresentInLatestResult: incoming.isPresentInLatestResult ?? current.isPresentInLatestResult,
+    isDraft: incoming.isDraft ?? current.isDraft,
   };
+}
+
+/**
+ * ドラフト PR 通知の表示設定に応じて通知一覧を絞り込む。
+ * @param notifications 通知一覧
+ * @param notifyDraftPr ドラフト PR を通知対象にする設定
+ * @returns 設定に応じた通知一覧
+ */
+export function filterNotificationsByDraftSetting(
+  notifications: StoredNotification[],
+  notifyDraftPr: boolean,
+): StoredNotification[] {
+  if (notifyDraftPr) {
+    return notifications;
+  }
+
+  return notifications.filter((notification) => !(notification.isPullRequest && notification.isDraft));
 }
 
 /**

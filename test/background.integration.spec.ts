@@ -89,6 +89,7 @@ describe('background integration', () => {
                   {
                     __typename: 'PullRequest',
                     id: 'PR_2',
+                    isDraft: true,
                     number: 2,
                     title: 'PR thread',
                     url: 'https://example.com/pulls/2',
@@ -173,6 +174,9 @@ describe('background integration', () => {
             ],
           };
         }
+        if (query.includes('WatchReviewThreads')) {
+          return { nodes: [] };
+        }
         if (query.includes('WatchNotificationStatuses')) {
           return {
             nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
@@ -201,6 +205,9 @@ describe('background integration', () => {
     );
     expect(state.lastCheckedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     expect(state.notifications as Array<unknown>).toHaveLength(2);
+    expect(state.notifications).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'PR_2', isDraft: true })]),
+    );
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(2);
@@ -224,6 +231,76 @@ describe('background integration', () => {
     expect(
       backgroundMocks.client.mock.calls.some(([query]) => (query as string).includes('WatchNotificationStatuses')),
     ).toBe(true);
+  });
+
+  it('notifyDraftPr が OFF のときドラフト PR を保存しつつ badge から除外する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      notifyDraftPr: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: variables?.repoQuery?.includes('is:pr')
+                ? [
+                    {
+                      __typename: 'PullRequest',
+                      id: 'PR_DRAFT',
+                      isDraft: true,
+                      number: 3,
+                      title: 'Draft PR',
+                      url: 'https://example.com/pulls/3',
+                      createdAt: '2026-05-06T08:30:00.000Z',
+                      updatedAt: '2026-05-06T08:30:00.000Z',
+                      repository: { name: 'repo', owner: { login: 'octo' } },
+                      assignees: { nodes: [] },
+                      body: '',
+                      comments: { nodes: [] },
+                    },
+                  ]
+                : [],
+            },
+          };
+        }
+        if (query.includes('WatchReviewThreads')) {
+          return { nodes: [] };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'PullRequest',
+              id: nodeId,
+              closed: false,
+            })),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await waitForCondition(() => chromeMock.getLocalState().notifications.length === 1);
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 0,
+      notifications: [expect.objectContaining({ id: 'PR_DRAFT', isDraft: true })],
+    });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '' });
   });
 
   it('manual refresh message で runWatchCycle を 1 回実行できる', async () => {

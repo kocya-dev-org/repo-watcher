@@ -19,6 +19,7 @@ import {
   calculateUnreadCount,
   formatBadgeText,
   formatNotificationKindLabel,
+  filterNotificationsByDraftSetting,
   getNotificationKinds,
   reconcileNotificationState,
   type NotificationKind,
@@ -38,6 +39,7 @@ type SyncSettings = {
   repos: WatchTargetRepo[];
   intervalMinutes: number;
   isWatchPaused: boolean;
+  notifyDraftPr: boolean;
 };
 
 type Settings = SyncSettings & {
@@ -177,12 +179,14 @@ async function loadSyncSettings(): Promise<SyncSettings> {
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         isWatchPaused: false,
+        notifyDraftPr: true,
       },
-      (items: { repos?: unknown; intervalMinutes?: unknown; isWatchPaused?: unknown }) => {
+      (items: { repos?: unknown; intervalMinutes?: unknown; isWatchPaused?: unknown; notifyDraftPr?: unknown }) => {
         const settings: SyncSettings = {
           repos: items.repos as WatchTargetRepo[],
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           isWatchPaused: Boolean(items.isWatchPaused),
+          notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
         };
 
         resolve(settings);
@@ -527,10 +531,12 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   );
   const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
   const notificationsWithLatestStatus = applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
+  const badgeNotifications = filterNotificationsByDraftSetting(notificationsWithLatestStatus, settings.notifyDraftPr);
+  const badgeCount = calculateUnreadCount(badgeNotifications, []);
 
   debugLog('watch cycle notification summary', {
     addedNotifications: reconciled.addedNotifications.length,
-    badgeCount: reconciled.badgeCount,
+    badgeCount,
     activeNotifications: latestOpenNodeIds.size,
   });
 
@@ -538,11 +544,11 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   await saveLocalRuntimeStorage({
     notifications: notificationsWithLatestStatus,
     readNotificationIds: reconciled.readNotificationIds,
-    badgeCount: reconciled.badgeCount,
+    badgeCount,
   });
 
   // バッジ更新
-  setBadge(reconciled.badgeCount);
+  setBadge(badgeCount);
 
   // OS通知発行
   if (reconciled.addedNotifications.length > 0) {
@@ -594,7 +600,9 @@ function setupAlarms() {
  */
 async function restoreBadge() {
   const localState = await loadLocalRuntimeStorage();
-  const badgeCount = calculateUnreadCount(localState.notifications, localState.readNotificationIds);
+  const settings = await loadSyncSettings();
+  const notifications = filterNotificationsByDraftSetting(localState.notifications, settings.notifyDraftPr);
+  const badgeCount = calculateUnreadCount(notifications, localState.readNotificationIds);
   if (badgeCount !== localState.badgeCount) {
     await saveLocalRuntimeStorage({ badgeCount });
   }
@@ -621,6 +629,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   if (changes.intervalMinutes || changes.repos || changes.isWatchPaused) {
     setupAlarms();
+  }
+  if (changes.notifyDraftPr) {
+    void restoreBadge();
   }
 });
 

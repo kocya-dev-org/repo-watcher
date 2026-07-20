@@ -117,6 +117,47 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('ドラフト PR 通知設定が OFF のとき一覧と badge からドラフト PR を除外する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_DRAFT',
+          isPullRequest: true,
+          isDraft: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'ドラフト PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_READY',
+          isPullRequest: true,
+          isDraft: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: '通常 PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+    chromeMock.setSyncState({ notifyDraftPr: false });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    expect(view.container.textContent).not.toContain('ドラフト PR');
+    expect(view.container.textContent).toContain('通常 PR');
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+
+    await view.unmount();
+  });
+
   it('既読/未読アイコンのクリックで既読状態と badge だけを切り替える', async () => {
     chromeMock.setLocalState({
       notifications: [

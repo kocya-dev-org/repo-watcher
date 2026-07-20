@@ -40,6 +40,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
         }
         ... on PullRequest {
           id
+          isDraft
           number
           title
           url
