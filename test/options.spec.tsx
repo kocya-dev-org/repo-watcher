@@ -154,6 +154,9 @@ describe('options App', () => {
     ) as NodeListOf<HTMLInputElement>;
     expect(repoInputs).toHaveLength(3);
     expect(colorInputs).toHaveLength(3);
+    colorInputs.forEach((input) => {
+      expect(input.value).toMatch(/^#[0-9a-f]{6}$/);
+    });
 
     await setTextValue(repoInputs[0], 'octo');
     expect(repoInputs[0].value).toBe('octo');
