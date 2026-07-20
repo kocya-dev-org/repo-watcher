@@ -15,6 +15,12 @@ type EditableRepository = {
   color: string;
 };
 
+/** `#rrggbb` 形式のランダムな HEX カラー文字列を返す。 */
+const generateRandomColor = (): string =>
+  `#${Math.floor(Math.random() * 0x1000000)
+    .toString(16)
+    .padStart(6, '0')}`;
+
 const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCancel }) => {
   const [editableRepos, setEditableRepos] = useState<EditableRepository[]>(() =>
     repos.map((repo) => ({
@@ -98,7 +104,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <button
             type="button"
-            onClick={() => setEditableRepos((current) => [...current, { text: '', color: DEFAULT_REPO_COLOR }])}
+            onClick={() => setEditableRepos((current) => [...current, { text: '', color: generateRandomColor() }])}
             style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
           >
             追加
