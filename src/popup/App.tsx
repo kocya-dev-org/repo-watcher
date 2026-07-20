@@ -258,11 +258,13 @@ const App: React.FC = () => {
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>([]);
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
+  const notifyDraftPrRef = useRef(true);
 
   const manifestVersion = chrome.runtime.getManifest().version;
 
   const reloadPopupState = useCallback(async () => {
     const [localState, popupSettings] = await Promise.all([loadPopupLocalState(), loadPopupSettings()]);
+    notifyDraftPrRef.current = popupSettings.notifyDraftPr;
     const finalizedLocalState = pruneReadNotifications(localState.notifications, localState.readNotificationIds);
     const badgeNotifications = filterNotificationsByDraftSetting(
       finalizedLocalState.notifications,
@@ -325,15 +327,14 @@ const App: React.FC = () => {
   useEffect(
     () => () => {
       const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
+      const badgeNotifications = filterNotificationsByDraftSetting(
+        finalized.notifications,
+        notifyDraftPrRef.current,
+      );
+      const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
 
-      void loadPopupSettings().then((popupSettings) => {
-        const badgeNotifications = filterNotificationsByDraftSetting(finalized.notifications, popupSettings.notifyDraftPr);
-        const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
-        chrome.storage.local.set({ ...finalized, badgeCount });
-        chrome.action.setBadgeText({
-          text: formatBadgeText(badgeCount),
-        });
-      });
+      chrome.storage.local.set({ ...finalized, badgeCount });
+      chrome.action.setBadgeText({ text: formatBadgeText(badgeCount) });
     },
     [],
   );
@@ -343,8 +344,7 @@ const App: React.FC = () => {
    * @param nextReadIds 更新後の既読通知 ID 一覧
    */
   const applyReadIds = (nextReadIds: string[]) => {
-    const notifyDraftPr = settings?.notifyDraftPr ?? true;
-    const badgeNotifications = filterNotificationsByDraftSetting(notificationsRef.current, notifyDraftPr);
+    const badgeNotifications = filterNotificationsByDraftSetting(notificationsRef.current, notifyDraftPrRef.current);
     const newBadgeCount = calculateUnreadCount(badgeNotifications, nextReadIds);
 
     readIdsRef.current = new Set(nextReadIds);
