@@ -29,22 +29,22 @@ export function formatBadgeText(count: number): string {
 }
 
 /**
- * 通知種別を UI 表示用の日本語ラベルに変換する。
+ * 通知種別を i18n 翻訳キーへ変換する。
  * @param kind 通知種別
- * @returns 日本語ラベル
+ * @returns i18n 翻訳キー
  */
 export function formatNotificationKindLabel(kind: NotificationKind): string {
   switch (kind) {
     case 'new':
-      return '新規';
+      return 'notificationKind.new';
     case 'updated':
-      return '更新';
+      return 'notificationKind.updated';
     case 'mention':
-      return 'メンション';
+      return 'notificationKind.mention';
     case 'thread':
-      return 'スレッド';
+      return 'notificationKind.thread';
     case 'assignee':
-      return '担当';
+      return 'notificationKind.assignee';
     default:
       return kind;
   }

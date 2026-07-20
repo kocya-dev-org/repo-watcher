@@ -25,6 +25,7 @@ import {
   type NotificationKind,
   type StoredNotification,
 } from '../shared/notifications';
+import i18n from '../shared/i18n';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import type { WatchTargetRepo } from '../shared/repositories';
 import { WATCH_ISSUES_AND_PRS_QUERY, WATCH_NOTIFICATION_STATUS_QUERY, WATCH_REVIEW_THREADS_QUERY } from './queries';
@@ -350,7 +351,9 @@ async function showOSNotifications(notifications: StoredNotification[]) {
           type: 'basic',
           iconUrl: NOTIFICATION_ICON_DATA_URL,
           title: `${notification.owner}/${notification.repo} #${notification.number}`,
-          message: `[${getNotificationKinds(notification).map(formatNotificationKindLabel).join(' / ')}] ${notification.title}`,
+          message: `[${getNotificationKinds(notification)
+            .map((kind) => i18n.t(formatNotificationKindLabel(kind)))
+            .join(' / ')}] ${notification.title}`,
         },
         () => resolve(),
       );

@@ -1,0 +1,65 @@
+{
+  "appTitle": "GitHub Notify Settings",
+  "pat": {
+    "heading": "API Key (PAT)",
+    "description1": "Enter your GitHub Personal Access Token. A fine-grained PAT is recommended.",
+    "description2": "Limit the target repositories to only those you want to watch, and grant only `Metadata: Read-only`, `Issues: Read-only`, and `Pull requests: Read-only` permissions.",
+    "description3": "Do not grant permissions this extension does not use, such as `Contents` write, `Administration`, `Actions`, or `Webhooks`.",
+    "status": "Current status: {{status}}",
+    "statusConfigured": "PAT configured",
+    "statusNotConfigured": "PAT not configured",
+    "placeholderChange": "Enter a new PAT only if you want to change it",
+    "placeholderEnter": "Enter a PAT",
+    "clearButton": "Delete saved PAT",
+    "deleteSuccess": "Deleted the PAT",
+    "deleteError": "Failed to delete the PAT"
+  },
+  "notifySettings": {
+    "heading": "Notification settings",
+    "draftLabel": "Notify about draft PRs",
+    "draftDescription": "When off, draft PRs are excluded from the badge and the notification list."
+  },
+  "repos": {
+    "heading": "Watched repositories",
+    "description": "Configure the repositories to watch and their display colors.",
+    "settingsButton": "Repository settings",
+    "listAriaLabel": "Watched repository list"
+  },
+  "interval": {
+    "heading": "Watch interval",
+    "description": "Specify the notification detection interval in minutes.",
+    "unit": "min"
+  },
+  "lastChecked": {
+    "heading": "Last checked",
+    "unset": "Not set",
+    "reset": "Reset",
+    "resetting": "Resetting..."
+  },
+  "save": {
+    "submit": "Save",
+    "saving": "Saving...",
+    "success": "Saved",
+    "error": "Failed to save"
+  },
+  "repoDialog": {
+    "title": "Repository settings",
+    "repoAriaLabel": "Repository {{index}}",
+    "colorAriaLabel": "Display color {{index}}",
+    "delete": "Delete",
+    "add": "Add",
+    "cancel": "Cancel",
+    "ok": "OK"
+  },
+  "notificationKind": {
+    "new": "New",
+    "updated": "Updated",
+    "mention": "Mention",
+    "thread": "Thread",
+    "assignee": "Assignee"
+  },
+  "readState": {
+    "read": "Read",
+    "unread": "Unread"
+  }
+}

@@ -194,15 +194,15 @@ describe('markNotificationAsRead', () => {
 });
 
 describe('formatNotificationKindLabel', () => {
-  it('各通知種別を日本語ラベルへ変換する', () => {
-    expect(formatNotificationKindLabel('new')).toBe('新規');
-    expect(formatNotificationKindLabel('updated')).toBe('更新');
-    expect(formatNotificationKindLabel('mention')).toBe('メンション');
-    expect(formatNotificationKindLabel('thread')).toBe('スレッド');
-    expect(formatNotificationKindLabel('assignee')).toBe('担当');
+  it('各通知種別を i18n 翻訳キーへ変換する', () => {
+    expect(formatNotificationKindLabel('new')).toBe('notificationKind.new');
+    expect(formatNotificationKindLabel('updated')).toBe('notificationKind.updated');
+    expect(formatNotificationKindLabel('mention')).toBe('notificationKind.mention');
+    expect(formatNotificationKindLabel('thread')).toBe('notificationKind.thread');
+    expect(formatNotificationKindLabel('assignee')).toBe('notificationKind.assignee');
   });
 
-  it('未知の種別はそのまま返す', () => {
+  it('未知の種別はそのままキーとして返す', () => {
     expect(formatNotificationKindLabel('unknown' as NotificationKind)).toBe('unknown');
   });
 });

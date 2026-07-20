@@ -1,0 +1,65 @@
+{
+  "appTitle": "GitHub Notify 設定",
+  "pat": {
+    "heading": "API キー (PAT)",
+    "description1": "GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。",
+    "description2": "対象リポジトリは監視したいリポジトリだけに絞り、権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull requests: Read-only` のみにしてください。",
+    "description3": "`Contents` の write、`Administration`、`Actions`、`Webhooks` など、この拡張で使わない 権限は付与しないでください。",
+    "status": "現在の状態: {{status}}",
+    "statusConfigured": "PAT 設定済み",
+    "statusNotConfigured": "PAT 未設定",
+    "placeholderChange": "変更する場合のみ新しい PAT を入力",
+    "placeholderEnter": "PAT を入力",
+    "clearButton": "保存済み PAT を削除",
+    "deleteSuccess": "PAT を削除しました",
+    "deleteError": "PAT の削除に失敗しました"
+  },
+  "notifySettings": {
+    "heading": "通知設定",
+    "draftLabel": "ドラフトPRも通知する",
+    "draftDescription": "OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。"
+  },
+  "repos": {
+    "heading": "監視対象リポジトリ",
+    "description": "監視対象リポジトリと表示色を設定してください。",
+    "settingsButton": "リポジトリ設定",
+    "listAriaLabel": "監視対象リポジトリ一覧"
+  },
+  "interval": {
+    "heading": "監視間隔",
+    "description": "通知の検出間隔を分単位で指定します。",
+    "unit": "分"
+  },
+  "lastChecked": {
+    "heading": "最終チェック日",
+    "unset": "未設定",
+    "reset": "リセット",
+    "resetting": "リセット中..."
+  },
+  "save": {
+    "submit": "保存",
+    "saving": "保存中...",
+    "success": "保存しました",
+    "error": "保存に失敗しました"
+  },
+  "repoDialog": {
+    "title": "リポジトリ設定",
+    "repoAriaLabel": "リポジトリ {{index}}",
+    "colorAriaLabel": "表示色 {{index}}",
+    "delete": "削除",
+    "add": "追加",
+    "cancel": "キャンセル",
+    "ok": "OK"
+  },
+  "notificationKind": {
+    "new": "新規",
+    "updated": "更新",
+    "mention": "メンション",
+    "thread": "スレッド",
+    "assignee": "担当"
+  },
+  "readState": {
+    "read": "既読",
+    "unread": "未読"
+  }
+}
