@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 
 import { COLORS } from '../shared/colors';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
@@ -216,10 +218,20 @@ const OptionsApp: React.FC = () => {
       <h1 style={{ fontSize: '18px', marginBottom: '12px' }}>{t('appTitle')}</h1>
       <form onSubmit={handleSubmit}>
         <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('pat.heading')}</h2>
-          <p style={descriptionStyle}>{t('pat.description1')}</p>
-          <p style={descriptionStyle}>{t('pat.description2')}</p>
-          <p style={descriptionStyle}>{t('pat.description3')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('pat.heading')}</h2>
+            <Tooltip
+              title={
+                <div>
+                  <p style={{ margin: 0 }}>{t('pat.description1')}</p>
+                  <p style={{ margin: 0 }}>{t('pat.description2')}</p>
+                  <p style={{ margin: 0 }}>{t('pat.description3')}</p>
+                </div>
+              }
+            >
+              <InfoOutlined fontSize="small" style={{ color: COLORS.fgNeutral, cursor: 'help' }} />
+            </Tooltip>
+          </div>
           <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
             {t('pat.status', {
               status: hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'),
