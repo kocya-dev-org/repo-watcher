@@ -71,6 +71,7 @@ const menuButtonBaseStyle: React.CSSProperties = {
 const menuPopoverStyle = `
   #menu-popover {
     position-anchor: --menu-anchor;
+    inset: auto;
     top: anchor(bottom);
     right: anchor(right);
     margin: 0;
