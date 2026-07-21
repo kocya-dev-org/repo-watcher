@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardHeader from '@mui/material/CardHeader';
 import Tooltip from '@mui/material/Tooltip';
 
 import { COLORS } from '../shared/colors';
@@ -217,106 +220,124 @@ const OptionsApp: React.FC = () => {
     >
       <h1 style={{ fontSize: '18px', marginBottom: '12px' }}>{t('appTitle')}</h1>
       <form onSubmit={handleSubmit}>
-        <section style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('pat.heading')}</h2>
-            <Tooltip
-              title={
-                <div>
-                  <p style={{ margin: 0 }}>{t('pat.description1')}</p>
-                  <p style={{ margin: 0 }}>{t('pat.description2')}</p>
-                  <p style={{ margin: 0 }}>{t('pat.description3')}</p>
-                </div>
-              }
-            >
-              <InfoOutlined fontSize="small" style={{ color: COLORS.fgNeutral, cursor: 'help' }} />
-            </Tooltip>
-          </div>
-          <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
-            {t('pat.status', {
-              status: hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'),
-            })}
-          </p>
-          <input
-            type="password"
-            value={form.pat}
-            onChange={(e) => handleChange({ pat: e.target.value })}
-            style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
-            placeholder={hasSavedPat ? t('pat.placeholderChange') : t('pat.placeholderEnter')}
+        <Card sx={{ mb: 2 }}>
+          <CardHeader
+            titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }}
+            title={
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                {t('pat.heading')}
+                <Tooltip
+                  title={
+                    <div>
+                      <p style={{ margin: 0 }}>{t('pat.description1')}</p>
+                      <p style={{ margin: 0 }}>{t('pat.description2')}</p>
+                      <p style={{ margin: 0 }}>{t('pat.description3')}</p>
+                    </div>
+                  }
+                >
+                  <InfoOutlined fontSize="small" style={{ color: COLORS.fgNeutral, cursor: 'help' }} />
+                </Tooltip>
+              </span>
+            }
           />
-          <div style={{ marginTop: '8px' }}>
-            <button
-              type="button"
-              onClick={handleClearPat}
-              disabled={isSaving || !hasSavedPat}
-              style={{ ...secondaryButtonStyle, cursor: hasSavedPat ? 'pointer' : 'not-allowed' }}
-            >
-              {t('pat.clearButton')}
-            </button>
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('notifySettings.heading')}</h2>
-          <label>
+          <CardContent>
+            <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
+              {t('pat.status', {
+                status: hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'),
+              })}
+            </p>
             <input
-              type="checkbox"
-              checked={form.notifyDraftPr}
-              onChange={(e) => handleChange({ notifyDraftPr: e.target.checked })}
-            />{' '}
-            {t('notifySettings.draftLabel')}
-          </label>
-          <p style={descriptionStyle}>{t('notifySettings.draftDescription')}</p>
-        </section>
+              type="password"
+              value={form.pat}
+              onChange={(e) => handleChange({ pat: e.target.value })}
+              style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
+              placeholder={hasSavedPat ? t('pat.placeholderChange') : t('pat.placeholderEnter')}
+            />
+            <div style={{ marginTop: '8px' }}>
+              <button
+                type="button"
+                onClick={handleClearPat}
+                disabled={isSaving || !hasSavedPat}
+                style={{ ...secondaryButtonStyle, cursor: hasSavedPat ? 'pointer' : 'not-allowed' }}
+              >
+                {t('pat.clearButton')}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
-        <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('repos.heading')}</h2>
-          <p style={descriptionStyle}>{t('repos.description')}</p>
-          <button
-            type="button"
-            onClick={() => setIsRepositoryDialogOpen(true)}
-            style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
-          >
-            {t('repos.settingsButton')}
-          </button>
-          <div
-            aria-label={t('repos.listAriaLabel')}
-            style={{ whiteSpace: 'pre-line', marginTop: '8px', minHeight: '20px' }}
-          >
-            {form.repos.map((repo) => `${repo.owner}/${repo.name}`).join('\n')}
-          </div>
-        </section>
+        <Card sx={{ mb: 2 }}>
+          <CardHeader
+            titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }}
+            title={t('notifySettings.heading')}
+          />
+          <CardContent>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.notifyDraftPr}
+                onChange={(e) => handleChange({ notifyDraftPr: e.target.checked })}
+              />{' '}
+              {t('notifySettings.draftLabel')}
+            </label>
+            <p style={descriptionStyle}>{t('notifySettings.draftDescription')}</p>
+          </CardContent>
+        </Card>
 
-        <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('interval.heading')}</h2>
-          <p style={descriptionStyle}>{t('interval.description')}</p>
-          <input
-            type="number"
-            min={1}
-            value={form.intervalMinutes}
-            onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
-            style={{ width: '80px', padding: '4px' }}
-          />{' '}
-          {t('interval.unit')}
-        </section>
-
-        <section style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', margin: '8px 0' }}>{t('lastChecked.heading')}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt) ?? t('lastChecked.unset')}</span>
+        <Card sx={{ mb: 2 }}>
+          <CardHeader titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }} title={t('repos.heading')} />
+          <CardContent>
+            <p style={descriptionStyle}>{t('repos.description')}</p>
             <button
               type="button"
-              onClick={handleResetLastCheckedAt}
-              disabled={isSaving || isResettingLastCheckedAt}
-              style={{
-                ...secondaryButtonStyle,
-                cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
-              }}
+              onClick={() => setIsRepositoryDialogOpen(true)}
+              style={{ ...secondaryButtonStyle, cursor: 'pointer' }}
             >
-              {isResettingLastCheckedAt ? t('lastChecked.resetting') : t('lastChecked.reset')}
+              {t('repos.settingsButton')}
             </button>
-          </div>
-        </section>
+            <div
+              aria-label={t('repos.listAriaLabel')}
+              style={{ whiteSpace: 'pre-line', marginTop: '8px', minHeight: '20px' }}
+            >
+              {form.repos.map((repo) => `${repo.owner}/${repo.name}`).join('\n')}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mb: 2 }}>
+          <CardHeader titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }} title={t('interval.heading')} />
+          <CardContent>
+            <p style={descriptionStyle}>{t('interval.description')}</p>
+            <input
+              type="number"
+              min={1}
+              value={form.intervalMinutes}
+              onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
+              style={{ width: '80px', padding: '4px' }}
+            />{' '}
+            {t('interval.unit')}
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mb: 2 }}>
+          <CardHeader titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }} title={t('lastChecked.heading')} />
+          <CardContent>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt) ?? t('lastChecked.unset')}</span>
+              <button
+                type="button"
+                onClick={handleResetLastCheckedAt}
+                disabled={isSaving || isResettingLastCheckedAt}
+                style={{
+                  ...secondaryButtonStyle,
+                  cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
+                }}
+              >
+                {isResettingLastCheckedAt ? t('lastChecked.resetting') : t('lastChecked.reset')}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button type="submit" disabled={isSaving} style={primaryButtonStyle}>
             {isSaving ? t('save.saving') : t('save.submit')}
