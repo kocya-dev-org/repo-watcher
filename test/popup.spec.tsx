@@ -638,12 +638,40 @@ describe('popup App', () => {
     expect(view.container.textContent).toContain('Version: 1.0.0');
     expect(view.container.textContent).toContain('Repository');
 
+    const menuPopover = view.container.querySelector('#menu-popover');
+    expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
+
     const openOptionsButton = findButton(view.container, 'Open Settings');
     await act(async () => {
       openOptionsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
     expect(chromeMock.chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+    expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
+
+    await view.unmount();
+  });
+
+  it('メニューの外側をクリックすると閉じる', async () => {
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const menuPopover = view.container.querySelector('#menu-popover');
+    expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
+
+    // jsdom は Popover API の light-dismiss を実装していないため、テスト用モックで再現する。
+    await act(async () => {
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
 
     await view.unmount();
   });
@@ -716,9 +744,9 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const headerButtons = Array.from(view.container.querySelectorAll('header button[aria-label]')).map((button) =>
-      button.getAttribute('aria-label'),
-    );
+    const headerButtons = Array.from(
+      view.container.querySelectorAll('header > div:first-of-type button[aria-label]'),
+    ).map((button) => button.getAttribute('aria-label'));
     expect(headerButtons).toEqual(['Pause scheduled watch', 'Update', 'Mark all as read', 'Menu']);
 
     const refreshButton = findButtonByAriaLabel(view.container, 'Update');
@@ -888,6 +916,17 @@ describe('popup App', () => {
 
     expect(view.container.textContent).toContain('repo-a の Issue');
     expect(view.container.textContent).not.toContain('repo-b の Issue');
+
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const reopenedRepositoryButton = findButtonByAriaLabel(view.container, 'Repository');
+    await act(async () => {
+      reopenedRepositoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
 
     const repoBOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-b');
     expect(repoBOption).toBeTruthy();

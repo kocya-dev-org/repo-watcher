@@ -68,6 +68,19 @@ const menuButtonBaseStyle: React.CSSProperties = {
   color: COLORS.fgDefault,
 };
 
+const menuPopoverStyle = `
+  #menu-popover {
+    position-anchor: --menu-anchor;
+    top: anchor(bottom);
+    right: anchor(right);
+    margin: 0;
+  }
+
+  .menu-anchor-button {
+    anchor-name: --menu-anchor;
+  }
+`;
+
 /**
  * 通知一覧を PR と Issue に振り分け、検出日時の降順で整列する。
  * @param items 通知一覧
@@ -250,7 +263,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<PopupSettings | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRepositoryMenuOpen, setIsRepositoryMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -259,8 +271,27 @@ const App: React.FC = () => {
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
   const notifyDraftPrRef = useRef(true);
+  const menuPopoverRef = useRef<HTMLDivElement>(null);
 
   const manifestVersion = chrome.runtime.getManifest().version;
+
+  useEffect(() => {
+    const menuPopover = menuPopoverRef.current;
+    if (!menuPopover) {
+      return;
+    }
+
+    const handlePopoverToggle = (event: Event) => {
+      if ((event as ToggleEvent).newState === 'closed') {
+        setIsRepositoryMenuOpen(false);
+      }
+    };
+
+    menuPopover.addEventListener('toggle', handlePopoverToggle);
+    return () => {
+      menuPopover.removeEventListener('toggle', handlePopoverToggle);
+    };
+  }, []);
 
   const reloadPopupState = useCallback(async () => {
     const [localState, popupSettings] = await Promise.all([loadPopupLocalState(), loadPopupSettings()]);
@@ -327,10 +358,7 @@ const App: React.FC = () => {
   useEffect(
     () => () => {
       const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
-      const badgeNotifications = filterNotificationsByDraftSetting(
-        finalized.notifications,
-        notifyDraftPrRef.current,
-      );
+      const badgeNotifications = filterNotificationsByDraftSetting(finalized.notifications, notifyDraftPrRef.current);
       const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
 
       chrome.storage.local.set({ ...finalized, badgeCount });
@@ -380,7 +408,7 @@ const App: React.FC = () => {
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
-    setIsMenuOpen(false);
+    document.getElementById('menu-popover')?.hidePopover();
     setIsRepositoryMenuOpen(false);
   };
 
@@ -540,103 +568,102 @@ const App: React.FC = () => {
           </IconButton>
           <IconButton
             aria-label="Menu"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
+            popoverTarget="menu-popover"
             size="small"
             sx={headerIconButtonSx}
+            className="menu-anchor-button"
           >
             <MenuIcon fontSize="small" />
           </IconButton>
         </div>
-        {isMenuOpen && (
-          <div
+        <style>{menuPopoverStyle}</style>
+        <div
+          ref={menuPopoverRef}
+          id="menu-popover"
+          popover="auto"
+          style={{
+            width: '300px',
+            backgroundColor: COLORS.bgDefault,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: '8px',
+            boxShadow: '0 8px 24px rgba(140,149,159,0.2)',
+            padding: '8px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setIsRepositoryMenuOpen((current) => !current)}
+            aria-label="Repository"
             style={{
-              position: 'absolute',
-              top: '28px',
-              right: 0,
-              width: '300px',
-              backgroundColor: COLORS.bgDefault,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '8px',
-              boxShadow: '0 8px 24px rgba(140,149,159,0.2)',
-              padding: '8px',
-              zIndex: 10,
+              ...menuButtonBaseStyle,
+              padding: '6px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setIsRepositoryMenuOpen((current) => !current)}
-              aria-label="Repository"
-              style={{
-                ...menuButtonBaseStyle,
-                padding: '6px 4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span>Repository</span>
-              <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>{isRepositoryMenuOpen ? '▲' : '▼'}</span>
-            </button>
-            {isRepositoryMenuOpen && (
-              <div
-                style={{
-                  marginTop: '2px',
-                  marginBottom: '4px',
-                  marginLeft: '8px',
-                  paddingLeft: '8px',
-                  borderLeft: `1px solid ${COLORS.borderMuted}`,
-                }}
-              >
-                {repositoryOptions.length === 0 ? (
-                  <div style={{ padding: '6px 4px', fontSize: '11px', color: COLORS.fgMuted }}>
-                    No configured repositories
-                  </div>
-                ) : (
-                  repositoryOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => toggleRepositorySelection(option.value)}
-                      aria-label={`Repository:${option.value}`}
-                      style={{
-                        ...menuButtonBaseStyle,
-                        padding: '3px 4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        minHeight: '24px',
-                      }}
-                    >
-                      <Checkbox
-                        checked={selectedRepositories.includes(option.value)}
-                        size="small"
-                        sx={{
-                          padding: 0,
-                          marginRight: '2px',
-                        }}
-                      />
-                      <span>{option.label}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-            <button type="button" onClick={openOptions} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
-              Open Settings
-            </button>
+            <span>Repository</span>
+            <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>{isRepositoryMenuOpen ? '▲' : '▼'}</span>
+          </button>
+          {isRepositoryMenuOpen && (
             <div
               style={{
-                marginTop: '6px',
-                paddingTop: '6px',
-                borderTop: `1px solid ${COLORS.borderMuted}`,
-                fontSize: '11px',
-                color: COLORS.fgMuted,
+                marginTop: '2px',
+                marginBottom: '4px',
+                marginLeft: '8px',
+                paddingLeft: '8px',
+                borderLeft: `1px solid ${COLORS.borderMuted}`,
               }}
             >
-              Version: {manifestVersion}
+              {repositoryOptions.length === 0 ? (
+                <div style={{ padding: '6px 4px', fontSize: '11px', color: COLORS.fgMuted }}>
+                  No configured repositories
+                </div>
+              ) : (
+                repositoryOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleRepositorySelection(option.value)}
+                    aria-label={`Repository:${option.value}`}
+                    style={{
+                      ...menuButtonBaseStyle,
+                      padding: '3px 4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      minHeight: '24px',
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedRepositories.includes(option.value)}
+                      size="small"
+                      sx={{
+                        padding: 0,
+                        marginRight: '2px',
+                      }}
+                    />
+                    <span>{option.label}</span>
+                  </button>
+                ))
+              )}
             </div>
+          )}
+          <button type="button" onClick={openOptions} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
+            Open Settings
+          </button>
+          <div
+            style={{
+              marginTop: '6px',
+              paddingTop: '6px',
+              borderTop: `1px solid ${COLORS.borderMuted}`,
+              fontSize: '11px',
+              color: COLORS.fgMuted,
+            }}
+          >
+            Version: {manifestVersion}
           </div>
-        )}
+        </div>
       </header>
 
       {refreshError && <p style={{ margin: '0 0 8px', color: COLORS.dangerAlt }}>{refreshError}</p>}
