@@ -22,6 +22,27 @@ description: github-notify-ext の popup / options ページを、chrome.storage
    - リポジトリ色の取得元: `repos[].color` (HEX)。既定のフォールバックは `DEFAULT_REPO_COLOR = '#0969da'` (`src/shared/repositories.ts`)。
 6. ページをリロードする (popup はマウント時に storage を読む)。
 
+注意点:
+- browser ツールの console 実行はトップレベル `await` を使えない (module ではない)。`(() => { ... ; return 'ok'; })()` の即時関数で囲み、`chrome.storage.*.set` はコールバック無しで呼ぶ。
+- スクリーンショットは実際のビューポートより縮小されて保存されることがある (例: 1600px 幅 → 1024px 画像。約 0.64 倍)。ピクセル幅を目視で判定せず、`getComputedStyle` / `getBoundingClientRect` の実測値で検証する。細部を残したい場合は `convert <png> -crop <W>x<H>+0+0 +repage -resize 200%` で popup 領域を切り出す。
+- ヘッドレス相当の環境では `wmctrl` が使えない (ウィンドウマネージャ無し) ことがある。popup ページはビューポート左上に描画されるので、そのまま録画してよい。
+
+## 通知一覧のグループ表示 (owner/repo) の検証
+
+通知は `owner/repo` ごとにグループ化され、見出しは `button[aria-expanded]` + `▲`/`▼` インジケータ (`src/popup/App.tsx`)。
+
+- 見出しと順序: `[...document.querySelectorAll('button[aria-expanded]')].map(b => b.textContent)` で取得。順序は `localeCompare` 昇順。**大文字始まりの owner (例 `Mid-Org`) を混ぜたテストデータにする** と、単純なコードポイント順との違いが検出できる。
+- グループ内の並びは検出日時降順。storage への挿入順を意図的にバラバラ (古いものを先に) にしておくと、ソート漏れを検出できる。
+- 展開/折りたたみ: 見出しをクリック → `aria-expanded` が false になり、配下 `li` が DOM から消え、インジケータが `▼` になる。他グループが影響を受けないことも確認する。
+- 1 行レイアウトの崩れ検証 (項目行はタイトルリンク + 右寄せ kind チップ):
+  - `title.getBoundingClientRect().right <= chips.getBoundingClientRect().left` (重なりなし)
+  - スクロールコンテナの `scrollWidth - clientWidth === 0` (横オーバーフローなし)
+  - 全行の `height` が一様 (チップの折返しで 2 行になっていない)
+  - 長いタイトルは `a.scrollWidth > a.clientWidth` (ellipsis) になる → 長文タイトル + kind 3 個のデータを必ず入れる
+  - popup ルート幅は `getComputedStyle(document.querySelector('#root>div')).width`、メニューは `getComputedStyle(document.getElementById('menu-popover')).width` で確認
+- 該当 0 件のタブ: 見出しは 0 個で `No notifications available for this tab.` が出る。メニューの Repository 絞り込み (`button[aria-label="Repository:<owner/repo>"]`) で片方のタブを空にすると再現しやすい。
+- メニュー popover は `popover="auto"`。閉じるには Escape キーを押す。
+
 ## リポジトリ色の縦ライン検証
 
 リポジトリ色は popup の通知一覧で描画される (`src/popup/App.tsx` の `renderNotificationItem`)。各通知の `<li>` に `borderLeft: '3px solid <color>'` を付与し、`aria-label="リポジトリ色:<hex>"` を設定する。
