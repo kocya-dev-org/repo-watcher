@@ -47,6 +47,11 @@ type NotificationRepositoryOption = {
   label: string;
 };
 
+type NotificationRepositoryGroup = {
+  value: string;
+  notifications: StoredNotification[];
+};
+
 type BulkReadState = 'all_read' | 'all_unread' | 'partial';
 
 /** ヘッダーの枠付きアイコンボタン共通 sx */
@@ -115,6 +120,29 @@ function groupByType(items: StoredNotification[]): GroupedNotifications {
  */
 function getNotificationRepositoryValue(notification: StoredNotification): string {
   return `${notification.owner}/${notification.repo}`;
+}
+
+/**
+ * 通知一覧をリポジトリごとにまとめ、リポジトリ名順に整列する。
+ * @param items 検出日時降順に整列済みの通知一覧
+ * @returns リポジトリごとの通知グループ
+ */
+function groupByRepository(items: StoredNotification[]): NotificationRepositoryGroup[] {
+  const groups = new Map<string, StoredNotification[]>();
+
+  for (const item of items) {
+    const repositoryValue = getNotificationRepositoryValue(item);
+    const group = groups.get(repositoryValue);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(repositoryValue, [item]);
+    }
+  }
+
+  return Array.from(groups, ([value, notifications]) => ({ value, notifications })).sort((left, right) =>
+    left.value.localeCompare(right.value),
+  );
 }
 
 /**
@@ -269,6 +297,7 @@ const App: React.FC = () => {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<NotificationTab>('pull_request');
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>([]);
+  const [collapsedRepositories, setCollapsedRepositories] = useState<Set<string>>(new Set());
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
   const notifyDraftPrRef = useRef(true);
@@ -405,7 +434,9 @@ const App: React.FC = () => {
   const filteredNotifications = filterNotificationsByRepositories(draftFilteredNotifications, selectedRepositories);
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
+  const notificationGroups = groupByRepository(activeNotifications);
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
+  const isRepositoryExpanded = (repositoryValue: string) => !collapsedRepositories.has(repositoryValue);
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
@@ -499,7 +530,7 @@ const App: React.FC = () => {
   return (
     <div
       style={{
-        width: '360px',
+        width: '440px',
         minHeight: '360px',
         padding: '10px',
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -584,7 +615,7 @@ const App: React.FC = () => {
           id="menu-popover"
           popover="auto"
           style={{
-            width: '300px',
+            width: '320px',
             backgroundColor: COLORS.bgDefault,
             border: `1px solid ${COLORS.border}`,
             borderRadius: '8px',
@@ -722,14 +753,57 @@ const App: React.FC = () => {
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {activeNotifications.map((n) => (
-                  <NotificationItem
-                    key={n.id}
-                    notification={n}
-                    isRead={readIds.has(n.id)}
-                    repositoryColor={getNotificationColor(n, repositoryColorMap)}
-                    onToggleRead={toggleReadAndUpdate}
-                  />
+                {notificationGroups.map((group) => (
+                  <li key={group.value} style={{ listStyle: 'none' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCollapsedRepositories((current) => {
+                          const next = new Set(current);
+                          if (next.has(group.value)) {
+                            next.delete(group.value);
+                          } else {
+                            next.add(group.value);
+                          }
+                          return next;
+                        });
+                      }}
+                      aria-expanded={isRepositoryExpanded(group.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: 'none',
+                        borderBottom: `1px solid ${COLORS.borderSubtle}`,
+                        background: COLORS.bgSubtle,
+                        color: COLORS.fgDefault,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span>{group.value}</span>
+                      <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>
+                        {isRepositoryExpanded(group.value) ? '▲' : '▼'}
+                      </span>
+                    </button>
+                    {isRepositoryExpanded(group.value) && (
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {group.notifications.map((n) => (
+                          <NotificationItem
+                            key={n.id}
+                            notification={n}
+                            isRead={readIds.has(n.id)}
+                            repositoryColor={getNotificationColor(n, repositoryColorMap)}
+                            onToggleRead={toggleReadAndUpdate}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>

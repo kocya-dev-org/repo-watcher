@@ -53,76 +53,48 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
       >
         {isRead ? <CheckBoxIcon fontSize="small" /> : <CheckBoxOutlineBlankIcon fontSize="small" />}
       </IconButton>
-      <div
+      <a
+        href={notification.url}
+        target="_blank"
+        rel="noreferrer"
         style={{
           flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
           minWidth: 0,
+          fontSize: '12px',
+          color: isMissingFromLatestResult ? COLORS.fgMuted : COLORS.accent,
+          textDecoration: 'underline',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: '8px',
-            marginBottom: '2px',
-          }}
-        >
+        {notification.title}
+      </a>
+      <span
+        style={{
+          display: 'flex',
+          gap: '4px',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          marginLeft: '8px',
+          flexShrink: 0,
+        }}
+      >
+        {kindLabels.map((label) => (
           <span
+            key={`${notification.id}:${label}`}
             style={{
-              fontSize: '11px',
-              color: isMissingFromLatestResult ? COLORS.fgSubtle : COLORS.fgNeutral,
+              fontSize: '10px',
+              color: COLORS.bgDefault,
+              backgroundColor: COLORS.accent,
+              borderRadius: '10px',
+              padding: '1px 6px',
             }}
           >
-            {notification.owner}/{notification.repo} #{notification.number}
+            {label}
           </span>
-          <span
-            style={{
-              display: 'flex',
-              gap: '4px',
-              flexWrap: 'wrap',
-              justifyContent: 'flex-end',
-            }}
-          >
-            {kindLabels.map((label) => (
-              <span
-                key={`${notification.id}:${label}`}
-                style={{
-                  fontSize: '10px',
-                  color: COLORS.bgDefault,
-                  backgroundColor: COLORS.accent,
-                  borderRadius: '10px',
-                  padding: '1px 6px',
-                }}
-              >
-                {label}
-              </span>
-            ))}
-          </span>
-        </div>
-        <div
-          style={{
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          <a
-            href={notification.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              color: isMissingFromLatestResult ? COLORS.fgMuted : COLORS.accent,
-              textDecoration: 'underline',
-            }}
-          >
-            {notification.title}
-          </a>
-        </div>
-      </div>
+        ))}
+      </span>
     </li>
   );
 };
