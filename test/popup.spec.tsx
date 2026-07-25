@@ -9,7 +9,9 @@ import { flushPromises, renderReact } from './helpers/react';
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
 
 function findClickableItem(container: HTMLElement, text: string) {
-  return Array.from(container.querySelectorAll('li')).find((item) => item.textContent?.includes(text));
+  return Array.from(container.querySelectorAll('li[aria-label^="リポジトリ色:"]')).find((item) =>
+    item.textContent?.includes(text),
+  );
 }
 
 function findLinkByText(container: HTMLElement, text: string) {
@@ -568,7 +570,7 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    expect(view.container.textContent).toContain('新規PR 通知');
+    expect(findClickableItem(view.container, 'PR 通知')).toBeTruthy();
     expect(view.container.textContent).not.toContain('Issue メンション');
     expect(chromeMock.getLocalState()).toMatchObject({
       notifications: [
@@ -960,6 +962,108 @@ describe('popup App', () => {
 
     expect(view.container.textContent).toContain('repo-a の Issue');
     expect(view.container.textContent).toContain('repo-b の Issue');
+
+    await view.unmount();
+  });
+
+  it('通知をリポジトリごとにまとめ、見出しのクリックで展開と折りたたみを切り替える', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_Z',
+          isPullRequest: true,
+          owner: 'z-owner',
+          repo: 'repo',
+          number: 1,
+          title: '古い通知',
+          url: 'https://example.com/pr/1',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+        {
+          id: 'PR_A',
+          isPullRequest: true,
+          owner: 'a-owner',
+          repo: 'repo',
+          number: 2,
+          title: '先に表示する通知',
+          url: 'https://example.com/pr/2',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_A_OLD',
+          isPullRequest: true,
+          owner: 'a-owner',
+          repo: 'repo',
+          number: 3,
+          title: '後に表示する通知',
+          url: 'https://example.com/pr/3',
+          detectedAt: '2026-05-06T06:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const groupButtons = () => Array.from(view.container.querySelectorAll('button[aria-expanded]'));
+    expect(groupButtons().map((button) => button.textContent?.replace('▲', '').replace('▼', '').trim())).toEqual([
+      'a-owner/repo',
+      'z-owner/repo',
+    ]);
+    expect(groupButtons().every((button) => button.getAttribute('aria-expanded') === 'true')).toBe(true);
+
+    const notificationLinks = () => Array.from(view.container.querySelectorAll('li[aria-label^="リポジトリ色:"] a'));
+    expect(notificationLinks().map((link) => link.textContent)).toEqual([
+      '先に表示する通知',
+      '後に表示する通知',
+      '古い通知',
+    ]);
+
+    await act(async () => {
+      groupButtons()[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(groupButtons()[0]?.getAttribute('aria-expanded')).toBe('false');
+    expect(view.container.textContent).not.toContain('先に表示する通知');
+    expect(view.container.textContent).not.toContain('後に表示する通知');
+    expect(view.container.textContent).toContain('古い通知');
+
+    await view.unmount();
+  });
+
+  it('表示対象の通知がないタブではリポジトリ見出しを表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'PR 通知',
+          url: 'https://example.com/pr/1',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const issueTab = findTab(view.container, 'Issue');
+    await act(async () => {
+      issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain('No notifications available for this tab.');
+    expect(view.container.querySelectorAll('button[aria-expanded]')).toHaveLength(0);
+    expect(view.container.textContent).not.toContain('octo/repo');
 
     await view.unmount();
   });
