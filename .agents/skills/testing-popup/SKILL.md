@@ -54,6 +54,26 @@ description: github-notify-ext の popup / options ページを、chrome.storage
   - `getComputedStyle(li).borderLeftWidth` が `3px`、`borderLeftStyle` が `solid`、`borderLeftColor` が期待色の RGB (例: `#e11d48` → `rgb(225, 29, 72)`) になっている。
 - 注意: この縦ラインはリポジトリ色機能を含むビルドでのみ描画される。`main` に未マージの状態で古い `dist/` を読み込むと縦ラインは出ないため、必ず対象ブランチを `npm run build` した `dist/` を読み込むこと。
 
+## options ページの設定検証
+
+- 設定は `chrome.storage.sync`、実行時データは `chrome.storage.local`。保存後の検証は
+  `chrome.storage.sync.get(null, r => { window.__r = JSON.stringify(r) })` で退避し、次の console 呼び出しで
+  `window.__r` を読むのが確実（browser の console は Promise / `await` の戻り値を返さないことがある）。
+- 「デフォルト ON」系のトグルは、対象キーを storage に**入れない**状態から開始して、
+  `get(null)` の結果にキーが無いこと + UI が ON であることを併せて確認すると、既定値ロジックのバグを検出できる。
+- 数値入力 (監視間隔) は `Ctrl+A` での全選択が効かないことがある。`Backspace`（`BackSpace` ではなく `Backspace`）を
+  1 回ずつ送って消してから入力する。
+- PAT ステータスは UI からダミー文字列を保存すれば `PAT configured` に変化する（実 PAT は不要）。
+
+## 日本語 UI (i18n) の検証
+
+`src/shared/i18n.ts` は `navigator.language` で言語を決めるため、Chrome for Testing (英語ロケールのみ) では
+日本語表示にならない。`--lang=ja` で別プロファイル起動しても `navigator.language` は `en-US` のままなので効果がない。
+回避策: `dist/` をコピーして `i18n.js` 内の `navigator.language` を `"ja"` に置換し、そのディレクトリを
+2 つ目の unpacked 拡張として読み込む（`extensions=/path/to/dist,/tmp/dist-ja` で再起動）。
+拡張 ID はディレクトリパスから決まるため別 ID・別 storage になる点に注意（設定は空から始まる）。
+日本語表示の確認は「ラベル文言が ja.json の値と一致するか」だけに使い、永続化の検証は本番 dist 側で行うこと。
+
 純粋な描画テストでは GitHub PAT / API は不要 — storage を直接注入する。
 
 ## Devin Secrets Needed
