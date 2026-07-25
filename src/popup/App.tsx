@@ -297,8 +297,7 @@ const App: React.FC = () => {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<NotificationTab>('pull_request');
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>([]);
-  const [expandedRepositories, setExpandedRepositories] = useState<Set<string>>(new Set());
-  const [hasInitializedExpandedRepositories, setHasInitializedExpandedRepositories] = useState(false);
+  const [collapsedRepositories, setCollapsedRepositories] = useState<Set<string>>(new Set());
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
   const notifyDraftPrRef = useRef(true);
@@ -352,14 +351,6 @@ const App: React.FC = () => {
     setNotifications(finalizedLocalState.notifications);
     setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
-    setExpandedRepositories(
-      new Set(
-        filterNotificationsByDraftSetting(finalizedLocalState.notifications, popupSettings.notifyDraftPr).map(
-          getNotificationRepositoryValue,
-        ),
-      ),
-    );
-    setHasInitializedExpandedRepositories(true);
     setSelectedRepositories((current) => current.filter((value) => availableRepositoryValues.has(value)));
     if (availableRepositoryValues.size === 0) {
       setIsRepositoryMenuOpen(false);
@@ -445,8 +436,7 @@ const App: React.FC = () => {
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const notificationGroups = groupByRepository(activeNotifications);
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
-  const isRepositoryExpanded = (repositoryValue: string) =>
-    !hasInitializedExpandedRepositories || expandedRepositories.has(repositoryValue);
+  const isRepositoryExpanded = (repositoryValue: string) => !collapsedRepositories.has(repositoryValue);
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
@@ -768,11 +758,8 @@ const App: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setHasInitializedExpandedRepositories(true);
-                        setExpandedRepositories((current) => {
-                          const next = new Set(
-                            hasInitializedExpandedRepositories ? current : notificationGroups.map((item) => item.value),
-                          );
+                        setCollapsedRepositories((current) => {
+                          const next = new Set(current);
                           if (next.has(group.value)) {
                             next.delete(group.value);
                           } else {
