@@ -17,6 +17,7 @@ type SettingsForm = {
   repos: WatchTargetRepo[];
   intervalMinutes: number;
   notifyDraftPr: boolean;
+  autoRemoveClosed: boolean;
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
@@ -60,6 +61,7 @@ const OptionsApp: React.FC = () => {
     repos: [],
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
     notifyDraftPr: true,
+    autoRemoveClosed: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -102,14 +104,16 @@ const OptionsApp: React.FC = () => {
         repos: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         notifyDraftPr: true,
+        autoRemoveClosed: true,
       },
-      (items: { repos?: unknown; intervalMinutes?: unknown; notifyDraftPr?: unknown }) => {
+      (items: { repos?: unknown; intervalMinutes?: unknown; notifyDraftPr?: unknown; autoRemoveClosed?: unknown }) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
         setForm({
           pat: '',
           repos,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
+          autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
         });
       },
     );
@@ -147,6 +151,7 @@ const OptionsApp: React.FC = () => {
               repos: form.repos,
               intervalMinutes: form.intervalMinutes,
               notifyDraftPr: form.notifyDraftPr,
+              autoRemoveClosed: form.autoRemoveClosed,
             },
             () => resolve(),
           );
@@ -281,6 +286,15 @@ const OptionsApp: React.FC = () => {
               {t('notifySettings.draftLabel')}
             </label>
             <p style={descriptionStyle}>{t('notifySettings.draftDescription')}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.autoRemoveClosed}
+                onChange={(e) => handleChange({ autoRemoveClosed: e.target.checked })}
+              />{' '}
+              {t('notifySettings.autoRemoveClosedLabel')}
+            </label>
+            <p style={descriptionStyle}>{t('notifySettings.autoRemoveClosedDescription')}</p>
           </CardContent>
         </Card>
 

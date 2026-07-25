@@ -17,7 +17,9 @@
   "notifySettings": {
     "heading": "通知設定",
     "draftLabel": "ドラフトPRも通知する",
-    "draftDescription": "OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。"
+    "draftDescription": "OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。",
+    "autoRemoveClosedLabel": "Closeされた項目を自動的に削除する",
+    "autoRemoveClosedDescription": "ON にすると、更新時に既に Close 済みの PR / Issue を通知一覧から自動的に削除します。"
   },
   "repos": {
     "heading": "監視対象リポジトリ",

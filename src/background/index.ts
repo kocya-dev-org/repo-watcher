@@ -41,6 +41,7 @@ type SyncSettings = {
   intervalMinutes: number;
   isWatchPaused: boolean;
   notifyDraftPr: boolean;
+  autoRemoveClosed: boolean;
 };
 
 type Settings = SyncSettings & {
@@ -181,13 +182,21 @@ async function loadSyncSettings(): Promise<SyncSettings> {
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         isWatchPaused: false,
         notifyDraftPr: true,
+        autoRemoveClosed: true,
       },
-      (items: { repos?: unknown; intervalMinutes?: unknown; isWatchPaused?: unknown; notifyDraftPr?: unknown }) => {
+      (items: {
+        repos?: unknown;
+        intervalMinutes?: unknown;
+        isWatchPaused?: unknown;
+        notifyDraftPr?: unknown;
+        autoRemoveClosed?: unknown;
+      }) => {
         const settings: SyncSettings = {
           repos: items.repos as WatchTargetRepo[],
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           isWatchPaused: Boolean(items.isWatchPaused),
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
+          autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
         };
 
         resolve(settings);
@@ -427,6 +436,23 @@ function applyLatestResultStatus(
 }
 
 /**
+ * close 済みと判定できた通知を通知一覧から取り除く。
+ *
+ * `sourceNodeId` を持たない通知は状態を確認できないため除外対象にしない。
+ * @param notifications 保存済み通知一覧
+ * @param latestOpenNodeIds 最新 API 結果に残っている open の node ID 集合
+ * @returns close 済み通知を取り除いた通知一覧
+ */
+function removeClosedNotifications(
+  notifications: StoredNotification[],
+  latestOpenNodeIds: Set<string>,
+): StoredNotification[] {
+  return notifications.filter(
+    (notification) => !notification.sourceNodeId || latestOpenNodeIds.has(notification.sourceNodeId),
+  );
+}
+
+/**
  * 今日の0時の Date オブジェクトを返す。
  * @returns 今日の0時の Date
  */
@@ -533,7 +559,9 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     filteredCollected,
   );
   const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
-  const notificationsWithLatestStatus = applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
+  const notificationsWithLatestStatus = settings.autoRemoveClosed
+    ? removeClosedNotifications(reconciled.notifications, latestOpenNodeIds)
+    : applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
   const badgeNotifications = filterNotificationsByDraftSetting(notificationsWithLatestStatus, settings.notifyDraftPr);
   const badgeCount = calculateUnreadCount(badgeNotifications, []);
 
