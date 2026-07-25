@@ -97,6 +97,7 @@ describe('options App', () => {
     expect(draftCheckbox.checked).toBe(false);
     expect(view.container.textContent).toContain('通知設定');
     expect(view.container.textContent).toContain('ドラフトPRも通知する');
+    expect(view.container.textContent).toContain('Closeされた項目を自動的に削除する');
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
 
     await view.unmount();
@@ -214,6 +215,7 @@ describe('options App', () => {
         repos: [{ owner: 'octo', name: 'repo1', color: '#ff0000' }],
         intervalMinutes: 30,
         notifyDraftPr: true,
+        autoRemoveClosed: true,
       },
       expect.any(Function),
     );

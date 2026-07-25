@@ -463,6 +463,7 @@ describe('background integration', () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
+      autoRemoveClosed: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -555,6 +556,94 @@ describe('background integration', () => {
         isPresentInLatestResult: false,
       },
     ]);
+  });
+
+  it('autoRemoveClosed が ON のとき close 済み通知を削除して badge を再計算する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      autoRemoveClosed: true,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [
+        {
+          id: 'ISSUE_1',
+          kinds: ['new'],
+          sourceNodeId: 'ISSUE_1',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'open issue',
+          url: 'https://example.com/issues/1',
+          detectedAt: '2026-05-06T07:30:00.000Z',
+          isPresentInLatestResult: true,
+        },
+        {
+          id: 'PR_2',
+          kinds: ['mention'],
+          sourceNodeId: 'PR_2',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'closed pr',
+          url: 'https://example.com/pulls/2',
+          detectedAt: '2026-05-06T07:40:00.000Z',
+          isPresentInLatestResult: true,
+        },
+        {
+          id: 'ISSUE_3',
+          kinds: ['new'],
+          sourceNodeId: 'ISSUE_3',
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 3,
+          title: 'closed issue',
+          url: 'https://example.com/issues/3',
+          detectedAt: '2026-05-06T07:50:00.000Z',
+          isPresentInLatestResult: true,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: [
+              { __typename: 'Issue', id: 'ISSUE_1', closed: false },
+              { __typename: 'PullRequest', id: 'PR_2', closed: true },
+              { __typename: 'Issue', id: 'ISSUE_3', closed: true },
+            ].filter((node) => (variables?.nodeIds ?? []).includes(node.id)),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await waitForCondition(() => chromeMock.getLocalState().badgeCount === 1);
+
+    expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'ISSUE_1' }]);
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
   });
 
   it('manual refresh message は PAT が読めないとき失敗を返す', async () => {

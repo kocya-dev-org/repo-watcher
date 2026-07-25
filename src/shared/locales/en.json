@@ -17,7 +17,9 @@
   "notifySettings": {
     "heading": "Notification settings",
     "draftLabel": "Notify about draft PRs",
-    "draftDescription": "When off, draft PRs are excluded from the badge and the notification list."
+    "draftDescription": "When off, draft PRs are excluded from the badge and the notification list.",
+    "autoRemoveClosedLabel": "Automatically remove closed items",
+    "autoRemoveClosedDescription": "When on, PRs/Issues that are already closed are automatically removed from the notification list on update."
   },
   "repos": {
     "heading": "Watched repositories",
