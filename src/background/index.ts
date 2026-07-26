@@ -73,6 +73,7 @@ type NotificationStatusNode = {
   __typename?: 'Issue' | 'PullRequest';
   id?: string | null;
   closed?: boolean | null;
+  isDraft?: boolean | null;
   reviewDecision?: string | null;
 };
 
@@ -397,11 +398,16 @@ async function fetchLatestOpenNotificationNodeIds(
   );
 
   if (nodeIds.length === 0) {
-    return { openNodeIds: new Set<string>(), isApprovedByNodeId: new Map<string, boolean>() };
+    return {
+      openNodeIds: new Set<string>(),
+      isApprovedByNodeId: new Map<string, boolean>(),
+      isDraftByNodeId: new Map<string, boolean>(),
+    };
   }
 
   const openNodeIds = new Set<string>();
   const isApprovedByNodeId = new Map<string, boolean>();
+  const isDraftByNodeId = new Map<string, boolean>();
 
   for (let index = 0; index < nodeIds.length; index += 50) {
     const chunk = nodeIds.slice(index, index + 50);
@@ -421,12 +427,14 @@ async function fetchLatestOpenNotificationNodeIds(
         if (node.__typename === 'PullRequest') {
           // 承認取り消しも反映するため true/false を必ず確定させる
           isApprovedByNodeId.set(node.id, node.reviewDecision === 'APPROVED');
+          // ドラフト解除/付与も反映するため true/false を必ず確定させる
+          isDraftByNodeId.set(node.id, node.isDraft === true);
         }
       }
     }
   }
 
-  return { openNodeIds, isApprovedByNodeId };
+  return { openNodeIds, isApprovedByNodeId, isDraftByNodeId };
 }
 
 /**

@@ -931,6 +931,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     const latestStatus: LatestNotificationStatus = {
       openNodeIds: new Set(['PR_1']),
       isApprovedByNodeId: new Map([['PR_1', true]]),
+      isDraftByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: false }], latestStatus);
@@ -943,6 +944,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     const latestStatus: LatestNotificationStatus = {
       openNodeIds: new Set(['PR_1']),
       isApprovedByNodeId: new Map([['PR_1', false]]),
+      isDraftByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
@@ -954,6 +956,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     const latestStatus: LatestNotificationStatus = {
       openNodeIds: new Set(['PR_1']),
       isApprovedByNodeId: new Map(),
+      isDraftByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
@@ -965,6 +968,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     const latestStatus: LatestNotificationStatus = {
       openNodeIds: new Set(['PR_1']),
       isApprovedByNodeId: new Map([['PR_1', false]]),
+      isDraftByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications([{ ...basePr, isApproved: true }], latestStatus);
@@ -980,6 +984,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
         ['PR_1', true],
         ['PR_2', false],
       ]),
+      isDraftByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications(
@@ -992,5 +997,54 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
 
     expect(result.map((notification) => notification.id)).toEqual(['PR_1']);
     expect(result[0]?.isApproved).toBe(true);
+  });
+
+  it('applyLatestResultStatus は isDraft の解除を反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isDraftByNodeId: new Map([['PR_1', false]]),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: true }], latestStatus);
+
+    expect(updated?.isDraft).toBe(false);
+  });
+
+  it('applyLatestResultStatus は isDraft の付与を反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isDraftByNodeId: new Map([['PR_1', true]]),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: false }], latestStatus);
+
+    expect(updated?.isDraft).toBe(true);
+  });
+
+  it('applyLatestResultStatus は draft 対応表に無い通知の isDraft を変更しない', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isDraftByNodeId: new Map(),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: true }], latestStatus);
+
+    expect(updated?.isDraft).toBe(true);
+  });
+
+  it('removeClosedNotifications は残す通知へ isDraft の最新値を反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isDraftByNodeId: new Map([['PR_1', false]]),
+    };
+
+    const result = removeClosedNotifications([{ ...basePr, isDraft: true }], latestStatus);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.isDraft).toBe(false);
   });
 });

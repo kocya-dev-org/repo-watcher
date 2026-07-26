@@ -183,6 +183,7 @@ describe('background integration', () => {
               __typename: nodeId.startsWith('PR_') ? 'PullRequest' : 'Issue',
               id: nodeId,
               closed: false,
+              ...(nodeId === 'PR_2' ? { isDraft: true } : {}),
             })),
           };
         }
@@ -284,6 +285,7 @@ describe('background integration', () => {
               __typename: 'PullRequest',
               id: nodeId,
               closed: false,
+              isDraft: true,
             })),
           };
         }
@@ -556,6 +558,148 @@ describe('background integration', () => {
         isPresentInLatestResult: false,
       },
     ]);
+  });
+
+  it('監視サイクルで PR のドラフト解除を保存済み通知の isDraft へ反映する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      autoRemoveClosed: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [
+        {
+          id: 'PR_2',
+          kinds: ['mention'],
+          sourceNodeId: 'PR_2',
+          isPullRequest: true,
+          isDraft: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'draft pr',
+          url: 'https://example.com/pulls/2',
+          detectedAt: '2026-05-06T07:40:00.000Z',
+          isPresentInLatestResult: true,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: [
+              {
+                __typename: 'PullRequest',
+                id: 'PR_2',
+                closed: false,
+                isDraft: false,
+              },
+            ].filter((node) => (variables?.nodeIds ?? []).includes(node.id)),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await waitForCondition(
+      () =>
+        Array.isArray(chromeMock.getLocalState().notifications) &&
+        (chromeMock.getLocalState().notifications as Array<{ id: string; isDraft?: boolean }>).some(
+          (notification) => notification.id === 'PR_2' && notification.isDraft === false,
+        ),
+    );
+
+    expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'PR_2', isDraft: false }]);
+  });
+
+  it('autoRemoveClosed が ON でも残す PR のドラフト付与を反映する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      autoRemoveClosed: true,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [
+        {
+          id: 'PR_2',
+          kinds: ['mention'],
+          sourceNodeId: 'PR_2',
+          isPullRequest: true,
+          isDraft: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'pr',
+          url: 'https://example.com/pulls/2',
+          detectedAt: '2026-05-06T07:40:00.000Z',
+          isPresentInLatestResult: true,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+      notificationClickTargets: {},
+    });
+
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: [],
+            },
+          };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: [
+              {
+                __typename: 'PullRequest',
+                id: 'PR_2',
+                closed: false,
+                isDraft: true,
+              },
+            ].filter((node) => (variables?.nodeIds ?? []).includes(node.id)),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+
+    await importBackground();
+    chromeMock.triggerAlarm('github-notify-watch');
+    await waitForCondition(
+      () =>
+        Array.isArray(chromeMock.getLocalState().notifications) &&
+        (chromeMock.getLocalState().notifications as Array<{ id: string; isDraft?: boolean }>).some(
+          (notification) => notification.id === 'PR_2' && notification.isDraft === true,
+        ),
+    );
+
+    expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'PR_2', isDraft: true }]);
   });
 
   it('autoRemoveClosed が ON のとき close 済み通知を削除して badge を再計算する', async () => {

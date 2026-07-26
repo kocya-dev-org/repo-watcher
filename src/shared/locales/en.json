@@ -59,7 +59,8 @@
     "mention": "Mention",
     "thread": "Thread",
     "assignee": "Assignee",
-    "approved": "Approved"
+    "approved": "Approved",
+    "draft": "Draft"
   },
   "readState": {
     "read": "Read",

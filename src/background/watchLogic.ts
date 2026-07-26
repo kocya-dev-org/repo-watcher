@@ -9,6 +9,8 @@ export type LatestNotificationStatus = {
   openNodeIds: Set<string>;
   /** PullRequest node ID -> approved 状態の対応表。 */
   isApprovedByNodeId: Map<string, boolean>;
+  /** PullRequest node ID -> draft 状態の対応表。 */
+  isDraftByNodeId: Map<string, boolean>;
 };
 
 type GithubActor = {
@@ -279,13 +281,15 @@ export function applyLatestResultStatus(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isDraftByNodeId } = latestStatus;
   return notifications.map((notification) => {
     const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
+    const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
     return {
       ...notification,
       isPresentInLatestResult: notification.sourceNodeId ? openNodeIds.has(notification.sourceNodeId) : false,
       ...(hasApprovedInfo ? { isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) } : {}),
+      ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
     };
   });
 }
@@ -303,13 +307,19 @@ export function removeClosedNotifications(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isDraftByNodeId } = latestStatus;
   return notifications
     .filter((notification) => !notification.sourceNodeId || openNodeIds.has(notification.sourceNodeId))
     .map((notification) => {
       const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
-      return hasApprovedInfo
-        ? { ...notification, isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) }
-        : notification;
+      const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
+      if (!hasApprovedInfo && !hasDraftInfo) {
+        return notification;
+      }
+      return {
+        ...notification,
+        ...(hasApprovedInfo ? { isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) } : {}),
+        ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
+      };
     });
 }
