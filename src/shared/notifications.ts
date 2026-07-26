@@ -60,6 +60,25 @@ export function getNotificationKinds(notification: StoredNotification): Notifica
 }
 
 /**
+ * 2 つの通知データの kind 集合が異なるかを判定する。
+ * @param current 既存の通知データ
+ * @param merged 統合後の通知データ
+ * @returns kind の内容が変化していれば true
+ */
+function hasNotificationKindsChanged(current: StoredNotification, merged: StoredNotification): boolean {
+  const currentKinds = getNotificationKinds(current);
+  const mergedKinds = getNotificationKinds(merged);
+
+  if (currentKinds.length !== mergedKinds.length) {
+    return true;
+  }
+
+  const currentKindSet = new Set(currentKinds);
+
+  return mergedKinds.some((kind) => !currentKindSet.has(kind));
+}
+
+/**
  * 2 つの通知データを item 単位で統合する。
  * @param current 既存の通知データ
  * @param incoming 新たに検知した通知データ
@@ -73,12 +92,14 @@ export function mergeStoredNotifications(
     [...getNotificationKinds(current), ...getNotificationKinds(incoming)].includes(kind),
   );
 
+  const finalKinds = mergedKinds.includes('updated') ? mergedKinds.filter((kind) => kind !== 'new') : mergedKinds;
+
   return {
     ...current,
     ...incoming,
     id: current.id,
     sourceNodeId: current.sourceNodeId,
-    kinds: mergedKinds,
+    kinds: finalKinds,
     detectedAt:
       new Date(incoming.detectedAt).getTime() >= new Date(current.detectedAt).getTime()
         ? incoming.detectedAt
@@ -202,7 +223,7 @@ export function reconcileNotificationState(
       const mergedNotification = mergeStoredNotifications(existingNotification, notification);
       existingNotificationsById.set(mergedNotification.id, mergedNotification);
 
-      if (getNotificationKinds(mergedNotification).length !== getNotificationKinds(existingNotification).length) {
+      if (hasNotificationKindsChanged(existingNotification, mergedNotification)) {
         addedNotifications.push(mergedNotification);
       }
 

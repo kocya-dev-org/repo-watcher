@@ -529,7 +529,8 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
       kinds.push('assignee');
     }
-    const s = toStoredNotification(node, kinds, detectedAt);
+    const finalKinds = kinds.includes('updated') ? kinds.filter((kind) => kind !== 'new') : kinds;
+    const s = toStoredNotification(node, finalKinds, detectedAt);
     if (s) collected.push(s);
   }
 
