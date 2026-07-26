@@ -27,7 +27,18 @@ description: github-notify-ext の popup / options ページを、chrome.storage
 注意点:
 - browser ツールの console 実行はトップレベル `await` を使えない (module ではない)。`(() => { ... ; return 'ok'; })()` の即時関数で囲み、`chrome.storage.*.set` はコールバック無しで呼ぶ。
 - スクリーンショットは実際のビューポートより縮小されて保存されることがある (例: 1600px 幅 → 1024px 画像。約 0.64 倍)。ピクセル幅を目視で判定せず、`getComputedStyle` / `getBoundingClientRect` の実測値で検証する。細部を残したい場合は `convert <png> -crop <W>x<H>+0+0 +repage -resize 200%` で popup 領域を切り出す。
+  - 逆に `save_screenshot` で保存されるファイルは**ビューポート実寸** (例 1600x1122) で、会話に表示される画像 (1024 幅) とは座標系が違うことがある。crop 前に必ず `identify <png>` でサイズを確認し、実寸側の座標で切り出す。popup 本体は幅 440 CSS px なので `-crop 470x210+0+90 +repage -resize 200%` あたりが通知一覧の証跡に使いやすい。
 - ヘッドレス相当の環境では `wmctrl` が使えない (ウィンドウマネージャ無し) ことがある。popup ページはビューポート左上に描画されるので、そのまま録画してよい。
+
+## ラベル / チップ (approved・changes requested・draft・kind) の検証
+
+`src/popup/NotificationItem.tsx` の各ラベルはインライン style なので、`getComputedStyle` の値比較で「既存ラベルとスタイルが揃っているか」を厳密に検証できる。
+
+- チップ列の取得: `[...li.querySelectorAll('a + span > span')].map(s => s.textContent)`。順序も検証対象 (approved → changes requested → draft → kind)。
+- 色は RGB で比較する: `#1a7f37` → `rgb(26, 127, 55)`、`#cf222e` → `rgb(207, 34, 46)`、`#0969da` → `rgb(9, 105, 218)`。定義元は `src/shared/colors.ts`。
+- 「該当行にのみ出る」ことの検証は、フラグ有り / 別フラグのみ / フラグ無し の 3 行を必ず 1 セットで注入する。条件式が `!== false` などに壊れていると無フラグ行にも出るため差が出る。
+- 排他性の注意: popup 側では `isApproved` と `isChangesRequested` は**独立した条件式**で、両方 true を注入すると両方描画される。排他は background の `reviewDecision` 由来ロジックだけで担保されているため、popup の描画テストで「排他が保証されている」と結論づけないこと。
+- 併記時のレイアウト崩れは「全行の `li` 高さが一様」「タイトル `a` の right <= チップ span の left」「`scrollWidth - clientWidth === 0`」の 3 点で判定する。長文タイトル + ラベル 2 個 + kind 3 個の行を必ず 1 行入れる。
 
 ## 通知一覧のグループ表示 (owner/repo) の検証
 
