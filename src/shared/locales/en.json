@@ -60,6 +60,7 @@
     "thread": "Thread",
     "assignee": "Assignee",
     "approved": "Approved",
+    "changesRequested": "Changes requested",
     "draft": "Draft"
   },
   "readState": {

@@ -492,6 +492,72 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('変更要求 PR には赤ラベルを表示し、承認済み/未指定では表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          isChangesRequested: true,
+          isApproved: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: '変更要求 PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_2',
+          kinds: ['new'],
+          isPullRequest: true,
+          isChangesRequested: false,
+          isApproved: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: '承認済み PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+        {
+          id: 'PR_3',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 12,
+          title: '未指定 PR',
+          url: 'https://example.com/pr/12',
+          detectedAt: '2026-05-06T06:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const findChangesRequestedLabel = (title: string) => {
+      const item = findClickableItem(view.container, title);
+
+      return Array.from(item?.querySelectorAll('span') ?? []).find(
+        (span) => (span as HTMLElement).style.backgroundColor === 'rgb(207, 34, 46)',
+      ) as HTMLElement | undefined;
+    };
+
+    const changesRequestedLabel = findChangesRequestedLabel('変更要求 PR');
+    expect(changesRequestedLabel).toBeTruthy();
+    expect(changesRequestedLabel?.style.borderRadius).toBe('10px');
+    expect(changesRequestedLabel?.style.fontSize).toBe('10px');
+    expect(findChangesRequestedLabel('承認済み PR')).toBeUndefined();
+    expect(findChangesRequestedLabel('未指定 PR')).toBeUndefined();
+
+    await view.unmount();
+  });
+
   it('ドラフト PR には「ドラフト」ラベルを表示し、非ドラフト PR には表示しない', async () => {
     chromeMock.setSyncState({ notifyDraftPr: true });
     chromeMock.setLocalState({

@@ -60,6 +60,7 @@
     "thread": "スレッド",
     "assignee": "担当",
     "approved": "承認済み",
+    "changesRequested": "変更要求",
     "draft": "ドラフト"
   },
   "readState": {

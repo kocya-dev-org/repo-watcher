@@ -93,6 +93,19 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
             {t('notificationKind.approved')}
           </span>
         )}
+        {notification.isChangesRequested === true && (
+          <span
+            style={{
+              fontSize: '10px',
+              color: COLORS.bgDefault,
+              backgroundColor: COLORS.danger,
+              borderRadius: '10px',
+              padding: '1px 6px',
+            }}
+          >
+            {t('notificationKind.changesRequested')}
+          </span>
+        )}
         {notification.isPullRequest && notification.isDraft === true && (
           <span
             style={{

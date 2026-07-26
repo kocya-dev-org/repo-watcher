@@ -9,6 +9,8 @@ export type LatestNotificationStatus = {
   openNodeIds: Set<string>;
   /** PullRequest node ID -> approved 状態の対応表。 */
   isApprovedByNodeId: Map<string, boolean>;
+  /** PullRequest node ID -> changes requested 状態の対応表。 */
+  isChangesRequestedByNodeId: Map<string, boolean>;
   /** PullRequest node ID -> draft 状態の対応表。 */
   isDraftByNodeId: Map<string, boolean>;
 };
@@ -259,6 +261,8 @@ export function toStoredNotification(
           isDraft: Boolean((node as IssueOrPullRequestNode).isDraft),
           // 承認取り消しを反映するため true/false を必ず確定させる
           isApproved: (node as IssueOrPullRequestNode).reviewDecision === 'APPROVED',
+          // approved と排他になるよう変更要求も true/false を必ず確定させる
+          isChangesRequested: (node as IssueOrPullRequestNode).reviewDecision === 'CHANGES_REQUESTED',
         }
       : {}),
     owner,
@@ -281,14 +285,20 @@ export function applyLatestResultStatus(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId, isDraftByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId } = latestStatus;
   return notifications.map((notification) => {
     const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
+    const hasChangesRequestedInfo = notification.sourceNodeId
+      ? isChangesRequestedByNodeId.has(notification.sourceNodeId)
+      : false;
     const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
     return {
       ...notification,
       isPresentInLatestResult: notification.sourceNodeId ? openNodeIds.has(notification.sourceNodeId) : false,
       ...(hasApprovedInfo ? { isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) } : {}),
+      ...(hasChangesRequestedInfo
+        ? { isChangesRequested: isChangesRequestedByNodeId.get(notification.sourceNodeId as string) }
+        : {}),
       ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
     };
   });
@@ -307,18 +317,24 @@ export function removeClosedNotifications(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId, isDraftByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId } = latestStatus;
   return notifications
     .filter((notification) => !notification.sourceNodeId || openNodeIds.has(notification.sourceNodeId))
     .map((notification) => {
       const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
+      const hasChangesRequestedInfo = notification.sourceNodeId
+        ? isChangesRequestedByNodeId.has(notification.sourceNodeId)
+        : false;
       const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
-      if (!hasApprovedInfo && !hasDraftInfo) {
+      if (!hasApprovedInfo && !hasChangesRequestedInfo && !hasDraftInfo) {
         return notification;
       }
       return {
         ...notification,
         ...(hasApprovedInfo ? { isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) } : {}),
+        ...(hasChangesRequestedInfo
+          ? { isChangesRequested: isChangesRequestedByNodeId.get(notification.sourceNodeId as string) }
+          : {}),
         ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
       };
     });
