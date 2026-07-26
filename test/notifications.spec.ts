@@ -126,6 +126,20 @@ describe('mergeStoredNotifications', () => {
     expect(mergeStoredNotifications(current, incomingFalse).isPresentInLatestResult).toBe(false);
   });
 
+  it('isApproved は incoming の値をそのまま採用し承認取り消しを反映する', () => {
+    const current = createStoredNotification({ isPullRequest: true, isApproved: true });
+    const incoming = createStoredNotification({ isPullRequest: true, isApproved: false });
+
+    expect(mergeStoredNotifications(current, incoming).isApproved).toBe(false);
+  });
+
+  it('isApproved は false から true への変化も反映する', () => {
+    const current = createStoredNotification({ isPullRequest: true, isApproved: false });
+    const incoming = createStoredNotification({ isPullRequest: true, isApproved: true });
+
+    expect(mergeStoredNotifications(current, incoming).isApproved).toBe(true);
+  });
+
   it('kinds は NOTIFICATION_KIND_ORDER 順にマージし重複を排除する', () => {
     const current = createStoredNotification({ kinds: ['mention', 'new'] });
     const incoming = createStoredNotification({ kinds: ['assignee', 'mention'] });

@@ -28,6 +28,7 @@ export type IssueOrPullRequestNode = {
   __typename: 'Issue' | 'PullRequest';
   id?: string | null;
   isDraft?: boolean | null;
+  reviewDecision?: string | null;
   number: number;
   title: string;
   url: string;
@@ -243,7 +244,13 @@ export function toStoredNotification(
     kinds: kinds,
     sourceNodeId: nodeId,
     isPullRequest: node.__typename === 'PullRequest',
-    ...(node.__typename === 'PullRequest' ? { isDraft: Boolean((node as IssueOrPullRequestNode).isDraft) } : {}),
+    ...(node.__typename === 'PullRequest'
+      ? {
+          isDraft: Boolean((node as IssueOrPullRequestNode).isDraft),
+          // 承認取り消しを反映するため true/false を必ず確定させる
+          isApproved: (node as IssueOrPullRequestNode).reviewDecision === 'APPROVED',
+        }
+      : {}),
     owner,
     repo,
     number: typeof node.number === 'number' ? node.number : 0,

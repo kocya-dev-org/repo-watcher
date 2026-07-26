@@ -428,6 +428,70 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('承認済み PR には緑ラベルを表示し、未承認では表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          isApproved: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: '承認済み PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_2',
+          kinds: ['new'],
+          isPullRequest: true,
+          isApproved: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: '未承認 PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+        {
+          id: 'PR_3',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 12,
+          title: '未指定 PR',
+          url: 'https://example.com/pr/12',
+          detectedAt: '2026-05-06T06:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const findApprovedLabel = (title: string) => {
+      const item = findClickableItem(view.container, title);
+
+      return Array.from(item?.querySelectorAll('span') ?? []).find(
+        (span) => (span as HTMLElement).style.backgroundColor === 'rgb(26, 127, 55)',
+      ) as HTMLElement | undefined;
+    };
+
+    const approvedLabel = findApprovedLabel('承認済み PR');
+    expect(approvedLabel).toBeTruthy();
+    expect(approvedLabel?.style.borderRadius).toBe('10px');
+    expect(approvedLabel?.style.fontSize).toBe('10px');
+    expect(findApprovedLabel('未承認 PR')).toBeUndefined();
+    expect(findApprovedLabel('未指定 PR')).toBeUndefined();
+
+    await view.unmount();
+  });
+
   it('最新の API 結果にない通知は薄いグレー背景で表示する', async () => {
     chromeMock.setLocalState({
       notifications: [

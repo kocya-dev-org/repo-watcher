@@ -41,6 +41,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
         ... on PullRequest {
           id
           isDraft
+          reviewDecision
           number
           title
           url

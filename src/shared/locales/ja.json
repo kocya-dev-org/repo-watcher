@@ -58,7 +58,8 @@
     "updated": "更新",
     "mention": "メンション",
     "thread": "スレッド",
-    "assignee": "担当"
+    "assignee": "担当",
+    "approved": "承認済み"
   },
   "readState": {
     "read": "既読",

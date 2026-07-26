@@ -80,6 +80,19 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
           flexShrink: 0,
         }}
       >
+        {notification.isApproved === true && (
+          <span
+            style={{
+              fontSize: '10px',
+              color: COLORS.bgDefault,
+              backgroundColor: COLORS.success,
+              borderRadius: '10px',
+              padding: '1px 6px',
+            }}
+          >
+            {t('notificationKind.approved')}
+          </span>
+        )}
         {kindLabels.map((label) => (
           <span
             key={`${notification.id}:${label}`}
