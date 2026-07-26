@@ -1,5 +1,5 @@
 {
-  "appTitle": "GitHub Notify Settings",
+  "appTitle": "GH Centry Settings",
   "pat": {
     "heading": "API Key (PAT)",
     "description1": "Enter your GitHub Personal Access Token. A fine-grained PAT is recommended.",

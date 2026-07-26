@@ -546,7 +546,7 @@ const App: React.FC = () => {
           position: 'relative',
         }}
       >
-        <h1 style={{ fontSize: '14px', margin: 0 }}>GitHub Notify</h1>
+        <h1 style={{ fontSize: '14px', margin: 0 }}>GH Centry</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <IconButton
             aria-label={watchPauseButtonLabel}
