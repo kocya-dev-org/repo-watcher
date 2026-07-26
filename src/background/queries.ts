@@ -84,6 +84,7 @@ export const WATCH_NOTIFICATION_STATUS_QUERY = `
       ... on PullRequest {
         id
         closed
+        isDraft
         reviewDecision
       }
     }

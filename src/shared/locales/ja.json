@@ -59,7 +59,8 @@
     "mention": "メンション",
     "thread": "スレッド",
     "assignee": "担当",
-    "approved": "承認済み"
+    "approved": "承認済み",
+    "draft": "ドラフト"
   },
   "readState": {
     "read": "既読",

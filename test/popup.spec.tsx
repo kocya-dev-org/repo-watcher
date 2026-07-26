@@ -492,6 +492,59 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('ドラフト PR には「ドラフト」ラベルを表示し、非ドラフト PR には表示しない', async () => {
+    chromeMock.setSyncState({ notifyDraftPr: true });
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          isDraft: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'ドラフト PR',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'PR_2',
+          kinds: ['new'],
+          isPullRequest: true,
+          isDraft: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: '通常 PR',
+          url: 'https://example.com/pr/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const findDraftLabel = (title: string) => {
+      const item = findClickableItem(view.container, title);
+
+      return Array.from(item?.querySelectorAll('span') ?? []).find(
+        (span) => (span as HTMLElement).textContent === 'ドラフト',
+      ) as HTMLElement | undefined;
+    };
+
+    const draftLabel = findDraftLabel('ドラフト PR');
+    expect(draftLabel).toBeTruthy();
+    expect(draftLabel?.style.borderRadius).toBe('10px');
+    expect(draftLabel?.style.fontSize).toBe('10px');
+    expect(findDraftLabel('通常 PR')).toBeUndefined();
+
+    await view.unmount();
+  });
+
   it('最新の API 結果にない通知は薄いグレー背景で表示する', async () => {
     chromeMock.setLocalState({
       notifications: [

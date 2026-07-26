@@ -93,6 +93,19 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
             {t('notificationKind.approved')}
           </span>
         )}
+        {notification.isPullRequest && notification.isDraft === true && (
+          <span
+            style={{
+              fontSize: '10px',
+              color: COLORS.bgDefault,
+              backgroundColor: COLORS.accent,
+              borderRadius: '10px',
+              padding: '1px 6px',
+            }}
+          >
+            {t('notificationKind.draft')}
+          </span>
+        )}
         {kindLabels.map((label) => (
           <span
             key={`${notification.id}:${label}`}
