@@ -594,6 +594,45 @@ describe('background notification logic helpers', () => {
     expect(stored?.isDraft).toBe(true);
   });
 
+  it('toStoredNotification は reviewDecision から isApproved を確定させる', () => {
+    const approved = toStoredNotification(
+      {
+        ...baseNode,
+        __typename: 'PullRequest',
+        id: 'PR_1',
+        reviewDecision: 'APPROVED',
+      },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+    );
+    const reviewRequired = toStoredNotification(
+      {
+        ...baseNode,
+        __typename: 'PullRequest',
+        id: 'PR_2',
+        reviewDecision: 'REVIEW_REQUIRED',
+      },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+    );
+    const noDecision = toStoredNotification(
+      {
+        ...baseNode,
+        __typename: 'PullRequest',
+        id: 'PR_3',
+        reviewDecision: null,
+      },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+    );
+    const issue = toStoredNotification(baseNode, ['new'], '2026-03-21T10:06:00.000Z');
+
+    expect(approved?.isApproved).toBe(true);
+    expect(reviewRequired?.isApproved).toBe(false);
+    expect(noDecision?.isApproved).toBe(false);
+    expect(issue).not.toHaveProperty('isApproved');
+  });
+
   it('buildRepoQuery は repos が空のとき repo: プレフィックスを含まない', () => {
     const query = buildRepoQuery([], lastCheckedAt, 'pull_request');
 

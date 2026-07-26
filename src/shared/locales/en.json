@@ -58,7 +58,8 @@
     "updated": "Updated",
     "mention": "Mention",
     "thread": "Thread",
-    "assignee": "Assignee"
+    "assignee": "Assignee",
+    "approved": "Approved"
   },
   "readState": {
     "read": "Read",

@@ -8,6 +8,7 @@ export type StoredNotification = {
   sourceNodeId: string;
   isPullRequest: boolean;
   isDraft?: boolean;
+  isApproved?: boolean;
   owner: string;
   repo: string;
   number: number;
