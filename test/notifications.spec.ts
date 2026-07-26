@@ -199,6 +199,29 @@ describe('reconcileNotificationState の isApproved 反映', () => {
 
     expect(reconciled.notifications[0]?.isApproved).toBe(false);
   });
+
+  it('再検知した PR の承認→変更要求を isChangesRequested へ反映する', () => {
+    const existing = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: true,
+      isChangesRequested: false,
+    });
+    const incoming = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: false,
+      isChangesRequested: true,
+      detectedAt: '2026-03-21T10:05:00.000Z',
+    });
+
+    const reconciled = reconcileNotificationState([existing], [], [incoming]);
+
+    expect(reconciled.notifications[0]?.isChangesRequested).toBe(true);
+    expect(reconciled.notifications[0]?.isApproved).toBe(false);
+  });
 });
 
 describe('getNotificationKinds', () => {

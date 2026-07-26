@@ -9,6 +9,7 @@ export type StoredNotification = {
   isPullRequest: boolean;
   isDraft?: boolean;
   isApproved?: boolean;
+  isChangesRequested?: boolean;
   owner: string;
   repo: string;
   number: number;
