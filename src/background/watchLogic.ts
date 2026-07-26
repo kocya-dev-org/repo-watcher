@@ -3,6 +3,14 @@ import type { WatchTargetRepo } from './index';
 
 export type WatchSearchTarget = 'pull_request' | 'issue';
 
+/** 最新 API 結果から得た通知元 node の状態。 */
+export type LatestNotificationStatus = {
+  /** open 扱いの node ID 集合。 */
+  openNodeIds: Set<string>;
+  /** PullRequest node ID -> approved 状態の対応表。 */
+  isApprovedByNodeId: Map<string, boolean>;
+};
+
 type GithubActor = {
   login: string | null;
 };
@@ -259,4 +267,49 @@ export function toStoredNotification(
     detectedAt,
     isPresentInLatestResult: true,
   };
+}
+
+/**
+ * 最新 API 結果に基づき、通知ごとの表示状態と approved 状態を更新する。
+ * @param notifications 保存済み通知一覧
+ * @param latestStatus 最新 API 結果に基づく open node ID 集合と approved 対応表
+ * @returns 表示状態と approved 状態を反映した通知一覧
+ */
+export function applyLatestResultStatus(
+  notifications: StoredNotification[],
+  latestStatus: LatestNotificationStatus,
+): StoredNotification[] {
+  const { openNodeIds, isApprovedByNodeId } = latestStatus;
+  return notifications.map((notification) => {
+    const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
+    return {
+      ...notification,
+      isPresentInLatestResult: notification.sourceNodeId ? openNodeIds.has(notification.sourceNodeId) : false,
+      ...(hasApprovedInfo ? { isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) } : {}),
+    };
+  });
+}
+
+/**
+ * close 済みと判定できた通知を通知一覧から取り除く。
+ *
+ * `sourceNodeId` を持たない通知は状態を確認できないため除外対象にしない。
+ * 残す通知には approved 対応表の値を反映する。
+ * @param notifications 保存済み通知一覧
+ * @param latestStatus 最新 API 結果に基づく open node ID 集合と approved 対応表
+ * @returns close 済み通知を取り除き approved 状態を反映した通知一覧
+ */
+export function removeClosedNotifications(
+  notifications: StoredNotification[],
+  latestStatus: LatestNotificationStatus,
+): StoredNotification[] {
+  const { openNodeIds, isApprovedByNodeId } = latestStatus;
+  return notifications
+    .filter((notification) => !notification.sourceNodeId || openNodeIds.has(notification.sourceNodeId))
+    .map((notification) => {
+      const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
+      return hasApprovedInfo
+        ? { ...notification, isApproved: isApprovedByNodeId.get(notification.sourceNodeId as string) }
+        : notification;
+    });
 }

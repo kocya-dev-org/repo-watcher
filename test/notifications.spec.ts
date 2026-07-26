@@ -8,6 +8,7 @@ import {
   markNotificationAsRead,
   mergeStoredNotifications,
   pruneReadNotifications,
+  reconcileNotificationState,
   toggleNotificationRead,
   type NotificationKind,
   type StoredNotification,
@@ -155,6 +156,48 @@ describe('mergeStoredNotifications', () => {
 
     expect(merged.id).toBe('CURRENT_ID');
     expect(merged.sourceNodeId).toBe('CURRENT_NODE');
+  });
+});
+
+describe('reconcileNotificationState の isApproved 反映', () => {
+  it('再検知した PR の未承認→承認を isApproved へ反映する', () => {
+    const existing = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: false,
+    });
+    const incoming = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: true,
+      detectedAt: '2026-03-21T10:05:00.000Z',
+    });
+
+    const reconciled = reconcileNotificationState([existing], [], [incoming]);
+
+    expect(reconciled.notifications[0]?.isApproved).toBe(true);
+  });
+
+  it('再検知した PR の承認→取り消しを isApproved へ反映する', () => {
+    const existing = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: true,
+    });
+    const incoming = createStoredNotification({
+      id: 'PR_1',
+      sourceNodeId: 'PR_1',
+      isPullRequest: true,
+      isApproved: false,
+      detectedAt: '2026-03-21T10:05:00.000Z',
+    });
+
+    const reconciled = reconcileNotificationState([existing], [], [incoming]);
+
+    expect(reconciled.notifications[0]?.isApproved).toBe(false);
   });
 });
 

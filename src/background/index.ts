@@ -1,6 +1,7 @@
 import { graphql } from '@octokit/graphql';
 
 import {
+  applyLatestResultStatus,
   buildRepoQuery,
   getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
@@ -8,8 +9,10 @@ import {
   hasMentionThreadNotification,
   isNewNotificationCandidate,
   isUpdatedNotificationCandidate,
+  removeClosedNotifications,
   toStoredNotification,
   type IssueOrPullRequestNode,
+  type LatestNotificationStatus,
   type PullRequestReviewThreadsNode,
   type WatchSearchTarget,
 } from './watchLogic';
@@ -70,6 +73,7 @@ type NotificationStatusNode = {
   __typename?: 'Issue' | 'PullRequest';
   id?: string | null;
   closed?: boolean | null;
+  reviewDecision?: string | null;
 };
 
 const DEFAULT_INTERVAL_MINUTES = 5;
@@ -373,15 +377,17 @@ async function showOSNotifications(notifications: StoredNotification[]) {
 }
 
 /**
- * 現在の API 結果で open 扱いの通知元 node ID 一覧を取得する。
+ * 現在の API 結果で open 扱いの通知元 node と approved 状態を取得する。
+ *
+ * open/closed に依存せず、PullRequest の `reviewDecision` から approved 状態を持ち帰る。
  * @param client GraphQL クライアント
  * @param notifications 状態確認したい通知一覧
- * @returns 最新 API 結果に残っている node ID 集合
+ * @returns 最新 API 結果に基づく open node ID 集合と approved 対応表
  */
 async function fetchLatestOpenNotificationNodeIds(
   client: GithubGraphqlClient,
   notifications: StoredNotification[],
-): Promise<Set<string>> {
+): Promise<LatestNotificationStatus> {
   const nodeIds = Array.from(
     new Set(
       notifications
@@ -391,10 +397,11 @@ async function fetchLatestOpenNotificationNodeIds(
   );
 
   if (nodeIds.length === 0) {
-    return new Set<string>();
+    return { openNodeIds: new Set<string>(), isApprovedByNodeId: new Map<string, boolean>() };
   }
 
   const openNodeIds = new Set<string>();
+  const isApprovedByNodeId = new Map<string, boolean>();
 
   for (let index = 0; index < nodeIds.length; index += 50) {
     const chunk = nodeIds.slice(index, index + 50);
@@ -406,50 +413,20 @@ async function fetchLatestOpenNotificationNodeIds(
       if (
         (node.__typename === 'Issue' || node.__typename === 'PullRequest') &&
         typeof node.id === 'string' &&
-        node.id.length > 0 &&
-        node.closed === false
+        node.id.length > 0
       ) {
-        openNodeIds.add(node.id);
+        if (node.closed === false) {
+          openNodeIds.add(node.id);
+        }
+        if (node.__typename === 'PullRequest') {
+          // 承認取り消しも反映するため true/false を必ず確定させる
+          isApprovedByNodeId.set(node.id, node.reviewDecision === 'APPROVED');
+        }
       }
     }
   }
 
-  return openNodeIds;
-}
-
-/**
- * 最新 API 結果に基づき、通知ごとの表示状態を更新する。
- * @param notifications 保存済み通知一覧
- * @param latestOpenNodeIds 最新 API 結果に残っている open の node ID 集合
- * @returns 表示状態を反映した通知一覧
- */
-function applyLatestResultStatus(
-  notifications: StoredNotification[],
-  latestOpenNodeIds: Set<string>,
-): StoredNotification[] {
-  return notifications.map((notification) => {
-    return {
-      ...notification,
-      isPresentInLatestResult: notification.sourceNodeId ? latestOpenNodeIds.has(notification.sourceNodeId) : false,
-    };
-  });
-}
-
-/**
- * close 済みと判定できた通知を通知一覧から取り除く。
- *
- * `sourceNodeId` を持たない通知は状態を確認できないため除外対象にしない。
- * @param notifications 保存済み通知一覧
- * @param latestOpenNodeIds 最新 API 結果に残っている open の node ID 集合
- * @returns close 済み通知を取り除いた通知一覧
- */
-function removeClosedNotifications(
-  notifications: StoredNotification[],
-  latestOpenNodeIds: Set<string>,
-): StoredNotification[] {
-  return notifications.filter(
-    (notification) => !notification.sourceNodeId || latestOpenNodeIds.has(notification.sourceNodeId),
-  );
+  return { openNodeIds, isApprovedByNodeId };
 }
 
 /**
@@ -559,17 +536,17 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     localState.readNotificationIds,
     filteredCollected,
   );
-  const latestOpenNodeIds = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
+  const latestStatus = await fetchLatestOpenNotificationNodeIds(client, reconciled.notifications);
   const notificationsWithLatestStatus = settings.autoRemoveClosed
-    ? removeClosedNotifications(reconciled.notifications, latestOpenNodeIds)
-    : applyLatestResultStatus(reconciled.notifications, latestOpenNodeIds);
+    ? removeClosedNotifications(reconciled.notifications, latestStatus)
+    : applyLatestResultStatus(reconciled.notifications, latestStatus);
   const badgeNotifications = filterNotificationsByDraftSetting(notificationsWithLatestStatus, settings.notifyDraftPr);
   const badgeCount = calculateUnreadCount(badgeNotifications, []);
 
   debugLog('watch cycle notification summary', {
     addedNotifications: reconciled.addedNotifications.length,
     badgeCount,
-    activeNotifications: latestOpenNodeIds.size,
+    activeNotifications: latestStatus.openNodeIds.size,
   });
 
   // 検出結果を保存
