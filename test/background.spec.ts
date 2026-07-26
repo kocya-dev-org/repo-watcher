@@ -22,6 +22,7 @@ import {
   calculateUnreadCount,
   filterNotificationsByDraftSetting,
   markNotificationAsRead,
+  mergeStoredNotifications,
   reconcileNotificationState,
   type StoredNotification,
 } from '../src/shared/notifications';
@@ -813,6 +814,57 @@ describe('shared notification state helpers', () => {
       {
         id: 'PR_3',
         kinds: ['thread'],
+      },
+    ]);
+  });
+
+  it('mergeStoredNotifications は updated を含む場合に new を除去する', () => {
+    const merged = mergeStoredNotifications(existingNotifications[0]!, {
+      ...existingNotifications[0]!,
+      kinds: ['updated'],
+      detectedAt: '2026-03-21T10:05:00.000Z',
+    });
+
+    expect(merged.kinds).toEqual(['updated']);
+  });
+
+  it('mergeStoredNotifications は updated がある場合も mention / assignee を残す', () => {
+    const merged = mergeStoredNotifications(
+      { ...existingNotifications[0]!, kinds: ['new', 'mention'] },
+      { ...existingNotifications[0]!, kinds: ['updated', 'assignee'], detectedAt: '2026-03-21T10:05:00.000Z' },
+    );
+
+    expect(merged.kinds).toEqual(['updated', 'mention', 'assignee']);
+  });
+
+  it('mergeStoredNotifications は updated がなければ new を保持する', () => {
+    const merged = mergeStoredNotifications(existingNotifications[0]!, {
+      ...existingNotifications[0]!,
+      kinds: ['mention'],
+      detectedAt: '2026-03-21T10:05:00.000Z',
+    });
+
+    expect(merged.kinds).toEqual(['new', 'mention']);
+  });
+
+  it('reconcileNotificationState は new から updated への置き換わりも追加通知として扱う', () => {
+    const reconciled = reconcileNotificationState(
+      existingNotifications,
+      [],
+      [
+        {
+          ...existingNotifications[0]!,
+          kinds: ['updated'],
+          detectedAt: '2026-03-21T10:05:00.000Z',
+        },
+      ],
+    );
+
+    expect(reconciled.notifications[0]?.kinds).toEqual(['updated']);
+    expect(reconciled.addedNotifications).toMatchObject([
+      {
+        id: 'ISSUE_1',
+        kinds: ['updated'],
       },
     ]);
   });
