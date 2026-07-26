@@ -598,12 +598,14 @@ describe('popup App', () => {
       const item = findClickableItem(view.container, title);
 
       return Array.from(item?.querySelectorAll('span') ?? []).find(
-        (span) => (span as HTMLElement).textContent === 'ドラフト',
+        (span) => (span as HTMLElement).style.backgroundColor === 'rgb(36, 41, 47)',
       ) as HTMLElement | undefined;
     };
 
     const draftLabel = findDraftLabel('ドラフト PR');
     expect(draftLabel).toBeTruthy();
+    expect(draftLabel?.textContent).toBe('ドラフト');
+    expect(draftLabel?.style.color).toBe('rgb(255, 255, 255)');
     expect(draftLabel?.style.borderRadius).toBe('10px');
     expect(draftLabel?.style.fontSize).toBe('10px');
     expect(findDraftLabel('通常 PR')).toBeUndefined();
