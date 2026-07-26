@@ -11,7 +11,9 @@ description: github-notify-ext の popup / options ページを、chrome.storage
 2. 拡張を Chrome に読み込む。browser ツールは拡張ディレクトリを指定した再起動でプリロードできる:
    `extensions=/absolute/path/to/repo/dist` を指定して再起動する。これにより「パッケージ化されていない拡張機能を読み込む」のネイティブ ファイル ピッカー (自動化では操作不可) を回避できる。
    あるいは `chrome://extensions/` でデベロッパーモードを有効にして「パッケージ化されていない拡張機能を読み込む」でも良い。
-3. `chrome://extensions/` に表示される拡張 ID を控える。
+3. `chrome://extensions/` に表示される拡張 ID を控える。shadow DOM のため browser ツールから ID を読めない
+   ことがある。unpacked 拡張の ID は絶対パスから決まるので次で計算できる:
+   `python3 -c "import hashlib;p=b'/abs/path/dist';print(''.join(chr(ord('a')+int(c,16)) for c in hashlib.sha256(p).hexdigest()[:32]))"`
 4. ページを直接開く:
    - popup: `chrome-extension://<id>/src/popup/index.html`
    - options: `chrome-extension://<id>/src/options/index.html`
@@ -73,6 +75,29 @@ description: github-notify-ext の popup / options ページを、chrome.storage
 2 つ目の unpacked 拡張として読み込む（`extensions=/path/to/dist,/tmp/dist-ja` で再起動）。
 拡張 ID はディレクトリパスから決まるため別 ID・別 storage になる点に注意（設定は空から始まる）。
 日本語表示の確認は「ラベル文言が ja.json の値と一致するか」だけに使い、永続化の検証は本番 dist 側で行うこと。
+
+## 「完成形の kinds を注入するだけ」では不十分なロジック変更の検証 (harness ページ)
+
+`mergeStoredNotifications` / `reconcileNotificationState` のような **storage に書く前のロジック** を変えた PR では、
+完成形の `notifications` を storage に注入しても popup はそれをそのまま描画するだけなので、実装が壊れていても
+同じ画面になる (= 意味のないテスト)。この場合は一時的なテスト専用ページを作り、実装本体の関数を拡張オリジンで
+実行させる:
+
+1. `src/harness/index.html` + `src/harness/main.ts` を作り、`main.ts` で `src/shared/notifications` から
+   検証対象の関数を import して `window.harness = { ... }` に載せる。background 側だけにあるロジック
+   (例: `runWatchCycle` の kinds 除外) は同じ式を harness に写して置く。
+2. `vite.config.ts` の `rollupOptions.input` に `harness: resolve(__dirname, 'src/harness/index.html')` を追加して
+   `npm run build`。
+3. `chrome-extension://<id>/src/harness/index.html` を開き、console から「既存通知 + 今回検知した通知」を渡して
+   実関数を実行 → 戻り値を `chrome.storage.local.set` → popup をリロードして描画確認。戻り値 (kinds / 
+   addedNotifications / badgeCount) は `return JSON.stringify(...)` で同時に検証できる。
+4. **テスト後に harness と vite.config.ts の変更を必ず削除し、再ビルドしてブランチをクリーンに戻す。**
+
+## 既読化 / バッジの検証
+
+`chrome.action.getBadgeText` の Promise 戻り値は browser console から取れないことがある。代わりに
+`chrome.storage.local.get(['badgeCount','readNotificationIds'], r => console.log('X', JSON.stringify(r)))` を
+実行し、次に console (引数なし) でログを読む。既読化 1 件でカウントが 1 減ることを確認する。
 
 純粋な描画テストでは GitHub PAT / API は不要 — storage を直接注入する。
 
