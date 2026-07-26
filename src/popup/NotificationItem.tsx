@@ -80,6 +80,19 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
           flexShrink: 0,
         }}
       >
+        {notification.isPullRequest && notification.isDraft === true && (
+          <span
+            style={{
+              fontSize: '10px',
+              color: COLORS.bgDefault,
+              backgroundColor: COLORS.fgDefault,
+              borderRadius: '10px',
+              padding: '1px 6px',
+            }}
+          >
+            {t('notificationKind.draft')}
+          </span>
+        )}
         {notification.isApproved === true && (
           <span
             style={{
@@ -104,19 +117,6 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
             }}
           >
             {t('notificationKind.changesRequested')}
-          </span>
-        )}
-        {notification.isPullRequest && notification.isDraft === true && (
-          <span
-            style={{
-              fontSize: '10px',
-              color: COLORS.bgDefault,
-              backgroundColor: COLORS.accent,
-              borderRadius: '10px',
-              padding: '1px 6px',
-            }}
-          >
-            {t('notificationKind.draft')}
           </span>
         )}
         {kindLabels.map((label) => (

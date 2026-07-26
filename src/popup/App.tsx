@@ -530,7 +530,7 @@ const App: React.FC = () => {
   return (
     <div
       style={{
-        width: '440px',
+        width: '560px',
         minHeight: '360px',
         padding: '10px',
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
