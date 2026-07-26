@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { WatchTargetRepo } from '../src/background/index';
 import {
+  applyLatestResultStatus,
   buildRepoQuery,
   getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
@@ -9,7 +10,9 @@ import {
   hasMentionThreadNotification,
   isNewNotificationCandidate,
   isUpdatedNotificationCandidate,
+  removeClosedNotifications,
   toStoredNotification,
+  type LatestNotificationStatus,
 } from '../src/background/watchLogic';
 import {
   buildPatCacheKey,
@@ -906,5 +909,88 @@ describe('shared notification state helpers', () => {
         kinds: ['updated'],
       },
     ]);
+  });
+});
+
+describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () => {
+  const basePr: StoredNotification = {
+    id: 'PR_1',
+    kinds: ['new'],
+    sourceNodeId: 'PR_1',
+    isPullRequest: true,
+    owner: 'octo',
+    repo: 'repo',
+    number: 1,
+    title: 'PR',
+    url: 'https://github.com/octo/repo/pull/1',
+    detectedAt: '2026-03-21T10:00:00.000Z',
+    isPresentInLatestResult: true,
+  };
+
+  it('applyLatestResultStatus は reviewDecision の未承認→承認を isApproved へ反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map([['PR_1', true]]),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: false }], latestStatus);
+
+    expect(updated?.isApproved).toBe(true);
+    expect(updated?.isPresentInLatestResult).toBe(true);
+  });
+
+  it('applyLatestResultStatus は reviewDecision の承認→取り消しを isApproved へ反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map([['PR_1', false]]),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
+
+    expect(updated?.isApproved).toBe(false);
+  });
+
+  it('applyLatestResultStatus は approved 対応表に無い通知の isApproved を変更しない', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
+
+    expect(updated?.isApproved).toBe(true);
+  });
+
+  it('removeClosedNotifications は残す通知へ承認取り消しを反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map([['PR_1', false]]),
+    };
+
+    const result = removeClosedNotifications([{ ...basePr, isApproved: true }], latestStatus);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.isApproved).toBe(false);
+  });
+
+  it('removeClosedNotifications は close 済み通知を除外しつつ approved を最新化する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map([
+        ['PR_1', true],
+        ['PR_2', false],
+      ]),
+    };
+
+    const result = removeClosedNotifications(
+      [
+        { ...basePr, isApproved: false },
+        { ...basePr, id: 'PR_2', sourceNodeId: 'PR_2', isApproved: true },
+      ],
+      latestStatus,
+    );
+
+    expect(result.map((notification) => notification.id)).toEqual(['PR_1']);
+    expect(result[0]?.isApproved).toBe(true);
   });
 });
