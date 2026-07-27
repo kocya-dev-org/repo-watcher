@@ -3,13 +3,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WatchTargetRepo } from '../src/background/index';
 import {
   applyLatestResultStatus,
+  applyThreadNotificationKinds,
   buildRepoQuery,
+  collectNotifications,
+  resolveNotificationKinds,
   getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
   hasMentionNotification,
   hasMentionThreadNotification,
   isNewNotificationCandidate,
   isUpdatedNotificationCandidate,
+  type IssueOrPullRequestNode,
   removeClosedNotifications,
   toStoredNotification,
   type LatestNotificationStatus,
@@ -1133,5 +1137,140 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
 
     expect(result).toHaveLength(1);
     expect(result[0]?.isDraft).toBe(false);
+  });
+});
+
+describe('通知種別の組み立て', () => {
+  const lastCheckedAt = '2026-03-21T10:00:00.000Z';
+  const detectedAt = '2026-03-21T10:10:00.000Z';
+
+  const issueNode: IssueOrPullRequestNode = {
+    __typename: 'Issue',
+    id: 'ISSUE_1',
+    number: 1,
+    title: '新規 Issue',
+    url: 'https://github.com/octo/repo/issues/1',
+    createdAt: '2026-03-21T10:05:00.000Z',
+    updatedAt: '2026-03-21T10:05:00.000Z',
+    repository: { name: 'repo', owner: { login: 'octo' } },
+    assignees: { nodes: [] },
+    body: '',
+    comments: { nodes: [] },
+  };
+
+  const pullRequestNode: IssueOrPullRequestNode = {
+    __typename: 'PullRequest',
+    id: 'PR_1',
+    number: 2,
+    title: '更新 PR',
+    url: 'https://github.com/octo/repo/pull/2',
+    createdAt: '2026-03-20T10:00:00.000Z',
+    updatedAt: '2026-03-21T10:06:00.000Z',
+    repository: { name: 'repo', owner: { login: 'octo' } },
+    assignees: { nodes: [] },
+    body: '',
+    comments: { nodes: [] },
+  };
+
+  it('resolveNotificationKinds は updated がある場合に new を落とす', () => {
+    expect(resolveNotificationKinds(['new', 'updated', 'mention'])).toEqual(['updated', 'mention']);
+  });
+
+  it('resolveNotificationKinds は updated が無い場合はそのまま返す', () => {
+    expect(resolveNotificationKinds(['new', 'mention'])).toEqual(['new', 'mention']);
+  });
+
+  it('collectNotifications は検知した種別付きの通知を組み立てる', () => {
+    const collected = collectNotifications([issueNode, pullRequestNode], lastCheckedAt, 'viewer', detectedAt);
+
+    expect(collected).toHaveLength(2);
+    expect(collected[0]?.id).toBe('ISSUE_1');
+    expect(collected[0]?.kinds).toEqual(['new']);
+    expect(collected[0]?.detectedAt).toBe(detectedAt);
+    expect(collected[1]?.id).toBe('PR_1');
+    expect(collected[1]?.kinds).toEqual(['updated']);
+  });
+
+  it('collectNotifications は repository が無い項目を除外する', () => {
+    const collected = collectNotifications(
+      [{ ...issueNode, repository: undefined as unknown as IssueOrPullRequestNode['repository'] }],
+      lastCheckedAt,
+      'viewer',
+      detectedAt,
+    );
+
+    expect(collected).toEqual([]);
+  });
+
+  it('applyThreadNotificationKinds は該当 PR の通知へ thread を付与する', () => {
+    const collected = collectNotifications([pullRequestNode], lastCheckedAt, 'viewer', detectedAt);
+    const applied = applyThreadNotificationKinds(
+      collected,
+      [
+        {
+          __typename: 'PullRequest',
+          id: 'PR_1',
+          number: 2,
+          title: '更新 PR',
+          url: 'https://github.com/octo/repo/pull/2',
+          repository: { name: 'repo', owner: { login: 'octo' } },
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'THREAD_1',
+                isResolved: false,
+                comments: {
+                  nodes: [
+                    { body: '@viewer ping', createdAt: '2026-03-21T09:59:00.000Z' },
+                    { body: 'follow up', createdAt: '2026-03-21T10:06:00.000Z' },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+      lastCheckedAt,
+      'viewer',
+    );
+
+    expect(applied[0]?.kinds).toEqual(['updated', 'thread']);
+    // 元の配列は変更しない
+    expect(collected[0]?.kinds).toEqual(['updated']);
+  });
+
+  it('applyThreadNotificationKinds は条件を満たさない場合に通知を変更しない', () => {
+    const collected = collectNotifications([pullRequestNode], lastCheckedAt, 'viewer', detectedAt);
+    const applied = applyThreadNotificationKinds(
+      collected,
+      [
+        {
+          __typename: 'PullRequest',
+          id: 'PR_1',
+          number: 2,
+          title: '更新 PR',
+          url: 'https://github.com/octo/repo/pull/2',
+          repository: { name: 'repo', owner: { login: 'octo' } },
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'THREAD_1',
+                isResolved: true,
+                comments: {
+                  nodes: [
+                    { body: '@viewer ping', createdAt: '2026-03-21T09:59:00.000Z' },
+                    { body: 'follow up', createdAt: '2026-03-21T10:06:00.000Z' },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+      lastCheckedAt,
+      'viewer',
+    );
+
+    expect(applied[0]?.kinds).toEqual(['updated']);
   });
 });

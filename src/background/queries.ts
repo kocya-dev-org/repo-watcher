@@ -4,6 +4,15 @@
  * クエリ文字列を 1 箇所へ集約し、監視ロジック本体と責務を分離する。
  */
 
+/** 認証済みユーザーの login を取得するクエリ。 */
+export const GET_VIEWER_QUERY = `
+  query GetViewer {
+    viewer {
+      login
+    }
+  }
+`;
+
 /** 監視対象の Issue / PullRequest を検索するクエリ。 */
 export const WATCH_ISSUES_AND_PRS_QUERY = `
   query WatchIssuesAndPRs(
