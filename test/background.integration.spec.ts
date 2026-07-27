@@ -99,7 +99,10 @@ describe('background integration', () => {
                     author: { login: 'someone' },
                     assignees: { nodes: [] },
                     body: '',
-                    comments: { nodes: [] },
+                    comments: { totalCount: 4, nodes: [] },
+                    reviewThreads: {
+                      nodes: [{ comments: { totalCount: 2 } }, { comments: { totalCount: 3 } }],
+                    },
                   },
                 ],
               },
@@ -122,6 +125,7 @@ describe('background integration', () => {
                   assignees: { nodes: [{ login: 'viewer' }] },
                   body: 'hello @viewer',
                   comments: {
+                    totalCount: 1,
                     nodes: [
                       {
                         body: 'new comment',
@@ -184,6 +188,14 @@ describe('background integration', () => {
               id: nodeId,
               closed: false,
               ...(nodeId === 'PR_2' ? { isDraft: true } : {}),
+              ...(nodeId === 'PR_2'
+                ? {
+                    comments: { totalCount: 4 },
+                    reviewThreads: {
+                      nodes: [{ comments: { totalCount: 2 } }, { comments: { totalCount: 3 } }],
+                    },
+                  }
+                : { comments: { totalCount: 1 } }),
             })),
           };
         }
@@ -208,6 +220,12 @@ describe('background integration', () => {
     expect(state.notifications as Array<unknown>).toHaveLength(2);
     expect(state.notifications).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'PR_2', isDraft: true })]),
+    );
+    expect(state.notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'PR_2', commentCount: 9 }),
+        expect.objectContaining({ id: 'ISSUE_1', commentCount: 1 }),
+      ]),
     );
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });

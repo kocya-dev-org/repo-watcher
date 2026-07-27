@@ -157,6 +157,15 @@ describe('mergeStoredNotifications', () => {
     expect(merged.id).toBe('CURRENT_ID');
     expect(merged.sourceNodeId).toBe('CURRENT_NODE');
   });
+
+  it('commentCount は incoming の値を優先し、未定義なら current を保持する', () => {
+    const current = createStoredNotification({ commentCount: 3 });
+    const incoming = createStoredNotification({ commentCount: 9 });
+    const incomingUndefined = createStoredNotification({ commentCount: undefined });
+
+    expect(mergeStoredNotifications(current, incoming).commentCount).toBe(9);
+    expect(mergeStoredNotifications(current, incomingUndefined).commentCount).toBe(3);
+  });
 });
 
 describe('reconcileNotificationState の isApproved 反映', () => {
