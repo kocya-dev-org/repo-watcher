@@ -110,7 +110,41 @@ description: github-notify-ext の popup / options ページを、chrome.storage
 `chrome.storage.local.get(['badgeCount','readNotificationIds'], r => console.log('X', JSON.stringify(r)))` を
 実行し、次に console (引数なし) でログを読む。既読化 1 件でカウントが 1 減ることを確認する。
 
-純粋な描画テストでは GitHub PAT / API は不要 — storage を直接注入する。
+## background service worker / リスナー配線の検証
+
+background を分割・整理する PR では「リスナー登録の副作用が失われていないか」が焦点になる。GitHub API 無しで
+次の 3 点まで確認できる (すべて popup / options ページの console から実行可能。SW の DevTools は不要)。
+
+- アラーム登録 (`onInstalled` → `setupAlarms`):
+  `chrome.alarms.getAll(a => console.log(JSON.stringify(a)))` → `github-notify-watch` が 1 件、
+  `periodInMinutes` が sync の `intervalMinutes` (未設定なら既定 5) と一致すること。
+- 起動時バッジ復元 (`restoreBadge`): `chrome.storage.local` に `badgeCount: 0` と通知一覧を注入してから
+  拡張をリロード → `chrome.action.getBadgeText({}, t => console.log(t))` が通知件数になること。
+  わざと 0 を入れておくと「復元が走ったか」が判定できる。
+- `chrome.storage.onChanged` 配線: options UI で `notifyDraftPr` を OFF/ON → バッジが増減すること。
+
+**重要 (ハマりどころ)**: service worker が `chrome://extensions` で **Inactive** の状態だと、options からの
+sync 変更で SW が起きず、バッジもアラームも更新されない (この環境で再現)。テストするときは
+`chrome://extensions` のリロードアイコンを押して SW を起こし、**15 秒以内**に options の保存まで済ませること。
+この挙動は分割前のコミットでも同一だったため、リファクタの回帰ではなく環境特性と判断してよい。
+
+## 回帰かどうかを切り分ける A/B (2 ビルド同時ロード)
+
+「壊れているのか元からそうなのか」が疑わしい挙動に当たったら、比較対象のコミットをもう 1 つの unpacked 拡張として
+同時に読み込むのが早い。
+
+```
+cp -a <repo> /tmp/base-ext && cd /tmp/base-ext && git checkout <base-sha> && npm run build
+python3 -c "import hashlib;p=b'/tmp/base-ext/dist';print(''.join(chr(ord('a')+int(c,16)) for c in hashlib.sha256(p).hexdigest()[:32]))"
+```
+
+browser ツールを `extensions=<repo>/dist,/tmp/base-ext/dist` で再起動すると 2 つの GH Centry が並ぶ。
+拡張 ID がパス由来で別になるため storage も独立しており、同じ注入データで同じ操作を両方に対して行える。
+検証後は `/tmp/base-ext` を削除する。
+
+純粋な描画テストでは GitHub PAT / API は不要 — storage を直接注入する。ただし
+`reconcileAndPersistNotifications` のような「通信中の競合」に関わる修正は storage 注入では再現できない。
+PAT (repo スコープ) と実際に更新のあるリポジトリが必要で、それが無い場合は「未検証」として明示すること。
 
 ## Devin Secrets Needed
 描画のみの popup テストでは不要。
