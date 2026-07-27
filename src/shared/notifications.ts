@@ -16,6 +16,7 @@ export type StoredNotification = {
   title: string;
   url: string;
   detectedAt: string;
+  commentCount?: number;
   isPresentInLatestResult?: boolean;
 };
 
@@ -108,6 +109,7 @@ export function mergeStoredNotifications(
         : current.detectedAt,
     isPresentInLatestResult: incoming.isPresentInLatestResult ?? current.isPresentInLatestResult,
     isDraft: incoming.isDraft ?? current.isDraft,
+    commentCount: incoming.commentCount ?? current.commentCount,
   };
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import IconButton from '@mui/material/IconButton';
 
 import { COLORS } from '../shared/colors';
@@ -133,6 +134,21 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
             {label}
           </span>
         ))}
+      </span>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2px',
+          marginLeft: '8px',
+          color: COLORS.fgMuted,
+          fontSize: '11px',
+          flexShrink: 0,
+        }}
+        aria-label={`コメント数:${Math.min(99, Math.max(0, notification.commentCount ?? 0))}`}
+      >
+        <ChatBubbleIcon sx={{ fontSize: '15px' }} />
+        {Math.min(99, Math.max(0, notification.commentCount ?? 0))}
       </span>
     </li>
   );

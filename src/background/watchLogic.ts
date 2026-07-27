@@ -13,6 +13,8 @@ export type LatestNotificationStatus = {
   isChangesRequestedByNodeId: Map<string, boolean>;
   /** PullRequest node ID -> draft 状態の対応表。 */
   isDraftByNodeId: Map<string, boolean>;
+  /** Issue / PullRequest node ID -> コメント数の対応表。 */
+  commentCountByNodeId: Map<string, number>;
 };
 
 type GithubActor = {
@@ -50,7 +52,15 @@ export type IssueOrPullRequestNode = {
   assignees?: GithubAssigneeConnection | null;
   body?: string | null;
   comments?: {
+    totalCount?: number | null;
     nodes?: GithubComment[];
+  } | null;
+  reviewThreads?: {
+    nodes?: {
+      comments?: {
+        totalCount?: number | null;
+      } | null;
+    }[];
   } | null;
 };
 
@@ -58,6 +68,7 @@ export type ReviewThreadNode = {
   id: string;
   isResolved: boolean;
   comments?: {
+    totalCount?: number | null;
     nodes?: GithubComment[];
   } | null;
 };
@@ -73,6 +84,25 @@ export type PullRequestReviewThreadsNode = {
     nodes?: ReviewThreadNode[];
   } | null;
 };
+
+/**
+ * Issue / PullRequest のコメント総数を計算する。
+ * PullRequest は Issue コメントとレビューコメントを合算する。
+ * @param node 対象 node
+ * @returns コメント総数
+ */
+export function computeCommentCount(node: IssueOrPullRequestNode): number {
+  const issueCommentCount = node.comments?.totalCount ?? 0;
+  if (node.__typename !== 'PullRequest') {
+    return issueCommentCount;
+  }
+
+  const reviewCommentCount = (node.reviewThreads?.nodes ?? []).reduce(
+    (total, thread) => total + (thread.comments?.totalCount ?? 0),
+    0,
+  );
+  return issueCommentCount + reviewCommentCount;
+}
 
 /**
  * 2 つの日時を比較し、value が baseIso より後なら true を返す。
@@ -271,6 +301,7 @@ export function toStoredNotification(
     title: node.title ?? '',
     url: node.url ?? '',
     detectedAt,
+    commentCount: computeCommentCount(node as IssueOrPullRequestNode),
     isPresentInLatestResult: true,
   };
 }
@@ -376,13 +407,15 @@ export function applyLatestResultStatus(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId, commentCountByNodeId } =
+    latestStatus;
   return notifications.map((notification) => {
     const hasApprovedInfo = notification.sourceNodeId ? isApprovedByNodeId.has(notification.sourceNodeId) : false;
     const hasChangesRequestedInfo = notification.sourceNodeId
       ? isChangesRequestedByNodeId.has(notification.sourceNodeId)
       : false;
     const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
+    const hasCommentCountInfo = notification.sourceNodeId ? commentCountByNodeId.has(notification.sourceNodeId) : false;
     return {
       ...notification,
       isPresentInLatestResult: notification.sourceNodeId ? openNodeIds.has(notification.sourceNodeId) : false,
@@ -391,6 +424,7 @@ export function applyLatestResultStatus(
         ? { isChangesRequested: isChangesRequestedByNodeId.get(notification.sourceNodeId as string) }
         : {}),
       ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
+      ...(hasCommentCountInfo ? { commentCount: commentCountByNodeId.get(notification.sourceNodeId as string) } : {}),
     };
   });
 }
@@ -408,7 +442,8 @@ export function removeClosedNotifications(
   notifications: StoredNotification[],
   latestStatus: LatestNotificationStatus,
 ): StoredNotification[] {
-  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId } = latestStatus;
+  const { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId, commentCountByNodeId } =
+    latestStatus;
   return notifications
     .filter((notification) => !notification.sourceNodeId || openNodeIds.has(notification.sourceNodeId))
     .map((notification) => {
@@ -417,7 +452,10 @@ export function removeClosedNotifications(
         ? isChangesRequestedByNodeId.has(notification.sourceNodeId)
         : false;
       const hasDraftInfo = notification.sourceNodeId ? isDraftByNodeId.has(notification.sourceNodeId) : false;
-      if (!hasApprovedInfo && !hasChangesRequestedInfo && !hasDraftInfo) {
+      const hasCommentCountInfo = notification.sourceNodeId
+        ? commentCountByNodeId.has(notification.sourceNodeId)
+        : false;
+      if (!hasApprovedInfo && !hasChangesRequestedInfo && !hasDraftInfo && !hasCommentCountInfo) {
         return notification;
       }
       return {
@@ -427,6 +465,7 @@ export function removeClosedNotifications(
           ? { isChangesRequested: isChangesRequestedByNodeId.get(notification.sourceNodeId as string) }
           : {}),
         ...(hasDraftInfo ? { isDraft: isDraftByNodeId.get(notification.sourceNodeId as string) } : {}),
+        ...(hasCommentCountInfo ? { commentCount: commentCountByNodeId.get(notification.sourceNodeId as string) } : {}),
       };
     });
 }

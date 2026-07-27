@@ -6,6 +6,7 @@ import {
   applyThreadNotificationKinds,
   buildRepoQuery,
   collectNotifications,
+  computeCommentCount,
   resolveNotificationKinds,
   getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
@@ -582,6 +583,7 @@ describe('background notification logic helpers', () => {
       title: '通知テスト',
       url: 'https://github.com/octo/repo/issues/42',
       detectedAt: '2026-03-21T10:06:00.000Z',
+      commentCount: 0,
       isPresentInLatestResult: true,
     });
   });
@@ -599,6 +601,23 @@ describe('background notification logic helpers', () => {
     );
 
     expect(stored?.isDraft).toBe(true);
+  });
+
+  it('computeCommentCount は Issue のコメント数だけを返す', () => {
+    expect(computeCommentCount({ ...baseNode, comments: { totalCount: 3, nodes: [] } })).toBe(3);
+  });
+
+  it('computeCommentCount は PR の Issue コメントとレビューコメントを合算する', () => {
+    expect(
+      computeCommentCount({
+        ...baseNode,
+        __typename: 'PullRequest',
+        comments: { totalCount: 4, nodes: [] },
+        reviewThreads: {
+          nodes: [{ comments: { totalCount: 2 } }, { comments: { totalCount: 3 } }],
+        },
+      }),
+    ).toBe(9);
   });
 
   it('toStoredNotification は reviewDecision から isApproved を確定させる', () => {
@@ -967,6 +986,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map([['PR_1', true]]),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: false }], latestStatus);
@@ -975,12 +995,27 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     expect(updated?.isPresentInLatestResult).toBe(true);
   });
 
+  it('applyLatestResultStatus は最新コメント数を反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isChangesRequestedByNodeId: new Map(),
+      isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map([['PR_1', 9]]),
+    };
+
+    const [updated] = applyLatestResultStatus([{ ...basePr, commentCount: 4 }], latestStatus);
+
+    expect(updated?.commentCount).toBe(9);
+  });
+
   it('applyLatestResultStatus は reviewDecision の承認→取り消しを isApproved へ反映する', () => {
     const latestStatus: LatestNotificationStatus = {
       openNodeIds: new Set(['PR_1']),
       isApprovedByNodeId: new Map([['PR_1', false]]),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
@@ -994,6 +1029,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isApproved: true }], latestStatus);
@@ -1007,6 +1043,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map([['PR_1', false]]),
       isChangesRequestedByNodeId: new Map([['PR_1', true]]),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus(
@@ -1024,6 +1061,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isChangesRequested: true }], latestStatus);
@@ -1037,6 +1075,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map([['PR_1', true]]),
       isChangesRequestedByNodeId: new Map([['PR_1', false]]),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications(
@@ -1055,12 +1094,27 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map([['PR_1', false]]),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications([{ ...basePr, isApproved: true }], latestStatus);
 
     expect(result).toHaveLength(1);
     expect(result[0]?.isApproved).toBe(false);
+  });
+
+  it('removeClosedNotifications は残す通知へ最新コメント数を反映する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isChangesRequestedByNodeId: new Map(),
+      isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map([['PR_1', 9]]),
+    };
+
+    const result = removeClosedNotifications([{ ...basePr, commentCount: 4 }], latestStatus);
+
+    expect(result[0]?.commentCount).toBe(9);
   });
 
   it('removeClosedNotifications は close 済み通知を除外しつつ approved を最新化する', () => {
@@ -1072,6 +1126,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       ]),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications(
@@ -1092,6 +1147,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map([['PR_1', false]]),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: true }], latestStatus);
@@ -1105,6 +1161,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map([['PR_1', true]]),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: false }], latestStatus);
@@ -1118,6 +1175,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map(),
     };
 
     const [updated] = applyLatestResultStatus([{ ...basePr, isDraft: true }], latestStatus);
@@ -1131,6 +1189,7 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
       isApprovedByNodeId: new Map(),
       isChangesRequestedByNodeId: new Map(),
       isDraftByNodeId: new Map([['PR_1', false]]),
+      commentCountByNodeId: new Map(),
     };
 
     const result = removeClosedNotifications([{ ...basePr, isDraft: true }], latestStatus);

@@ -6,6 +6,7 @@ import {
   buildRepoQuery,
   collectNotifications,
   getUpdatedPullRequestIds,
+  computeCommentCount,
   removeClosedNotifications,
   type IssueOrPullRequestNode,
   type LatestNotificationStatus,
@@ -83,6 +84,10 @@ type NotificationStatusNode = {
   closed?: boolean | null;
   isDraft?: boolean | null;
   reviewDecision?: string | null;
+  comments?: { totalCount?: number | null } | null;
+  reviewThreads?: {
+    nodes?: { comments?: { totalCount?: number | null } | null }[];
+  } | null;
 };
 
 export const DEFAULT_INTERVAL_MINUTES = 5;
@@ -445,6 +450,7 @@ async function fetchLatestOpenNotificationNodeIds(
       isApprovedByNodeId: new Map<string, boolean>(),
       isChangesRequestedByNodeId: new Map<string, boolean>(),
       isDraftByNodeId: new Map<string, boolean>(),
+      commentCountByNodeId: new Map<string, number>(),
     };
   }
 
@@ -452,6 +458,7 @@ async function fetchLatestOpenNotificationNodeIds(
   const isApprovedByNodeId = new Map<string, boolean>();
   const isChangesRequestedByNodeId = new Map<string, boolean>();
   const isDraftByNodeId = new Map<string, boolean>();
+  const commentCountByNodeId = new Map<string, number>();
 
   for (let index = 0; index < nodeIds.length; index += NOTIFICATION_STATUS_CHUNK_SIZE) {
     const chunk = nodeIds.slice(index, index + NOTIFICATION_STATUS_CHUNK_SIZE);
@@ -476,11 +483,12 @@ async function fetchLatestOpenNotificationNodeIds(
           // ドラフト解除/付与も反映するため true/false を必ず確定させる
           isDraftByNodeId.set(node.id, node.isDraft === true);
         }
+        commentCountByNodeId.set(node.id, computeCommentCount(node as IssueOrPullRequestNode));
       }
     }
   }
 
-  return { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId };
+  return { openNodeIds, isApprovedByNodeId, isChangesRequestedByNodeId, isDraftByNodeId, commentCountByNodeId };
 }
 
 /**

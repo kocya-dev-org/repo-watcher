@@ -39,6 +39,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
           }
           body
           comments(first: 50) {
+            totalCount
             nodes {
               body
               author { login }
@@ -66,11 +67,19 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
           }
           body
           comments(first: 50) {
+            totalCount
             nodes {
               body
               author { login }
               createdAt
               updatedAt
+            }
+          }
+          reviewThreads(first: 20) {
+            nodes {
+              comments {
+                totalCount
+              }
             }
           }
         }
@@ -89,12 +98,25 @@ export const WATCH_NOTIFICATION_STATUS_QUERY = `
       ... on Issue {
         id
         closed
+        comments {
+          totalCount
+        }
       }
       ... on PullRequest {
         id
         closed
         isDraft
         reviewDecision
+        comments {
+          totalCount
+        }
+        reviewThreads(first: 20) {
+          nodes {
+            comments {
+              totalCount
+            }
+          }
+        }
       }
     }
   }
