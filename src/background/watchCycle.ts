@@ -561,16 +561,16 @@ async function detectThreadNotifications(
  * 検知した通知を保存済み状態と統合し、最新ステータスとバッジ数を確定させて保存する。
  * @param client GraphQL クライアント
  * @param settings 検証済みの監視設定
- * @param localState 監視サイクル冒頭で読み込んだ local storage の内容
  * @param detectedNotifications 今回検知した通知一覧
  * @returns 新規追加された通知一覧とバッジ数
  */
 async function reconcileAndPersistNotifications(
   client: GithubGraphqlClient,
   settings: WatchSettings,
-  localState: LocalRuntimeStorage,
   detectedNotifications: StoredNotification[],
 ): Promise<{ addedNotifications: StoredNotification[]; badgeCount: number }> {
+  // 通信中に popup が既読化を書き込んでいる可能性があるため、統合前に最新状態を読み直す
+  const localState = await loadLocalRuntimeStorage();
   const reconciled = reconcileNotificationState(
     localState.notifications,
     localState.readNotificationIds,
@@ -617,7 +617,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     };
   }
 
-  // サイクル中は冒頭で読み込んだ local storage を引き回し、重複読み込みを避ける
+  // 通信前の状態で足りる用途 (lastCheckedAt / viewer キャッシュ) は冒頭の 1 回だけ読み込む
   const localState = await loadLocalRuntimeStorage();
   hydrateRuntimeState(localState);
 
@@ -648,7 +648,6 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   const { addedNotifications, badgeCount } = await reconcileAndPersistNotifications(
     client,
     settings,
-    localState,
     detectedNotifications,
   );
 
