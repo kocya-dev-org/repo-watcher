@@ -1,5 +1,5 @@
 import type { NotificationKind, StoredNotification } from '../shared/notifications';
-import type { WatchTargetRepo } from './index';
+import type { WatchTargetRepo } from '../shared/repositories';
 
 export type WatchSearchTarget = 'pull_request' | 'issue';
 
@@ -273,6 +273,97 @@ export function toStoredNotification(
     detectedAt,
     isPresentInLatestResult: true,
   };
+}
+
+/**
+ * 検知した種別一覧から、実際に通知へ付与する種別を決定する。
+ *
+ * `new` は「前回監視以降に作成された」ことを表し、`updated` は「作成済み項目が更新された」ことを表す。
+ * 両方が立つのは判定の境界ケースのみで、その場合はより新しい事象である `updated` を優先し、
+ * 同一項目に「新規」と「更新」の 2 つのラベルが並ぶことを避ける。
+ * @param kinds 検知した種別一覧
+ * @returns 通知へ付与する種別一覧
+ */
+export function resolveNotificationKinds(kinds: NotificationKind[]): NotificationKind[] {
+  if (!kinds.includes('updated')) {
+    return kinds;
+  }
+
+  return kinds.filter((kind) => kind !== 'new');
+}
+
+/**
+ * 検索結果の Issue / Pull Request から保存用通知一覧を組み立てる。
+ *
+ * 種別を 1 件も検知できなかった項目は結果に含めない。
+ * @param nodes search API で取得した項目一覧
+ * @param lastCheckedAt 前回監視時刻
+ * @param viewerLogin ログイン名
+ * @param detectedAt 検知時刻
+ * @returns 種別付きの保存用通知一覧
+ */
+export function collectNotifications(
+  nodes: IssueOrPullRequestNode[],
+  lastCheckedAt: string,
+  viewerLogin: string,
+  detectedAt: string,
+): StoredNotification[] {
+  const collected: StoredNotification[] = [];
+
+  for (const node of nodes) {
+    const kinds: NotificationKind[] = [];
+    if (isNewNotificationCandidate(node, lastCheckedAt)) {
+      kinds.push('new');
+    }
+    if (isUpdatedNotificationCandidate(node, lastCheckedAt)) {
+      kinds.push('updated');
+    }
+    if (hasMentionNotification(node, lastCheckedAt, viewerLogin)) {
+      kinds.push('mention');
+    }
+    if (hasAssigneeCommentNotification(node, lastCheckedAt, viewerLogin)) {
+      kinds.push('assignee');
+    }
+
+    const storedNotification = toStoredNotification(node, resolveNotificationKinds(kinds), detectedAt);
+    if (storedNotification) {
+      collected.push(storedNotification);
+    }
+  }
+
+  return collected;
+}
+
+/**
+ * レビュースレッドの新規コメントを検知し、対応する通知へ `thread` 種別を付与する。
+ * @param notifications 種別判定済みの通知一覧
+ * @param pullRequests reviewThreads を含む Pull Request 一覧
+ * @param lastCheckedAt 前回監視時刻
+ * @param viewerLogin ログイン名
+ * @returns `thread` 種別を反映した通知一覧
+ */
+export function applyThreadNotificationKinds(
+  notifications: StoredNotification[],
+  pullRequests: PullRequestReviewThreadsNode[],
+  lastCheckedAt: string,
+  viewerLogin: string,
+): StoredNotification[] {
+  const threadNodeIds = new Set(
+    pullRequests
+      .filter((pullRequest) => hasMentionThreadNotification(pullRequest, lastCheckedAt, viewerLogin))
+      .map((pullRequest) => pullRequest.id)
+      .filter((nodeId): nodeId is string => Boolean(nodeId)),
+  );
+
+  if (threadNodeIds.size === 0) {
+    return notifications;
+  }
+
+  return notifications.map((notification) =>
+    notification.sourceNodeId && threadNodeIds.has(notification.sourceNodeId)
+      ? { ...notification, kinds: [...(notification.kinds ?? []), 'thread' as NotificationKind] }
+      : notification,
+  );
 }
 
 /**
