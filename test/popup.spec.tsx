@@ -1219,6 +1219,86 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('コメントがある通知はチャットアイコンを最新コメントへのリンクとして表示する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'コメントあり PR',
+          url: 'https://example.com/pr/1',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+          commentCount: 3,
+          latestCommentUrl: 'https://example.com/pr/1#issuecomment-3',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const commentLink = view.container.querySelector<HTMLAnchorElement>('a[aria-label="コメント数:3"]');
+    expect(commentLink).toBeTruthy();
+    expect(commentLink?.getAttribute('href')).toBe('https://example.com/pr/1#issuecomment-3');
+    expect(commentLink?.getAttribute('target')).toBe('_blank');
+    expect(commentLink?.style.color).toBe('rgb(36, 41, 47)');
+    expect(commentLink?.style.cursor).toBe('pointer');
+    expect(commentLink?.title).toBe('最新コメントを開く');
+
+    await view.unmount();
+  });
+
+  it('コメント 0 件や最新コメント URL が無い通知はチャットアイコンをリンクにしない', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'コメント無し PR',
+          url: 'https://example.com/pr/1',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+          commentCount: 0,
+          latestCommentUrl: 'https://example.com/pr/1#issuecomment-1',
+        },
+        {
+          id: 'PR_2',
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'URL 無し PR',
+          url: 'https://example.com/pr/2',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+          commentCount: 5,
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    expect(view.container.querySelector('a[aria-label^="コメント数:"]')).toBeNull();
+
+    const zeroComment = view.container.querySelector<HTMLElement>('span[aria-label="コメント数:0"]');
+    const missingUrl = view.container.querySelector<HTMLElement>('span[aria-label="コメント数:5"]');
+    expect(zeroComment).toBeTruthy();
+    expect(missingUrl).toBeTruthy();
+    expect(zeroComment?.style.color).toBe('rgb(87, 96, 106)');
+    expect(missingUrl?.style.color).toBe('rgb(87, 96, 106)');
+
+    await view.unmount();
+  });
+
   it('表示対象の通知がないタブではリポジトリ見出しを表示しない', async () => {
     chromeMock.setLocalState({
       notifications: [

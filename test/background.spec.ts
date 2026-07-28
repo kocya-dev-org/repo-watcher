@@ -7,6 +7,7 @@ import {
   buildRepoQuery,
   collectNotifications,
   computeCommentCount,
+  pickLatestCommentUrl,
   resolveNotificationKinds,
   getUpdatedPullRequestIds,
   hasAssigneeCommentNotification,
@@ -620,6 +621,155 @@ describe('background notification logic helpers', () => {
     ).toBe(9);
   });
 
+  it('pickLatestCommentUrl は createdAt が最大のコメントの URL を返す', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      comments: {
+        totalCount: 3,
+        nodes: [
+          {
+            body: '古い',
+            url: 'https://github.com/octo/repo/issues/42#issuecomment-1',
+            createdAt: '2026-03-20T10:00:00.000Z',
+          },
+          {
+            body: '最新',
+            url: 'https://github.com/octo/repo/issues/42#issuecomment-3',
+            createdAt: '2026-03-22T10:00:00.000Z',
+          },
+          {
+            body: '中間',
+            url: 'https://github.com/octo/repo/issues/42#issuecomment-2',
+            createdAt: '2026-03-21T10:00:00.000Z',
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/issues/42#issuecomment-3');
+  });
+
+  it('pickLatestCommentUrl は PR のレビューコメントも対象にする', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: {
+        totalCount: 1,
+        nodes: [
+          {
+            body: 'issue コメント',
+            url: 'https://github.com/octo/repo/pull/1#issuecomment-1',
+            createdAt: '2026-03-20T10:00:00.000Z',
+          },
+        ],
+      },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 2,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r2', createdAt: '2026-03-23T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#discussion_r2');
+  });
+
+  it('pickLatestCommentUrl は Issue コメント 0 件でもレビューコメントの URL を返す', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: { totalCount: 0, nodes: [] },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 1,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#discussion_r1');
+  });
+
+  it('pickLatestCommentUrl は Issue コメントがレビューコメントより新しい場合は Issue コメントの URL を返す', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: {
+        totalCount: 1,
+        nodes: [{ url: 'https://github.com/octo/repo/pull/1#issuecomment-1', createdAt: '2026-03-24T10:00:00.000Z' }],
+      },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 1,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#issuecomment-1');
+  });
+
+  it('pickLatestCommentUrl はコメント 0 件や URL 無しのとき undefined を返す', () => {
+    expect(pickLatestCommentUrl({ ...baseNode, comments: { totalCount: 0, nodes: [] } })).toBeUndefined();
+    expect(pickLatestCommentUrl({ ...baseNode, comments: null })).toBeUndefined();
+    expect(
+      pickLatestCommentUrl({
+        ...baseNode,
+        comments: { totalCount: 1, nodes: [{ body: 'URL 無し', createdAt: '2026-03-22T10:00:00.000Z' }] },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('toStoredNotification は最新コメントの URL を latestCommentUrl へ設定する', () => {
+    const stored = toStoredNotification(
+      {
+        ...baseNode,
+        comments: {
+          totalCount: 2,
+          nodes: [
+            {
+              body: '最新',
+              url: 'https://github.com/octo/repo/issues/42#issuecomment-2',
+              createdAt: '2026-03-22T10:00:00.000Z',
+            },
+            {
+              body: '古い',
+              url: 'https://github.com/octo/repo/issues/42#issuecomment-1',
+              createdAt: '2026-03-20T10:00:00.000Z',
+            },
+          ],
+        },
+      },
+      ['mention'],
+      '2026-03-21T10:06:00.000Z',
+    );
+
+    expect(stored?.latestCommentUrl).toBe('https://github.com/octo/repo/issues/42#issuecomment-2');
+    expect(toStoredNotification(baseNode, ['mention'], '2026-03-21T10:06:00.000Z')?.latestCommentUrl).toBeUndefined();
+  });
+
   it('toStoredNotification は reviewDecision から isApproved を確定させる', () => {
     const approved = toStoredNotification(
       {
@@ -979,6 +1129,28 @@ describe('WATCH_NOTIFICATION_STATUS_QUERY 由来の approved 状態反映', () =
     detectedAt: '2026-03-21T10:00:00.000Z',
     isPresentInLatestResult: true,
   };
+
+  it('applyLatestResultStatus / removeClosedNotifications は latestCommentUrl を保持する', () => {
+    const latestStatus: LatestNotificationStatus = {
+      openNodeIds: new Set(['PR_1']),
+      isApprovedByNodeId: new Map(),
+      isChangesRequestedByNodeId: new Map(),
+      isDraftByNodeId: new Map(),
+      commentCountByNodeId: new Map([['PR_1', 9]]),
+    };
+    const notification: StoredNotification = {
+      ...basePr,
+      commentCount: 4,
+      latestCommentUrl: 'https://github.com/octo/repo/pull/1#issuecomment-1',
+    };
+
+    expect(applyLatestResultStatus([notification], latestStatus)[0]?.latestCommentUrl).toBe(
+      'https://github.com/octo/repo/pull/1#issuecomment-1',
+    );
+    expect(removeClosedNotifications([notification], latestStatus)[0]?.latestCommentUrl).toBe(
+      'https://github.com/octo/repo/pull/1#issuecomment-1',
+    );
+  });
 
   it('applyLatestResultStatus は reviewDecision の未承認→承認を isApproved へ反映する', () => {
     const latestStatus: LatestNotificationStatus = {

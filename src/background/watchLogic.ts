@@ -24,6 +24,7 @@ type GithubActor = {
 type GithubComment = {
   id?: string | null;
   body?: string | null;
+  url?: string | null;
   author?: GithubActor | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -59,6 +60,7 @@ export type IssueOrPullRequestNode = {
     nodes?: {
       comments?: {
         totalCount?: number | null;
+        nodes?: GithubComment[];
       } | null;
     }[];
   } | null;
@@ -102,6 +104,28 @@ export function computeCommentCount(node: IssueOrPullRequestNode): number {
     0,
   );
   return issueCommentCount + reviewCommentCount;
+}
+
+/**
+ * Issue / PullRequest のコメントのうち `createdAt` が最大のものの URL を返す。
+ *
+ * PullRequest は Issue コメントとレビューコメントをあわせて判定する。
+ * 取得順に依存しないよう `createdAt` の最大値で判定する。
+ * @param node 対象 node
+ * @returns 最新コメントの URL、コメントが無い場合や URL が無い場合は undefined
+ */
+export function pickLatestCommentUrl(node: IssueOrPullRequestNode): string | undefined {
+  const reviewComments = (node.reviewThreads?.nodes ?? []).flatMap((thread) => thread.comments?.nodes ?? []);
+  const comments = [...(node.comments?.nodes ?? []), ...reviewComments];
+  let latest: GithubComment | undefined;
+
+  for (const comment of comments) {
+    if (!latest || new Date(comment.createdAt).getTime() > new Date(latest.createdAt).getTime()) {
+      latest = comment;
+    }
+  }
+
+  return latest?.url ?? undefined;
 }
 
 /**
@@ -302,6 +326,7 @@ export function toStoredNotification(
     url: node.url ?? '',
     detectedAt,
     commentCount: computeCommentCount(node as IssueOrPullRequestNode),
+    latestCommentUrl: pickLatestCommentUrl(node as IssueOrPullRequestNode),
     isPresentInLatestResult: true,
   };
 }
