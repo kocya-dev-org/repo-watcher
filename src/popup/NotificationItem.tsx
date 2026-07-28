@@ -58,7 +58,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
         sx={{
           marginRight: '6px',
           padding: 0,
-          color: isRead ? COLORS.fgMuted : COLORS.successEmphasis,
+          color: COLORS.fgMuted,
           flexShrink: 0,
         }}
         title={isRead ? t('readState.read') : t('readState.unread')}
@@ -160,7 +160,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
           {commentCount}
         </a>
       ) : (
-        <span style={{ ...commentStyle, color: COLORS.fgMuted }} aria-label={commentCountLabel}>
+        <span style={{ ...commentStyle, color: COLORS.fgSubtle }} aria-label={commentCountLabel}>
           <ChatBubbleIcon sx={{ fontSize: '15px' }} />
           {commentCount}
         </span>
