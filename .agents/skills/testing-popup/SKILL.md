@@ -104,6 +104,43 @@ description: github-notify-ext の popup / options ページを、chrome.storage
    addedNotifications / badgeCount) は `return JSON.stringify(...)` で同時に検証できる。
 4. **テスト後に harness と vite.config.ts の変更を必ず削除し、再ビルドしてブランチをクリーンに戻す。**
 
+## リンク要素 (target="_blank") の検証
+
+`NotificationItem` のタイトルリンクやチャットアイコンのリンクは `target="_blank"` を付けているが、
+**browser 自動化環境では `target` 属性が DOM から除去される**ことがある (`el.getAttribute('target') === null`、
+`el.target === ''`)。既存のタイトルリンクでも同様なので、実装の不具合と誤認しないこと。
+この場合クリックは同一タブ遷移になるため、「新規タブで開くこと」は検証できない。代替として:
+
+- クリック後に `location.href` が期待 URL と**完全一致**することを確認する。
+- リンク先が別要素と異なることを示すため、タイトルリンク (`.../pull/49`) とアイコンリンク
+  (`.../pull/49#discussion_r123` など) の両方をクリックし、フラグメントの差で区別する。
+- 「クリックしても遷移しない」ことの検証は、クリック後に `location.href` が popup の
+  `chrome-extension://.../src/popup/index.html` のままであることで示す。
+
+`title` 属性によるネイティブ ツールチップは、ホバーしてもスクリーンショットに描画されないことがある
+(ウィンドウマネージャ無しの環境)。ツールチップは `getAttribute('title')` の値で検証し、
+「見た目は未確認」とレポートに明記する。
+
+## ja ビルドでの注意 (追記)
+
+`/tmp/dist-ja` 方式で日本語化しても、**popup ヘッダーのボタン (`Pause scheduled watch` / `Update` /
+`Mark all as read`) は英語のまま**表示される。これは該当箇所が i18n を経由していない既存実装のためで、
+言語切替が効いていないわけではない。日本語化の判定は通知行のラベル (`未読` / `ドラフト` / `変更要求` /
+`メンション`) や検証対象の `title` 属性で行うこと。
+
+## background の「最新コメント URL」ロジックの検証
+
+`pickLatestCommentUrl` / `computeCommentCount` のような GraphQL node を入力にする関数は、
+harness ページ (前述) に `window.harness` として公開すると拡張オリジンで実測できる。完成形の
+`latestCommentUrl` を storage に注入するだけでは実装が壊れていても同じ画面になるため不十分。
+アドバーサリアルな入力の作り方:
+
+- レビュースレッド側コメントの配列を**新→旧の順**に並べる (先頭採用の実装なら落ちる)。
+- 「Issue コメントが最新」「レビューコメントが最新」の 2 ケースを必ず 1 セットで流し、
+  それぞれ期待する URL (`#issuecomment-...` / `#discussion_r...`) が返ることを確認する。
+- `toStoredNotification` の戻り値をそのまま `chrome.storage.local.set` に渡し、popup 描画まで繋げると
+  background → storage → popup の一連の契約を 1 テストで確認できる。
+
 ## 既読化 / バッジの検証
 
 `chrome.action.getBadgeText` の Promise 戻り値は browser console から取れないことがある。代わりに
