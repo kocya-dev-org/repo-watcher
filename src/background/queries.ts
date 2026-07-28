@@ -38,10 +38,11 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(first: 100) {
+          comments(last: 100) {
             totalCount
             nodes {
               body
+              url
               author { login }
               createdAt
               updatedAt
@@ -66,10 +67,11 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(first: 100) {
+          comments(last: 100) {
             totalCount
             nodes {
               body
+              url
               author { login }
               createdAt
               updatedAt

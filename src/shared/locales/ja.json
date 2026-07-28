@@ -63,6 +63,9 @@
     "changesRequested": "変更要求",
     "draft": "ドラフト"
   },
+  "commentLink": {
+    "open": "最新コメントを開く"
+  },
   "readState": {
     "read": "既読",
     "unread": "未読"

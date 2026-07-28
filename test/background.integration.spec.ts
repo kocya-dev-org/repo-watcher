@@ -128,7 +128,15 @@ describe('background integration', () => {
                     totalCount: 1,
                     nodes: [
                       {
+                        body: 'old comment',
+                        url: 'https://example.com/issues/1#issuecomment-1',
+                        author: { login: 'someone' },
+                        createdAt: '2026-05-06T09:11:00.000Z',
+                        updatedAt: '2026-05-06T09:11:00.000Z',
+                      },
+                      {
                         body: 'new comment',
+                        url: 'https://example.com/issues/1#issuecomment-2',
                         author: { login: 'someone' },
                         createdAt: '2026-05-06T09:12:00.000Z',
                         updatedAt: '2026-05-06T09:12:00.000Z',
@@ -227,6 +235,14 @@ describe('background integration', () => {
         expect.objectContaining({ id: 'ISSUE_1', commentCount: 1 }),
       ]),
     );
+    const issueNotification = (state.notifications as Array<{ id: string; latestCommentUrl?: string }>).find(
+      (notification) => notification.id === 'ISSUE_1',
+    );
+    const pullRequestNotification = (state.notifications as Array<{ id: string; latestCommentUrl?: string }>).find(
+      (notification) => notification.id === 'PR_2',
+    );
+    expect(issueNotification?.latestCommentUrl).toBe('https://example.com/issues/1#issuecomment-2');
+    expect(pullRequestNotification?.latestCommentUrl).toBeUndefined();
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(2);

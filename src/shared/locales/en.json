@@ -63,6 +63,9 @@
     "changesRequested": "Changes requested",
     "draft": "Draft"
   },
+  "commentLink": {
+    "open": "Open latest comment"
+  },
   "readState": {
     "read": "Read",
     "unread": "Unread"

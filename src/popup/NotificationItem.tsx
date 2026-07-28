@@ -26,6 +26,18 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
   const { t } = useTranslation();
   const isMissingFromLatestResult = notification.isPresentInLatestResult === false;
   const kindLabels = getNotificationKinds(notification).map((kind) => t(formatNotificationKindLabel(kind)));
+  const commentCount = Math.min(99, Math.max(0, notification.commentCount ?? 0));
+  const commentCountLabel = `コメント数:${commentCount}`;
+  // 最新コメント URL が取得できている場合のみリンクとして扱う
+  const hasComments = (notification.commentCount ?? 0) > 0 && Boolean(notification.latestCommentUrl);
+  const commentStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+    marginLeft: '8px',
+    fontSize: '11px',
+    flexShrink: 0,
+  };
 
   return (
     <li
@@ -135,21 +147,24 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
           </span>
         ))}
       </span>
-      <span
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2px',
-          marginLeft: '8px',
-          color: COLORS.fgMuted,
-          fontSize: '11px',
-          flexShrink: 0,
-        }}
-        aria-label={`コメント数:${Math.min(99, Math.max(0, notification.commentCount ?? 0))}`}
-      >
-        <ChatBubbleIcon sx={{ fontSize: '15px' }} />
-        {Math.min(99, Math.max(0, notification.commentCount ?? 0))}
-      </span>
+      {hasComments ? (
+        <a
+          href={notification.latestCommentUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{ ...commentStyle, color: COLORS.fgDefault, cursor: 'pointer', textDecoration: 'none' }}
+          title={t('commentLink.open')}
+          aria-label={commentCountLabel}
+        >
+          <ChatBubbleIcon sx={{ fontSize: '15px' }} />
+          {commentCount}
+        </a>
+      ) : (
+        <span style={{ ...commentStyle, color: COLORS.fgMuted }} aria-label={commentCountLabel}>
+          <ChatBubbleIcon sx={{ fontSize: '15px' }} />
+          {commentCount}
+        </span>
+      )}
     </li>
   );
 };
