@@ -38,7 +38,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(last: 100) {
+          comments(last: 20) {
             totalCount
             nodes {
               body
@@ -67,7 +67,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
             nodes { login }
           }
           body
-          comments(last: 100) {
+          comments(last: 20) {
             totalCount
             nodes {
               body
@@ -77,9 +77,9 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
               updatedAt
             }
           }
-          reviewThreads(first: 100) {
+          reviewThreads(last: 20) {
             nodes {
-              comments(last: 100) {
+              comments(last: 20) {
                 totalCount
                 nodes {
                   url
@@ -116,7 +116,7 @@ export const WATCH_NOTIFICATION_STATUS_QUERY = `
         comments {
           totalCount
         }
-        reviewThreads(first: 100) {
+        reviewThreads(last: 20) {
           nodes {
             comments {
               totalCount
@@ -144,11 +144,11 @@ export const WATCH_REVIEW_THREADS_QUERY = `
           name
           owner { login }
         }
-        reviewThreads(first: 100) {
+        reviewThreads(last: 20) {
           nodes {
             id
             isResolved
-            comments(first: 100) {
+            comments(last: 20) {
               nodes {
                 id
                 body
