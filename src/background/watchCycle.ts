@@ -91,13 +91,13 @@ type NotificationStatusNode = {
 };
 
 export const DEFAULT_INTERVAL_MINUTES = 5;
-export const WATCH_ALARM_NAME = 'github-notify-watch';
+export const WATCH_ALARM_NAME = 'repo-watcher-watch';
 
 /** 通知元 node の状態をまとめて問い合わせるときの 1 リクエストあたり件数。 */
 const NOTIFICATION_STATUS_CHUNK_SIZE = 50;
 /** 未読件数バッジの背景色。 */
 const BADGE_BACKGROUND_COLOR = '#d93025';
-const NOTIFICATION_ID_PREFIX = 'github-notify:';
+const NOTIFICATION_ID_PREFIX = 'repo-watcher:';
 const NOTIFICATION_ICON_DATA_URL =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
 

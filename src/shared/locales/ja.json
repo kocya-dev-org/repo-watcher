@@ -1,5 +1,5 @@
 {
-  "appTitle": "GH Centry 設定",
+  "appTitle": "Repo Watcher 設定",
   "pat": {
     "heading": "API キー (PAT)",
     "description1": "GitHub Personal Access Token を入力してください。fine-grained PAT を推奨します。",

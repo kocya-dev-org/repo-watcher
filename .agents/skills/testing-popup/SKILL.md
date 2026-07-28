@@ -1,6 +1,6 @@
 ---
 name: popup/options UI のテスト (Chrome 拡張)
-description: github-notify-ext の popup / options ページを、chrome.storage にデータを注入してエンドツーエンドで描画確認する手順。GitHub API を呼ばずに検証する。
+description: repo-watcher の popup / options ページを、chrome.storage にデータを注入してエンドツーエンドで描画確認する手順。GitHub API を呼ばずに検証する。
 ---
 
 # popup / options UI のテスト
@@ -153,7 +153,7 @@ background を分割・整理する PR では「リスナー登録の副作用�
 次の 3 点まで確認できる (すべて popup / options ページの console から実行可能。SW の DevTools は不要)。
 
 - アラーム登録 (`onInstalled` → `setupAlarms`):
-  `chrome.alarms.getAll(a => console.log(JSON.stringify(a)))` → `github-notify-watch` が 1 件、
+  `chrome.alarms.getAll(a => console.log(JSON.stringify(a)))` → `repo-watcher-watch` が 1 件、
   `periodInMinutes` が sync の `intervalMinutes` (未設定なら既定 5) と一致すること。
 - 起動時バッジ復元 (`restoreBadge`): `chrome.storage.local` に `badgeCount: 0` と通知一覧を注入してから
   拡張をリロード → `chrome.action.getBadgeText({}, t => console.log(t))` が通知件数になること。
@@ -175,7 +175,7 @@ cp -a <repo> /tmp/base-ext && cd /tmp/base-ext && git checkout <base-sha> && npm
 python3 -c "import hashlib;p=b'/tmp/base-ext/dist';print(''.join(chr(ord('a')+int(c,16)) for c in hashlib.sha256(p).hexdigest()[:32]))"
 ```
 
-browser ツールを `extensions=<repo>/dist,/tmp/base-ext/dist` で再起動すると 2 つの GH Centry が並ぶ。
+browser ツールを `extensions=<repo>/dist,/tmp/base-ext/dist` で再起動すると 2 つの Repo Watcher が並ぶ。
 拡張 ID がパス由来で別になるため storage も独立しており、同じ注入データで同じ操作を両方に対して行える。
 検証後は `/tmp/base-ext` を削除する。
 

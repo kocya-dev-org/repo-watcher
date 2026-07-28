@@ -240,7 +240,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(() => chromeMock.getLocalState().badgeCount === 2);
 
     const state = chromeMock.getLocalState();
@@ -356,7 +356,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(() => chromeMock.getLocalState().notifications.length === 1);
 
     expect(chromeMock.getLocalState()).toMatchObject({
@@ -597,7 +597,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(
       () =>
         Array.isArray(chromeMock.getLocalState().notifications) &&
@@ -680,7 +680,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(
       () =>
         Array.isArray(chromeMock.getLocalState().notifications) &&
@@ -751,7 +751,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(
       () =>
         Array.isArray(chromeMock.getLocalState().notifications) &&
@@ -844,7 +844,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(() => chromeMock.getLocalState().badgeCount === 1);
 
     expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'ISSUE_1' }]);
@@ -942,7 +942,7 @@ describe('background integration', () => {
     );
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await waitForCondition(
       () =>
         new Date(chromeMock.getLocalState().lastCheckedAt as string).getTime() >
@@ -974,7 +974,7 @@ describe('background integration', () => {
     });
 
     await importBackground();
-    chromeMock.triggerAlarm('github-notify-watch');
+    chromeMock.triggerAlarm('repo-watcher-watch');
     await flushPromises();
 
     expect(backgroundMocks.loadDecryptedPat).not.toHaveBeenCalled();
@@ -1076,8 +1076,8 @@ describe('background integration', () => {
     chromeMock.triggerInstalled();
     await flushPromises();
 
-    expect(chromeMock.chrome.alarms.clear).toHaveBeenCalledWith('github-notify-watch', expect.any(Function));
-    expect(chromeMock.chrome.alarms.create).toHaveBeenCalledWith('github-notify-watch', {
+    expect(chromeMock.chrome.alarms.clear).toHaveBeenCalledWith('repo-watcher-watch', expect.any(Function));
+    expect(chromeMock.chrome.alarms.create).toHaveBeenCalledWith('repo-watcher-watch', {
       periodInMinutes: 15,
     });
 
@@ -1097,7 +1097,7 @@ describe('background integration', () => {
     );
     await flushPromises();
 
-    expect(chromeMock.chrome.alarms.create).toHaveBeenLastCalledWith('github-notify-watch', {
+    expect(chromeMock.chrome.alarms.create).toHaveBeenLastCalledWith('repo-watcher-watch', {
       periodInMinutes: 30,
     });
   });
@@ -1108,20 +1108,20 @@ describe('background integration', () => {
       readNotificationIds: [],
       badgeCount: 0,
       notificationClickTargets: {
-        'github-notify:ISSUE_1:2026-05-06T09:30:00.000Z': 'https://example.com/issues/1',
+        'repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z': 'https://example.com/issues/1',
       },
     });
 
     await importBackground();
 
-    chromeMock.triggerNotificationClicked('github-notify:ISSUE_1:2026-05-06T09:30:00.000Z');
+    chromeMock.triggerNotificationClicked('repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z');
     await flushPromises();
 
     expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({
       url: 'https://example.com/issues/1',
     });
     expect(chromeMock.chrome.notifications.clear).toHaveBeenCalledWith(
-      'github-notify:ISSUE_1:2026-05-06T09:30:00.000Z',
+      'repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z',
     );
     expect(chromeMock.getLocalState()).toMatchObject({
       notificationClickTargets: {},

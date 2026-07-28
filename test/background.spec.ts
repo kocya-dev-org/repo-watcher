@@ -194,7 +194,7 @@ describe('background watch logic (sanity)', () => {
     await import('../src/background/index');
 
     // アラームを擬似的に発火
-    chromeMock.alarms.__trigger('github-notify-watch');
+    chromeMock.alarms.__trigger('repo-watcher-watch');
 
     // runWatchCycle 内で storage.sync.get が 1 回以上呼ばれていることをざっくり確認
     expect(chromeMock.storage.sync.get).toHaveBeenCalled();
