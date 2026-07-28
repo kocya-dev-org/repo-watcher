@@ -101,7 +101,34 @@ describe('background integration', () => {
                     body: '',
                     comments: { totalCount: 4, nodes: [] },
                     reviewThreads: {
-                      nodes: [{ comments: { totalCount: 2 } }, { comments: { totalCount: 3 } }],
+                      nodes: [
+                        {
+                          comments: {
+                            totalCount: 2,
+                            nodes: [
+                              {
+                                url: 'https://example.com/pulls/2#discussion_r1',
+                                createdAt: '2026-05-06T09:00:00.000Z',
+                              },
+                              {
+                                url: 'https://example.com/pulls/2#discussion_r2',
+                                createdAt: '2026-05-06T09:20:00.000Z',
+                              },
+                            ],
+                          },
+                        },
+                        {
+                          comments: {
+                            totalCount: 3,
+                            nodes: [
+                              {
+                                url: 'https://example.com/pulls/2#discussion_r3',
+                                createdAt: '2026-05-06T08:40:00.000Z',
+                              },
+                            ],
+                          },
+                        },
+                      ],
                     },
                   },
                 ],
@@ -242,7 +269,7 @@ describe('background integration', () => {
       (notification) => notification.id === 'PR_2',
     );
     expect(issueNotification?.latestCommentUrl).toBe('https://example.com/issues/1#issuecomment-2');
-    expect(pullRequestNotification?.latestCommentUrl).toBeUndefined();
+    expect(pullRequestNotification?.latestCommentUrl).toBe('https://example.com/pulls/2#discussion_r2');
     expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
     expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(2);

@@ -79,8 +79,12 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
           }
           reviewThreads(first: 100) {
             nodes {
-              comments {
+              comments(last: 100) {
                 totalCount
+                nodes {
+                  url
+                  createdAt
+                }
               }
             }
           }

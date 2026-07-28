@@ -649,6 +649,88 @@ describe('background notification logic helpers', () => {
     expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/issues/42#issuecomment-3');
   });
 
+  it('pickLatestCommentUrl は PR のレビューコメントも対象にする', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: {
+        totalCount: 1,
+        nodes: [
+          {
+            body: 'issue コメント',
+            url: 'https://github.com/octo/repo/pull/1#issuecomment-1',
+            createdAt: '2026-03-20T10:00:00.000Z',
+          },
+        ],
+      },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 2,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r2', createdAt: '2026-03-23T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#discussion_r2');
+  });
+
+  it('pickLatestCommentUrl は Issue コメント 0 件でもレビューコメントの URL を返す', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: { totalCount: 0, nodes: [] },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 1,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#discussion_r1');
+  });
+
+  it('pickLatestCommentUrl は Issue コメントがレビューコメントより新しい場合は Issue コメントの URL を返す', () => {
+    const node: IssueOrPullRequestNode = {
+      ...baseNode,
+      __typename: 'PullRequest',
+      id: 'PR_1',
+      comments: {
+        totalCount: 1,
+        nodes: [{ url: 'https://github.com/octo/repo/pull/1#issuecomment-1', createdAt: '2026-03-24T10:00:00.000Z' }],
+      },
+      reviewThreads: {
+        nodes: [
+          {
+            comments: {
+              totalCount: 1,
+              nodes: [
+                { url: 'https://github.com/octo/repo/pull/1#discussion_r1', createdAt: '2026-03-21T10:00:00.000Z' },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(pickLatestCommentUrl(node)).toBe('https://github.com/octo/repo/pull/1#issuecomment-1');
+  });
+
   it('pickLatestCommentUrl はコメント 0 件や URL 無しのとき undefined を返す', () => {
     expect(pickLatestCommentUrl({ ...baseNode, comments: { totalCount: 0, nodes: [] } })).toBeUndefined();
     expect(pickLatestCommentUrl({ ...baseNode, comments: null })).toBeUndefined();
