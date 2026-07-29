@@ -227,6 +227,36 @@ describe('options App', () => {
     await view.unmount();
   });
 
+  it('15 未満の監視間隔は保存時に 15 へクランプする', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo1' }],
+      intervalMinutes: 30,
+      notifyDraftPr: true,
+      autoRemoveClosed: true,
+    });
+
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+
+    const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
+    const form = view.container.querySelector('form') as HTMLFormElement;
+
+    await setTextValue(numberInput, '5');
+
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
+      expect.objectContaining({ intervalMinutes: 15 }),
+      expect.any(Function),
+    );
+    expect(numberInput.value).toBe('15');
+
+    await view.unmount();
+  });
+
   it('保存済み PAT を削除できる', async () => {
     patStorageMocks.hasEncryptedPat.mockResolvedValue(true);
     patStorageMocks.hasReadablePat.mockResolvedValue(true);

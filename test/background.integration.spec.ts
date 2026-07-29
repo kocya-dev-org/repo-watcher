@@ -1102,6 +1102,23 @@ describe('background integration', () => {
     });
   });
 
+  it('15 未満の監視間隔でもアラームは 15 分にクランプされる', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      isWatchPaused: false,
+    });
+
+    await importBackground();
+
+    chromeMock.triggerInstalled();
+    await flushPromises();
+
+    expect(chromeMock.chrome.alarms.create).toHaveBeenCalledWith('repo-watcher-watch', {
+      periodInMinutes: 15,
+    });
+  });
+
   it('通知クリック時に対象 URL を開いて click target を掃除する', async () => {
     chromeMock.setLocalState({
       notifications: [],
