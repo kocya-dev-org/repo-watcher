@@ -13,7 +13,7 @@
 
 - `npm run build` - TypeScript のコンパイルと Vite ビルドを実行する
 - `npm run test` - Vitest の全テストを 1 回実行する
-- `npm run lint` - `src/**/*.ts` と `src/**/*.tsx` に対して ESLint を実行する
+- `npm run lint` - `src` 配下に対して oxlint を実行する（設定は `.oxlintrc.json`）
 - 単一テストファイル: `npx vitest run test/background.spec.ts`
 - テスト名を指定した単体実行: `npx vitest run test/background.spec.ts -t "background スクリプトが読み込まれると onInstalled / onAlarm リスナーが登録される"`
 
