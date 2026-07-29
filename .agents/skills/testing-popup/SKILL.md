@@ -154,7 +154,7 @@ background を分割・整理する PR では「リスナー登録の副作用�
 
 - アラーム登録 (`onInstalled` → `setupAlarms`):
   `chrome.alarms.getAll(a => console.log(JSON.stringify(a)))` → `repo-watcher-watch` が 1 件、
-  `periodInMinutes` が sync の `intervalMinutes` (未設定なら既定 5) と一致すること。
+  `periodInMinutes` が sync の `intervalMinutes` (未設定なら既定 15) と一致すること。
 - 起動時バッジ復元 (`restoreBadge`): `chrome.storage.local` に `badgeCount: 0` と通知一覧を注入してから
   拡張をリロード → `chrome.action.getBadgeText({}, t => console.log(t))` が通知件数になること。
   わざと 0 を入れておくと「復元が走ったか」が判定できる。
