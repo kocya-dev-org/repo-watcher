@@ -349,7 +349,7 @@ const OptionsApp: React.FC = () => {
         </Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button type="submit" disabled={isSaving} style={primaryButtonStyle}>
-            {isSaving ? t('save.saving') : t('save.submit')}
+            {t('save.submit')}
           </button>
           {saveMessage && <span style={{ color: COLORS.success }}>{saveMessage}</span>}
           {saveError && <span style={{ color: COLORS.danger }}>{saveError}</span>}
