@@ -1293,8 +1293,8 @@ describe('popup App', () => {
     const missingUrl = view.container.querySelector<HTMLElement>('span[aria-label="コメント数:5"]');
     expect(zeroComment).toBeTruthy();
     expect(missingUrl).toBeTruthy();
-    expect(zeroComment?.style.color).toBe('rgb(87, 96, 106)');
-    expect(missingUrl?.style.color).toBe('rgb(87, 96, 106)');
+    expect(zeroComment?.style.color).toBe('rgb(110, 119, 129)');
+    expect(missingUrl?.style.color).toBe('rgb(110, 119, 129)');
 
     await view.unmount();
   });
