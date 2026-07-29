@@ -34,6 +34,7 @@ import {
 } from './queries';
 import { loadLocalRuntimeStorage, saveLocalRuntimeStorage, type LocalRuntimeStorage } from './runtimeStorage';
 import { debugLog } from './logging';
+import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 
 /** PAT を設定済みの GitHub GraphQL クライアント。 */
 type GithubGraphqlClient = ReturnType<typeof graphql.defaults>;
@@ -90,7 +91,6 @@ type NotificationStatusNode = {
   } | null;
 };
 
-export const DEFAULT_INTERVAL_MINUTES = 5;
 export const WATCH_ALARM_NAME = 'repo-watcher-watch';
 
 /** 通知元 node の状態をまとめて問い合わせるときの 1 リクエストあたり件数。 */
@@ -698,10 +698,11 @@ export function runWatchCycleOnce(): Promise<WatchCycleResult> {
 export function setupAlarms() {
   loadSyncSettings().then((settings) => {
     const intervalMinutes = settings?.intervalMinutes ?? DEFAULT_INTERVAL_MINUTES;
+    const periodInMinutes = Math.max(MIN_INTERVAL_MINUTES, intervalMinutes);
 
     chrome.alarms.clear(WATCH_ALARM_NAME, () => {
       chrome.alarms.create(WATCH_ALARM_NAME, {
-        periodInMinutes: intervalMinutes,
+        periodInMinutes,
       });
     });
   });

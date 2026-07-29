@@ -9,6 +9,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { COLORS } from '../shared/colors';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
+import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 import RepositoryDialog from './RepositoryDialog';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
@@ -19,8 +20,6 @@ type SettingsForm = {
   notifyDraftPr: boolean;
   autoRemoveClosed: boolean;
 };
-
-const DEFAULT_INTERVAL_MINUTES = 5;
 
 /** 説明文の共通スタイル */
 const descriptionStyle: React.CSSProperties = { margin: '4px 0', color: COLORS.fgNeutral };
@@ -145,11 +144,13 @@ const OptionsApp: React.FC = () => {
       setSaveMessage(null);
       setSaveError(null);
       try {
+        const intervalMinutes = Math.max(MIN_INTERVAL_MINUTES, Number(form.intervalMinutes) || MIN_INTERVAL_MINUTES);
+        setForm((prev) => ({ ...prev, intervalMinutes }));
         await new Promise<void>((resolve) => {
           chrome.storage.sync.set(
             {
               repos: form.repos,
-              intervalMinutes: form.intervalMinutes,
+              intervalMinutes,
               notifyDraftPr: form.notifyDraftPr,
               autoRemoveClosed: form.autoRemoveClosed,
             },
@@ -324,7 +325,7 @@ const OptionsApp: React.FC = () => {
             <p style={descriptionStyle}>{t('interval.description')}</p>
             <input
               type="number"
-              min={1}
+              min={MIN_INTERVAL_MINUTES}
               value={form.intervalMinutes}
               onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
               style={{ width: '80px', padding: '4px' }}
