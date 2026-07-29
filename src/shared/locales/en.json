@@ -2,9 +2,9 @@
   "appTitle": "Repo Watcher Settings",
   "pat": {
     "heading": "API Key (PAT)",
-    "description1": "Enter your GitHub Personal Access Token. A fine-grained PAT is recommended.",
-    "description2": "Limit the target repositories to only those you want to watch, and grant only `Metadata: Read-only`, `Issues: Read-only`, and `Pull requests: Read-only` permissions.",
-    "description3": "Do not grant permissions this extension does not use, such as `Contents` write, `Administration`, `Actions`, or `Webhooks`.",
+    "description1": "Enter your GitHub Personal Access Token.",
+    "description2": "A fine-grained PAT is recommended.",
+    "description3": "The following permissions are required: `Metadata: Read-only`, `Issues: Read-only`, `Pull requests: Read-only`.",
     "status": "Current status: {{status}}",
     "statusConfigured": "PAT configured",
     "statusNotConfigured": "PAT not configured",
