@@ -67,7 +67,6 @@ const OptionsApp: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasSavedPat, setHasSavedPat] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
-  const [isResettingLastCheckedAt, setIsResettingLastCheckedAt] = useState(false);
   const [isRepositoryDialogOpen, setIsRepositoryDialogOpen] = useState(false);
 
   const loadPatStatus = () => hasReadablePat();
@@ -202,15 +201,10 @@ const OptionsApp: React.FC = () => {
    */
   const handleResetLastCheckedAt = () => {
     void (async () => {
-      setIsResettingLastCheckedAt(true);
-      try {
-        await new Promise<void>((resolve) => {
-          chrome.storage.local.set({ lastCheckedAt: null }, () => resolve());
-        });
-        setLastCheckedAt(null);
-      } finally {
-        setIsResettingLastCheckedAt(false);
-      }
+      await new Promise<void>((resolve) => {
+        chrome.storage.local.set({ lastCheckedAt: null }, () => resolve());
+      });
+      setLastCheckedAt(null);
     })();
   };
 
@@ -342,13 +336,13 @@ const OptionsApp: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetLastCheckedAt}
-                disabled={isSaving || isResettingLastCheckedAt}
+                disabled={isSaving}
                 style={{
                   ...secondaryButtonStyle,
-                  cursor: isSaving || isResettingLastCheckedAt ? 'default' : 'pointer',
+                  cursor: isSaving ? 'default' : 'pointer',
                 }}
               >
-                {isResettingLastCheckedAt ? t('lastChecked.resetting') : t('lastChecked.reset')}
+                {t('lastChecked.reset')}
               </button>
             </div>
           </CardContent>
