@@ -11,6 +11,7 @@
     "placeholderChange": "変更する場合のみ新しい PAT を入力",
     "placeholderEnter": "PAT を入力",
     "clearButton": "保存済み PAT を削除",
+    "deleteConfirm": "PAT を削除しますがよろしいですか？",
     "deleteSuccess": "PAT を削除しました",
     "deleteError": "PAT の削除に失敗しました"
   },

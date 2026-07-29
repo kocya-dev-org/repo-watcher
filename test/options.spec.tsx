@@ -58,6 +58,7 @@ describe('options App', () => {
     patStorageMocks.hasReadablePat.mockReset();
     patStorageMocks.hasEncryptedPat.mockResolvedValue(false);
     patStorageMocks.hasReadablePat.mockResolvedValue(false);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -275,9 +276,34 @@ describe('options App', () => {
     });
     await flushPromises();
 
+    expect(window.confirm).toHaveBeenCalledWith('PAT を削除しますがよろしいですか？');
     expect(patStorageMocks.clearEncryptedPat).toHaveBeenCalledTimes(1);
     expect(view.container.textContent).toContain('PAT を削除しました');
     expect(view.container.textContent).toContain('現在の状態: PAT 未設定');
+
+    await view.unmount();
+  });
+
+  it('保存済み PAT の削除をキャンセルすると何も変更しない', async () => {
+    patStorageMocks.hasEncryptedPat.mockResolvedValue(true);
+    patStorageMocks.hasReadablePat.mockResolvedValue(true);
+    vi.mocked(window.confirm).mockReturnValue(false);
+
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+
+    const button = findButton(view.container, '保存済み PAT を削除');
+    expect(button).toBeTruthy();
+
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith('PAT を削除しますがよろしいですか？');
+    expect(patStorageMocks.clearEncryptedPat).not.toHaveBeenCalled();
+    expect(view.container.textContent).not.toContain('PAT を削除しました');
+    expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
 
     await view.unmount();
   });
