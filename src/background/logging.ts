@@ -12,9 +12,9 @@ export function debugLog(message: string, payload?: unknown) {
   }
 
   if (payload === undefined) {
-    console.info('[github-notify-ext]', message);
+    console.info('[repo-watcher]', message);
     return;
   }
 
-  console.info('[github-notify-ext]', message, payload);
+  console.info('[repo-watcher]', message, payload);
 }
