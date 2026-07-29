@@ -161,7 +161,6 @@ describe('background watch logic (sanity)', () => {
 
   afterEach(() => {
     // 汚染を避けるため削除
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (global as any).chrome;
   });
 

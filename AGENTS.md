@@ -105,7 +105,7 @@
 
 - `npm run build`
 - `npm run test`
-- `npm run lint`
+- `npm run lint`（oxlint を実行します。設定は `.oxlintrc.json` です）
 - `npm run format`
 
 機能追加や修正では、可能な限り次の順序で進めてください。
