@@ -39,7 +39,6 @@
   },
   "save": {
     "submit": "Save",
-    "saving": "Saving...",
     "success": "Saved",
     "error": "Failed to save"
   },
