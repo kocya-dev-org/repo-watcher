@@ -11,6 +11,7 @@
     "placeholderChange": "Enter a new PAT only if you want to change it",
     "placeholderEnter": "Enter a PAT",
     "clearButton": "Delete saved PAT",
+    "deleteConfirm": "Are you sure you want to delete the PAT?",
     "deleteSuccess": "Deleted the PAT",
     "deleteError": "Failed to delete the PAT"
   },

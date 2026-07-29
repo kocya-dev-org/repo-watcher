@@ -177,6 +177,10 @@ const OptionsApp: React.FC = () => {
 
   const handleClearPat = () => {
     void (async () => {
+      if (!window.confirm(t('pat.deleteConfirm'))) {
+        return;
+      }
+
       setIsSaving(true);
       setSaveMessage(null);
       setSaveError(null);
