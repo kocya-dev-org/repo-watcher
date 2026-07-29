@@ -35,8 +35,7 @@
   "lastChecked": {
     "heading": "Last checked",
     "unset": "Not set",
-    "reset": "Reset",
-    "resetting": "Resetting..."
+    "reset": "Reset"
   },
   "save": {
     "submit": "Save",

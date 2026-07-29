@@ -35,8 +35,7 @@
   "lastChecked": {
     "heading": "最終チェック日",
     "unset": "未設定",
-    "reset": "リセット",
-    "resetting": "リセット中..."
+    "reset": "リセット"
   },
   "save": {
     "submit": "保存",
