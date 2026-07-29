@@ -1,0 +1,2 @@
+export const DEFAULT_INTERVAL_MINUTES = 15;
+export const MIN_INTERVAL_MINUTES = 15;

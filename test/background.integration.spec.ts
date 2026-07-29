@@ -1102,6 +1102,23 @@ describe('background integration', () => {
     });
   });
 
+  it('setupAlarms は 15 分未満の intervalMinutes を 15 分にクランプする', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      intervalMinutes: 5,
+      isWatchPaused: false,
+    });
+
+    await importBackground();
+
+    chromeMock.triggerInstalled();
+    await flushPromises();
+
+    expect(chromeMock.chrome.alarms.create).toHaveBeenCalledWith('repo-watcher-watch', {
+      periodInMinutes: 15,
+    });
+  });
+
   it('通知クリック時に対象 URL を開いて click target を掃除する', async () => {
     chromeMock.setLocalState({
       notifications: [],
@@ -1120,9 +1137,7 @@ describe('background integration', () => {
     expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({
       url: 'https://example.com/issues/1',
     });
-    expect(chromeMock.chrome.notifications.clear).toHaveBeenCalledWith(
-      'repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z',
-    );
+    expect(chromeMock.chrome.notifications.clear).toHaveBeenCalledWith('repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z');
     expect(chromeMock.getLocalState()).toMatchObject({
       notificationClickTargets: {},
     });

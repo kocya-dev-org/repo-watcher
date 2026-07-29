@@ -25,6 +25,7 @@ import {
   type StoredNotification,
 } from '../shared/notifications';
 import i18n from '../shared/i18n';
+import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 import type { WatchTargetRepo } from '../shared/repositories';
 import {
   GET_VIEWER_QUERY,
@@ -90,7 +91,6 @@ type NotificationStatusNode = {
   } | null;
 };
 
-export const DEFAULT_INTERVAL_MINUTES = 5;
 export const WATCH_ALARM_NAME = 'repo-watcher-watch';
 
 /** 通知元 node の状態をまとめて問い合わせるときの 1 リクエストあたり件数。 */
@@ -697,7 +697,7 @@ export function runWatchCycleOnce(): Promise<WatchCycleResult> {
  */
 export function setupAlarms() {
   loadSyncSettings().then((settings) => {
-    const intervalMinutes = settings?.intervalMinutes ?? DEFAULT_INTERVAL_MINUTES;
+    const intervalMinutes = Math.max(MIN_INTERVAL_MINUTES, settings?.intervalMinutes ?? DEFAULT_INTERVAL_MINUTES);
 
     chrome.alarms.clear(WATCH_ALARM_NAME, () => {
       chrome.alarms.create(WATCH_ALARM_NAME, {

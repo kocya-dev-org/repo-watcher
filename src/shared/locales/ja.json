@@ -29,7 +29,7 @@
   },
   "interval": {
     "heading": "監視間隔",
-    "description": "通知の検出間隔を分単位で指定します。",
+    "description": "通知の検出間隔を分単位で指定します。最低 15 分です。",
     "unit": "分"
   },
   "lastChecked": {

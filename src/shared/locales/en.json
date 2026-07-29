@@ -29,7 +29,7 @@
   },
   "interval": {
     "heading": "Watch interval",
-    "description": "Specify the notification detection interval in minutes.",
+    "description": "Specify the notification detection interval in minutes. Minimum is 15 minutes.",
     "unit": "min"
   },
   "lastChecked": {

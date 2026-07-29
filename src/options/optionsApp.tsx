@@ -11,6 +11,7 @@ import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/p
 import type { WatchTargetRepo } from '../shared/repositories';
 import RepositoryDialog from './RepositoryDialog';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
+import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 
 type SettingsForm = {
   pat: string;
@@ -19,8 +20,6 @@ type SettingsForm = {
   notifyDraftPr: boolean;
   autoRemoveClosed: boolean;
 };
-
-const DEFAULT_INTERVAL_MINUTES = 5;
 
 /** 説明文の共通スタイル */
 const descriptionStyle: React.CSSProperties = { margin: '4px 0', color: COLORS.fgNeutral };
@@ -140,6 +139,9 @@ const OptionsApp: React.FC = () => {
    */
   const handleSubmit: React.FormEventHandler = (e) => {
     e.preventDefault();
+    const clampedIntervalMinutes = Math.max(MIN_INTERVAL_MINUTES, Number(form.intervalMinutes) || MIN_INTERVAL_MINUTES);
+    const nextForm = { ...form, intervalMinutes: clampedIntervalMinutes };
+    setForm(nextForm);
     void (async () => {
       setIsSaving(true);
       setSaveMessage(null);
@@ -148,17 +150,17 @@ const OptionsApp: React.FC = () => {
         await new Promise<void>((resolve) => {
           chrome.storage.sync.set(
             {
-              repos: form.repos,
-              intervalMinutes: form.intervalMinutes,
-              notifyDraftPr: form.notifyDraftPr,
-              autoRemoveClosed: form.autoRemoveClosed,
+              repos: nextForm.repos,
+              intervalMinutes: nextForm.intervalMinutes,
+              notifyDraftPr: nextForm.notifyDraftPr,
+              autoRemoveClosed: nextForm.autoRemoveClosed,
             },
             () => resolve(),
           );
         });
 
-        if (form.pat.trim().length > 0) {
-          await saveEncryptedPat(form.pat.trim());
+        if (nextForm.pat.trim().length > 0) {
+          await saveEncryptedPat(nextForm.pat.trim());
         }
 
         setHasSavedPat(await loadPatStatus());
@@ -324,9 +326,9 @@ const OptionsApp: React.FC = () => {
             <p style={descriptionStyle}>{t('interval.description')}</p>
             <input
               type="number"
-              min={1}
+              min={MIN_INTERVAL_MINUTES}
               value={form.intervalMinutes}
-              onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
+              onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 0 })}
               style={{ width: '80px', padding: '4px' }}
             />{' '}
             {t('interval.unit')}
