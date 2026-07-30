@@ -554,7 +554,7 @@ const App: React.FC = () => {
             onClick={toggleScheduledWatchPause}
             size="small"
             disabled={!settings}
-            sx={{ ...headerIconButtonSx, color: settings?.isWatchPaused ? COLORS.success : COLORS.fgDefault }}
+            sx={{ ...headerIconButtonSx, color: COLORS.fgDefault }}
           >
             {settings?.isWatchPaused ? <PlayArrowIcon fontSize="small" /> : <PauseIcon fontSize="small" />}
           </IconButton>
