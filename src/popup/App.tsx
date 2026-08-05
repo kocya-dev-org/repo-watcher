@@ -304,6 +304,7 @@ const App: React.FC = () => {
   const menuPopoverRef = useRef<HTMLDivElement>(null);
 
   const manifestVersion = chrome.runtime.getManifest().version;
+  const popupIconUrl = chrome.runtime.getURL('icon48.png');
 
   useEffect(() => {
     const menuPopover = menuPopoverRef.current;
@@ -546,7 +547,10 @@ const App: React.FC = () => {
           position: 'relative',
         }}
       >
-        <h1 style={{ fontSize: '14px', margin: 0 }}>Repo Watcher</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <img src={popupIconUrl} alt="" width={32} height={32} aria-hidden="true" />
+          <h1 style={{ fontSize: '14px', margin: 0 }}>Repo Watcher</h1>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <IconButton
             aria-label={watchPauseButtonLabel}

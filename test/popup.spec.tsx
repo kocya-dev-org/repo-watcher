@@ -119,6 +119,29 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('ヘッダーのタイトル左側に拡張アイコンを表示する', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const heading = view.container.querySelector('h1');
+    expect(heading?.textContent).toBe('Repo Watcher');
+
+    const icon = heading?.parentElement?.querySelector('img');
+    expect(icon).toBeTruthy();
+    expect(icon?.getAttribute('src')).toBe('chrome-extension://test/icon32.png');
+    expect(icon?.getAttribute('width')).toBe('18');
+    expect(icon?.getAttribute('height')).toBe('18');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+
+    await view.unmount();
+  });
+
   it('ドラフト PR 通知設定が OFF のとき一覧と badge からドラフト PR を除外する', async () => {
     chromeMock.setLocalState({
       notifications: [
@@ -931,10 +954,10 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const headerButtons = Array.from(
-      view.container.querySelectorAll('header > div:first-of-type button[aria-label]'),
-    ).map((button) => button.getAttribute('aria-label'));
-    expect(headerButtons).toEqual(['Pause scheduled watch', 'Update', 'Mark all as read', 'Menu']);
+    expect(findButtonByAriaLabel(view.container, 'Pause scheduled watch')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, 'Update')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, 'Menu')).toBeTruthy();
 
     const refreshButton = findButtonByAriaLabel(view.container, 'Update');
     expect(refreshButton).toBeTruthy();

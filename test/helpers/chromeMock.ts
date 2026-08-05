@@ -130,6 +130,7 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
     runtime: {
       lastError: undefined as { message: string } | undefined,
       getManifest: vi.fn(() => ({ version: '1.0.0' })),
+      getURL: vi.fn((path: string) => `chrome-extension://test/${path}`),
       openOptionsPage: vi.fn(),
       sendMessage: vi.fn((message: unknown, callback?: (response: unknown) => void) => {
         let responded = false;
