@@ -39,7 +39,7 @@
 ## 高レベルアーキテクチャ
 
 - このリポジトリは Chrome 拡張で、Vite で 3 つのエントリーポイントをビルドする。background service worker は `src/background/index.ts`、popup は `src/popup/index.html` から `src/popup/index.tsx`、options は `src/options/index.html` から `src/options/index.tsx` を使う。エントリーポイントや出力名を変える場合は `public/manifest.json` と `vite.config.ts` を必ず揃える。
-- プロダクトの中心は `src/background/index.ts`。ここで sync settings と復号済み PAT を読み込み、`chrome.storage.local` から runtime state を復元し、`viewer.login` を取得し、GitHub GraphQL の `search(type: ISSUE)` で新規項目・メンション・担当チケットコメント候補を集め、必要なら `nodes(ids: ...)` で未解決レビュー スレッドを追加取得し、重複排除した通知を local storage に保存してバッジと OS 通知を更新する。
+- プロダクトの中心は `src/background/index.ts`。ここで sync settings と復号済み PAT を読み込み、`chrome.storage.local` から runtime state を復元し、`viewer.login` を取得し、GitHub GraphQL の `search(type: ISSUE)` で新規項目・メンション・担当チケットコメント候補を集め、必要なら `nodes(ids: ...)` で未解決レビュー スレッドを追加取得し、重複排除した通知を local storage に保存してバッジを更新する。
 - メンション検知は GraphQL の専用フィルタだけに依存せず、background 側で本文とコメントを `@viewerLogin` で走査して判定する。レビュー スレッド通知は `lastCheckedAt` 以降に更新された PR に対してのみ追加クエリを行う。
 - popup (`src/popup/App.tsx`) は storage 駆動で動作する。GitHub API は直接呼ばず、`chrome.storage.local` から `notifications` と `readNotificationIds` を読み、`chrome.storage.sync` から通知トグルを読み、クリック時は storage と badge を更新して既読化する。
 - options UI (`src/options/optionsApp.tsx`) は編集可能な設定を `chrome.storage.sync` に保存するが、PAT だけは別管理で、`src/shared/patStorage.ts` を通じて `chrome.storage.local` に保存する。PAT を sync storage に入れない前提で background と連携している。
@@ -50,9 +50,9 @@
 - 作業開始時は `AGENTS.md`、`spec.md`、`tasks.md`、`package.json`、`src/background/index.ts` の順で確認する。`README.md` は現状プレースホルダー寄りなので、設計の正本として扱わない。
 - このリポジトリでは会話、コードコメント、Issue、Pull Request、コミットに付随する説明、レビューコメント、ドキュメント記述など、対人コミュニケーションとして残る文章は原則すべて日本語で行う。明確な理由がない限り英語へ切り替えない。
 - storage schema は extension の各画面・各処理をつなぐ契約になっている。通知データの shape を変える場合は background と popup を同時に更新し、設定データの shape を変える場合は background と options を同時に更新する。
-- `chrome.storage.sync` には `repos`、`intervalMinutes`、各通知トグルのようなユーザー編集可能な設定を保存する。`chrome.storage.local` には `lastCheckedAt`、`viewerLogin`、`viewerLoginPatKey`、`notifications`、`readNotificationIds`、`badgeCount`、`notificationClickTargets`、暗号化済み PAT と起動時刻情報のような runtime データを保存する。
+- `chrome.storage.sync` には `repos`、`intervalMinutes`、各通知トグルのようなユーザー編集可能な設定を保存する。`chrome.storage.local` には `lastCheckedAt`、`viewerLogin`、`viewerLoginPatKey`、`notifications`、`readNotificationIds`、`badgeCount`、暗号化済み PAT と起動時刻情報のような runtime データを保存する。
 - 通知の重複排除は `StoredNotification.id = ${kind}:${nodeId}` を前提にしている。既読状態は `readNotificationIds` で別管理されるため、どちらか片方だけ変えると badge と popup の整合が崩れる。
-- 挙動の大部分は `src/background/index.ts` に集約されている。ここを変更すると polling、storage schema、badge、popup、OS 通知クリックの挙動まで同時に影響する前提で扱う。
+- 挙動の大部分は `src/background/index.ts` に集約されている。ここを変更すると polling、storage schema、badge、popup の挙動まで同時に影響する前提で扱う。
 - 現在のテストは `test/background.spec.ts` にある smoke test / security helper test が中心。`tsconfig.json` の `include` は `src` のみなので、テストファイルは TypeScript コンパイルではなく Vitest 側で検証される。
 - `spec.md`、`tasks.md`、実装が食い違う場合は、ドキュメントが正しいと決め打ちせず差分を明示する。
 - 新しい外部ライブラリを追加する前には確認を取る。

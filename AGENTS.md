@@ -86,7 +86,7 @@
 - popup と background は storage 契約に依存しており、通知関連の共有型と状態更新ヘルパーは `src/shared/notifications.ts` にあります。通知データ形状や既読・バッジ計算を変える場合は background / popup / shared helper を一緒に更新してください。
 - 設定データ形状を変える場合は、options UI と background の設定読み込みロジックを一緒に更新してください。
 - PAT は `src/shared/patStorage.ts` と `src/background/security.ts` で暗号化済み payload として扱われ、起動時刻ベースの再暗号化も実装されています。完全な秘密保護ではない前提は維持しつつ、平文保存前提で設計しないでください。
-- OS 通知は `chrome.notifications` を使って新規追加分のみ表示し、クリック時の遷移先は `notificationClickTargets` で管理されています。
+- 通知の提示はバッジ表示と popup 内の通知一覧のみで、`chrome.notifications` による OS 通知は行いません。
 - テストは依然として UI の網羅は薄いものの、`test/background.spec.ts` にスモークテストに加えて検索クエリ構築、通知判定、既読/バッジ再計算の単体テストがあります。
 - `tsconfig.json` は `src` のみを含んでいるため、テストファイルは TypeScript コンパイル対象外です。
 - `public/manifest.json` の `options_page` と `default_popup` は `src/.../*.html` を指しています。エントリーポイントやファイル名、バンドル設定を触るときは `vite.config.ts` と合わせて確認してください。

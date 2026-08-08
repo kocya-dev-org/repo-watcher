@@ -44,7 +44,6 @@ function setupChromeMock() {
   const runtimeInstalledListeners: Array<() => void> = [];
   const runtimeStartupListeners: Array<() => void> = [];
   const storageChangedListeners: Array<(changes: Record<string, unknown>, areaName: string) => void> = [];
-  const notificationClickedListeners: Array<(notificationId: string) => void> = [];
   const runtimeMessageListeners: Array<
     (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void
   > = [];
@@ -89,19 +88,6 @@ function setupChromeMock() {
       // テスト用にリスナー呼び出しを行うヘルパー
       __trigger(name: string) {
         for (const l of alarmsListeners) l({ name });
-      },
-    },
-    notifications: {
-      create: vi.fn((notificationId: string, options: unknown, cb?: () => void) => {
-        cb?.();
-      }),
-      clear: vi.fn((notificationId: string, cb?: (wasCleared: boolean) => void) => {
-        cb?.(true);
-      }),
-      onClicked: {
-        addListener: vi.fn((fn: (notificationId: string) => void) => {
-          notificationClickedListeners.push(fn);
-        }),
       },
     },
     runtime: {
@@ -183,9 +169,8 @@ describe('background watch logic (sanity)', () => {
     expect(chromeMock.runtime.onStartup.addListener).toHaveBeenCalledTimes(1);
     // onAlarm リスナー登録確認
     expect(chromeMock.alarms.onAlarm.addListener).toHaveBeenCalledTimes(1);
-    // storage.onChanged / notifications.onClicked も購読される
+    // storage.onChanged も購読される
     expect(chromeMock.storage.onChanged.addListener).toHaveBeenCalledTimes(1);
-    expect(chromeMock.notifications.onClicked.addListener).toHaveBeenCalledTimes(1);
     expect(chromeMock.runtime.onMessage.addListener).toHaveBeenCalledTimes(1);
   });
 
