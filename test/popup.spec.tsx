@@ -134,9 +134,9 @@ describe('popup App', () => {
 
     const icon = heading?.parentElement?.querySelector('img');
     expect(icon).toBeTruthy();
-    expect(icon?.getAttribute('src')).toBe('chrome-extension://test/icon32.png');
-    expect(icon?.getAttribute('width')).toBe('18');
-    expect(icon?.getAttribute('height')).toBe('18');
+    expect(icon?.getAttribute('src')).toBe('chrome-extension://test/icon48.png');
+    expect(icon?.getAttribute('width')).toBe('32');
+    expect(icon?.getAttribute('height')).toBe('32');
     expect(icon?.getAttribute('aria-hidden')).toBe('true');
 
     await view.unmount();
