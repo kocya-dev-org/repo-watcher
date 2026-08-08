@@ -7,7 +7,6 @@ type StorageState = Record<string, unknown>;
 type AlarmListener = (alarm: { name: string }) => void;
 type EmptyListener = () => void;
 type StorageChangeListener = (changes: StorageChanges, areaName: StorageAreaName) => void;
-type NotificationClickListener = (notificationId: string) => void;
 type RuntimeMessageListener = (
   message: unknown,
   sender: unknown,
@@ -62,7 +61,6 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
   const runtimeInstalledListeners: EmptyListener[] = [];
   const runtimeStartupListeners: EmptyListener[] = [];
   const storageChangedListeners: StorageChangeListener[] = [];
-  const notificationClickedListeners: NotificationClickListener[] = [];
   const runtimeMessageListeners: RuntimeMessageListener[] = [];
 
   const localState: StorageState = { ...(initial?.local ?? {}) };
@@ -111,19 +109,6 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
       onAlarm: {
         addListener: vi.fn((listener: AlarmListener) => {
           alarmsListeners.push(listener);
-        }),
-      },
-    },
-    notifications: {
-      create: vi.fn((notificationId: string, options: unknown, callback?: () => void) => {
-        callback?.();
-      }),
-      clear: vi.fn((notificationId: string, callback?: (wasCleared: boolean) => void) => {
-        callback?.(true);
-      }),
-      onClicked: {
-        addListener: vi.fn((listener: NotificationClickListener) => {
-          notificationClickedListeners.push(listener);
         }),
       },
     },
@@ -203,11 +188,6 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
     triggerStartup: () => {
       for (const listener of runtimeStartupListeners) {
         listener();
-      }
-    },
-    triggerNotificationClicked: (notificationId: string) => {
-      for (const listener of notificationClickedListeners) {
-        listener(notificationId);
       }
     },
     triggerStorageChanged: (changes: StorageChanges, areaName: StorageAreaName) => {

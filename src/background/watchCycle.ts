@@ -18,13 +18,10 @@ import { loadDecryptedPat } from '../shared/patStorage';
 import {
   calculateUnreadCount,
   formatBadgeText,
-  formatNotificationKindLabel,
   filterNotificationsByDraftSetting,
-  getNotificationKinds,
   reconcileNotificationState,
   type StoredNotification,
 } from '../shared/notifications';
-import i18n from '../shared/i18n';
 import type { WatchTargetRepo } from '../shared/repositories';
 import {
   GET_VIEWER_QUERY,
@@ -97,9 +94,6 @@ export const WATCH_ALARM_NAME = 'repo-watcher-watch';
 const NOTIFICATION_STATUS_CHUNK_SIZE = 50;
 /** 未読件数バッジの背景色。 */
 const BADGE_BACKGROUND_COLOR = '#d93025';
-const NOTIFICATION_ID_PREFIX = 'repo-watcher:';
-const NOTIFICATION_ICON_DATA_URL =
-  "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230969da'/%3E%3Cpath d='M20 18h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H30l-8 8v-8h-2a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z' fill='white'/%3E%3Ccircle cx='25' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='32' cy='30' r='3' fill='%230969da'/%3E%3Ccircle cx='39' cy='30' r='3' fill='%230969da'/%3E%3C/svg%3E";
 
 const INITIAL_RUNTIME_STATE: RuntimeState = {
   viewerLogin: null,
@@ -376,55 +370,6 @@ async function ensureViewerLogin(
 }
 
 /**
- * 通知クリック時に遷移する URL の対応表を保存する。
- * @param pairs 通知 ID と URL の組
- */
-async function saveNotificationClickTargets(pairs: Record<string, string>) {
-  if (Object.keys(pairs).length === 0) {
-    return;
-  }
-
-  // 対応表は OS 通知クリック時にも削除されるため、書き込み直前の最新状態へマージする
-  const localState = await loadLocalRuntimeStorage();
-  await saveLocalRuntimeStorage({
-    notificationClickTargets: {
-      ...localState.notificationClickTargets,
-      ...pairs,
-    },
-  });
-}
-
-/**
- * 新規通知に対して OS 通知を発行する。
- * @param notifications 新規追加された通知一覧
- */
-async function showOSNotifications(notifications: StoredNotification[]) {
-  const clickTargets: Record<string, string> = {};
-
-  for (const notification of notifications) {
-    const notificationId = `${NOTIFICATION_ID_PREFIX}${notification.id}:${notification.detectedAt}`;
-    clickTargets[notificationId] = notification.url;
-
-    await new Promise<void>((resolve) => {
-      chrome.notifications.create(
-        notificationId,
-        {
-          type: 'basic',
-          iconUrl: NOTIFICATION_ICON_DATA_URL,
-          title: `${notification.owner}/${notification.repo} #${notification.number}`,
-          message: `[${getNotificationKinds(notification)
-            .map((kind) => i18n.t(formatNotificationKindLabel(kind)))
-            .join(' / ')}] ${notification.title}`,
-        },
-        () => resolve(),
-      );
-    });
-  }
-
-  await saveNotificationClickTargets(clickTargets);
-}
-
-/**
  * 現在の API 結果で open 扱いの通知元 node と approved 状態を取得する。
  *
  * open/closed に依存せず、PullRequest の `reviewDecision` から approved 状態を持ち帰る。
@@ -570,13 +515,13 @@ async function detectThreadNotifications(
  * @param client GraphQL クライアント
  * @param settings 検証済みの監視設定
  * @param detectedNotifications 今回検知した通知一覧
- * @returns 新規追加された通知一覧とバッジ数
+ * @returns バッジ数
  */
 async function reconcileAndPersistNotifications(
   client: GithubGraphqlClient,
   settings: WatchSettings,
   detectedNotifications: StoredNotification[],
-): Promise<{ addedNotifications: StoredNotification[]; badgeCount: number }> {
+): Promise<{ badgeCount: number }> {
   // 通信中に popup が既読化を書き込んでいる可能性があるため、統合前に最新状態を読み直す
   const localState = await loadLocalRuntimeStorage();
   const reconciled = reconcileNotificationState(
@@ -603,7 +548,7 @@ async function reconcileAndPersistNotifications(
     badgeCount,
   });
 
-  return { addedNotifications: reconciled.addedNotifications, badgeCount };
+  return { badgeCount };
 }
 
 /**
@@ -653,17 +598,9 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     (notification) => (notification.kinds?.length ?? 0) > 0,
   );
 
-  const { addedNotifications, badgeCount } = await reconcileAndPersistNotifications(
-    client,
-    settings,
-    detectedNotifications,
-  );
+  const { badgeCount } = await reconcileAndPersistNotifications(client, settings, detectedNotifications);
 
   setBadge(badgeCount);
-
-  if (addedNotifications.length > 0) {
-    await showOSNotifications(addedNotifications);
-  }
 
   await saveLastCheckedAt(detectedAt);
 

@@ -1,7 +1,6 @@
 import { rotateEncryptedPatForStartup } from '../shared/patStorage';
 import { isRefreshWatchCycleRequest, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import { debugLog } from './logging';
-import { loadLocalRuntimeStorage, saveLocalRuntimeStorage } from './runtimeStorage';
 import { sanitizeError } from './security';
 import {
   isScheduledWatchPaused,
@@ -92,22 +91,5 @@ export function registerEventListeners() {
       });
 
     return true;
-  });
-
-  // OS 通知クリック時に対象の PR / Issue を開く
-  chrome.notifications.onClicked.addListener((notificationId) => {
-    void (async () => {
-      // クリック対象の削除は最新の対応表に対して行う必要があるため、ここで読み直す
-      const localState = await loadLocalRuntimeStorage();
-      const url = localState.notificationClickTargets[notificationId];
-      if (url) {
-        chrome.tabs.create({ url });
-      }
-
-      const nextTargets = { ...localState.notificationClickTargets };
-      delete nextTargets[notificationId];
-      await saveLocalRuntimeStorage({ notificationClickTargets: nextTargets });
-      chrome.notifications.clear(notificationId);
-    })();
   });
 }

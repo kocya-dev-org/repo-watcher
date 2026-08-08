@@ -10,7 +10,6 @@ export type LocalRuntimeStorage = {
   notifications: StoredNotification[];
   readNotificationIds: string[];
   badgeCount: number;
-  notificationClickTargets: Record<string, string>;
 };
 
 /** local storage 読み込み時に使用する既定値。 */
@@ -21,7 +20,6 @@ export const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
   notifications: [],
   readNotificationIds: [],
   badgeCount: 0,
-  notificationClickTargets: {},
 };
 
 /**
@@ -38,12 +36,6 @@ export function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
         notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
         readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
         badgeCount: Number(items.badgeCount ?? 0),
-        notificationClickTargets:
-          items.notificationClickTargets &&
-          typeof items.notificationClickTargets === 'object' &&
-          !Array.isArray(items.notificationClickTargets)
-            ? (items.notificationClickTargets as Record<string, string>)
-            : {},
       });
     });
   });

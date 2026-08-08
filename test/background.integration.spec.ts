@@ -63,7 +63,7 @@ describe('background integration', () => {
     vi.useRealTimers();
   });
 
-  it('runWatchCycle が通知保存・badge 更新・OS 通知発行・lastCheckedAt 保存まで行う', async () => {
+  it('runWatchCycle が通知保存・badge 更新・lastCheckedAt 保存まで行う', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
@@ -73,7 +73,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -270,9 +269,7 @@ describe('background integration', () => {
     );
     expect(issueNotification?.latestCommentUrl).toBe('https://example.com/issues/1#issuecomment-2');
     expect(pullRequestNotification?.latestCommentUrl).toBe('https://example.com/pulls/2#discussion_r2');
-    expect(Object.keys(state.notificationClickTargets as Record<string, string>)).toHaveLength(2);
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '2' });
-    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(2);
     expect(
       backgroundMocks.client.mock.calls.some(
         ([query, variables]) =>
@@ -305,7 +302,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -376,7 +372,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -438,7 +433,6 @@ describe('background integration', () => {
     expect(chromeMock.getLocalState()).toMatchObject({
       badgeCount: 1,
     });
-    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
   it('既存項目の更新だけでは updated 通知を保存しない', async () => {
@@ -451,7 +445,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -519,7 +512,6 @@ describe('background integration', () => {
         }),
       ],
     });
-    expect(chromeMock.chrome.notifications.create).toHaveBeenCalledTimes(1);
   });
 
   it('現在の API 結果にない通知は灰色表示用の状態として保存する', async () => {
@@ -560,7 +552,6 @@ describe('background integration', () => {
       ],
       readNotificationIds: [],
       badgeCount: 2,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -647,7 +638,6 @@ describe('background integration', () => {
       ],
       readNotificationIds: [],
       badgeCount: 1,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -718,7 +708,6 @@ describe('background integration', () => {
       ],
       readNotificationIds: [],
       badgeCount: 1,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -814,7 +803,6 @@ describe('background integration', () => {
       ],
       readNotificationIds: [],
       badgeCount: 3,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -880,7 +868,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -953,7 +940,6 @@ describe('background integration', () => {
       badgeCount: 0,
       notifications: [],
     });
-    expect(chromeMock.chrome.notifications.create).not.toHaveBeenCalled();
     expect(backgroundMocks.client.mock.calls.some(([query]) => (query as string).includes('WatchReviewThreads'))).toBe(
       false,
     );
@@ -970,7 +956,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     await importBackground();
@@ -984,7 +969,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
   });
 
@@ -999,7 +983,6 @@ describe('background integration', () => {
       notifications: [],
       readNotificationIds: [],
       badgeCount: 0,
-      notificationClickTargets: {},
     });
 
     backgroundMocks.client.mockImplementation(
@@ -1119,32 +1102,6 @@ describe('background integration', () => {
     });
   });
 
-  it('通知クリック時に対象 URL を開いて click target を掃除する', async () => {
-    chromeMock.setLocalState({
-      notifications: [],
-      readNotificationIds: [],
-      badgeCount: 0,
-      notificationClickTargets: {
-        'repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z': 'https://example.com/issues/1',
-      },
-    });
-
-    await importBackground();
-
-    chromeMock.triggerNotificationClicked('repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z');
-    await flushPromises();
-
-    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({
-      url: 'https://example.com/issues/1',
-    });
-    expect(chromeMock.chrome.notifications.clear).toHaveBeenCalledWith(
-      'repo-watcher:ISSUE_1:2026-05-06T09:30:00.000Z',
-    );
-    expect(chromeMock.getLocalState()).toMatchObject({
-      notificationClickTargets: {},
-    });
-  });
-
   it('起動時に PAT rotation を実行し、badge を再計算して復元する', async () => {
     chromeMock.setLocalState({
       notifications: [
@@ -1173,7 +1130,6 @@ describe('background integration', () => {
       ],
       readNotificationIds: ['ISSUE_2'],
       badgeCount: 99,
-      notificationClickTargets: {},
     });
 
     await importBackground();
