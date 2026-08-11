@@ -65,7 +65,7 @@ describe('options App', () => {
     document.body.innerHTML = '';
     vi.restoreAllMocks();
     vi.useRealTimers();
-    delete global.chrome;
+    Reflect.deleteProperty(global, 'chrome');
   });
 
   it('sync storage の内容と PAT 状態を初期表示する', async () => {
@@ -100,7 +100,7 @@ describe('options App', () => {
     expect(view.container.textContent).toContain('ドラフトPRを通知対象に含める');
     expect(view.container.textContent).toContain('Closeされた項目を自動的に削除する');
     expect(view.container.textContent).toContain(
-      '通知内容の最新取得日時を表示します。リセットすると、次回更新時に当日の00:00:00を基準に通知内容を再取得します。',
+      '通知内容の最新取得日時を表示します。リセットすると、次回更新時に当日00:00:00からの通知内容を取得します。',
     );
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
 
