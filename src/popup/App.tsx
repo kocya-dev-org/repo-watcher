@@ -650,6 +650,7 @@ const App: React.FC = () => {
                 marginLeft: '8px',
                 paddingLeft: '8px',
                 borderLeft: `1px solid ${COLORS.borderMuted}`,
+                ...(repositoryOptions.length > 7 ? { maxHeight: '210px', overflowY: 'auto' as const } : {}),
               }}
             >
               {repositoryOptions.length === 0 ? (
