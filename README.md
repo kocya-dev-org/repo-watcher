@@ -1,75 +1,78 @@
 # Repo Watcher
 
+[![Build Status](https://github.com/kocya-dev/repo-watcher/actions/workflows/build-artifact.yml/badge.svg)](https://github.com/kocya-dev/repo-watcher/actions/workflows/build-artifact.yml)
+
+[English](README.md) | [日本語](README_ja.md)
+
 `Track GitHub PRs and Issues effortlessly from your browser.`
 
-Repo Watcher は、GitHub 上の Issue / Pull Request の更新を監視する Chrome 拡張です。
+Repo Watcher is a Chrome extension that monitors updates to GitHub issues and pull requests.
 
-このリポジトリは Chrome 拡張そのもののソースコードであり、単体の CLI やデスクトップアプリとして利用するものではありません。利用するには Chrome 系ブラウザに拡張として読み込み、GitHub Personal Access Token と監視対象リポジトリを設定する必要があります。
+This repository contains the source code for the Chrome extension itself. It is not a standalone CLI tool or desktop application. To use it, you need to load it as an extension in a Chromium-based browser and configure a GitHub Personal Access Token and the repositories you want to watch.
 
-## できること
+## Features
 
-- 新しい Issue / Pull Request の通知
-- 自分へのメンションを含むかどうかの通知
-- 自分がアサインされているかどうかの通知
-- 通知件数のバッジ表示
-- Chrome のデスクトップ通知表示
-- Popup 画面での通知一覧表示と既読管理
-- Options 画面での監視対象リポジトリ、監視間隔、通知設定、PAT 管理
+- Notifications for new issues and pull requests
+- Detection of items that mention you
+- Detection of items assigned to you
+- Badge counts for unread notifications
+- A popup UI for viewing notifications and marking them as read
+- An options page for managing watched repositories, polling interval, notification settings, and your PAT
 
-## これは何のソフトウェアか
+## What this software is
 
-Repo Watcher は GitHub API を定期的に確認し、指定したリポジトリ群の変更を Chrome 拡張として通知するためのソフトウェアです。
+Repo Watcher periodically checks the GitHub API and surfaces changes from selected repositories through a Chrome extension.
 
-主な構成は次のとおりです。
+The main parts are:
 
-- background service worker: GitHub GraphQL API を呼び出し、通知候補の収集、重複排除、バッジ更新、OS 通知を担当
-- popup: 保存済み通知の一覧表示、既読化、手動更新、一時停止状態の確認を担当
-- options: PAT、監視対象リポジトリ、監視間隔、通知オプションの設定を担当
+- background service worker: calls the GitHub GraphQL API, collects notification candidates, removes duplicates, and updates the badge state
+- popup: shows stored notifications, marks them as read, supports manual refresh, and displays the paused state
+- options: manages the PAT, watched repositories, polling interval, and notification options
 
-## 利用前提
+## Requirements
 
-- Chrome または Chromium 系ブラウザ
-- GitHub の Personal Access Token
-- 監視したい GitHub リポジトリ
+- Chrome or another Chromium-based browser
+- A GitHub Personal Access Token
+- GitHub repositories you want to monitor
 
-この拡張は GitHub 上の通知体験を補助するためのものです。GitHub アカウントやブラウザ環境なしでは意味のある動作をしません。
+This extension is meant to supplement your GitHub notification workflow. It is only useful when used with a GitHub account in a browser environment.
 
-## セットアップ
+## Setup
 
-### 1. 依存関係をインストールする
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. 拡張をビルドする
+### 2. Build the extension
 
 ```bash
 npm run build
 ```
 
-ビルド後、生成された dist を Chrome に unpacked extension として読み込みます。
+After the build completes, load the generated dist directory into Chrome as an unpacked extension.
 
-### 3. Chrome に読み込む
+### 3. Load it into Chrome
 
-1. Chrome で 拡張機能 管理ページを開く
-2. デベロッパーモードを有効にする
-3. パッケージ化されていない拡張機能を読み込む を選ぶ
-4. このリポジトリの dist ディレクトリを指定する
+1. Open the Extensions management page in Chrome.
+2. Enable Developer mode.
+3. Select Load unpacked.
+4. Choose the dist directory from this repository.
 
-### 4. 初期設定を行う
+### 4. Configure it
 
-拡張の Options 画面から次を設定します。
+From the extension's options page, configure the following:
 
 - GitHub Personal Access Token
-- 監視対象リポジトリ
-- 監視間隔
-- Draft PR を通知対象に含めるか
-- Close 済み通知を自動で一覧から外すか
+- Repositories to watch
+- Polling interval
+- Whether draft pull requests should be included
+- Whether closed notifications should be removed from the list automatically
 
-## 開発
+## Development
 
-主要コマンド:
+Main commands:
 
 ```bash
 npm run build
@@ -78,31 +81,30 @@ npm run lint
 npm run format
 ```
 
-コードベースの中心:
+Core files:
 
-- src/background/index.ts: background service worker のエントリーポイント
-- src/background/watchCycle.ts: 監視サイクルの中核ロジック
+- src/background/index.ts: entry point for the background service worker
+- src/background/watchCycle.ts: core watch-cycle logic
 - src/popup/App.tsx: popup UI
 - src/options/optionsApp.tsx: options UI
 
-## 権限と動作
+## Permissions and Behavior
 
-manifest では主に次の権限を使います。
+The manifest primarily uses the following permissions:
 
 - storage
-- notifications
 - alarms
-- https://api.github.com/* へのアクセス
+- access to https://api.github.com/*
 
-監視データや既読状態は Chrome storage に保存されます。設定値と実行時データは別ストレージに分けて管理されています。
+Watch data and read-state data are stored in Chrome storage. User settings and runtime data are managed separately.
 
-## 制約
+## Limitations
 
-- Chrome 拡張としてのみ動作します
-- GitHub API にアクセスできる環境が必要です
-- PAT 未設定時は監視を実行できません
-- 監視対象リポジトリが未設定だと通知は生成されません
+- It only works as a Chrome extension.
+- It requires an environment that can access the GitHub API.
+- Watching cannot run until a PAT is configured.
+- No notifications are generated if no repositories are configured.
 
-## ライセンス
+## License
 
 [MIT License](LICENSE)
