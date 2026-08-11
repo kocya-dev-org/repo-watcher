@@ -18,9 +18,9 @@
   "notifySettings": {
     "heading": "Notification settings",
     "draftLabel": "Notify about draft PRs",
-    "draftDescription": "When off, draft PRs are excluded from the badge and the notification list.",
+    "draftDescription": "Draft PRs are included in the badge and the notification list.",
     "autoRemoveClosedLabel": "Automatically remove closed items",
-    "autoRemoveClosedDescription": "When on, PRs/Issues that are already closed are automatically removed from the notification list on update."
+    "autoRemoveClosedDescription": "PRs/Issues that are already closed are automatically removed from the notification list on update."
   },
   "repos": {
     "heading": "Watched repositories",
@@ -35,6 +35,7 @@
   },
   "lastChecked": {
     "heading": "Last checked",
+    "description": "Displays the latest time the notification content was fetched. If you reset it, the next update re-fetches notifications using 00:00:00 of the current day as the baseline.",
     "unset": "Not set",
     "reset": "Reset"
   },

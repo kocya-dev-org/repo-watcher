@@ -17,10 +17,10 @@
   },
   "notifySettings": {
     "heading": "通知設定",
-    "draftLabel": "ドラフトPRも通知する",
-    "draftDescription": "OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。",
+    "draftLabel": "ドラフトPRを通知対象に含める",
+    "draftDescription": "ドラフト PR もバッジと通知一覧に含めます。",
     "autoRemoveClosedLabel": "Closeされた項目を自動的に削除する",
-    "autoRemoveClosedDescription": "ON にすると、更新時に既に Close 済みの PR / Issue を通知一覧から自動的に削除します。"
+    "autoRemoveClosedDescription": "更新時に既に Close 済みの PR / Issue を通知一覧から自動的に削除します。"
   },
   "repos": {
     "heading": "監視対象リポジトリ",
@@ -34,7 +34,8 @@
     "unit": "分"
   },
   "lastChecked": {
-    "heading": "最終チェック日",
+    "heading": "最新取得日時",
+    "description": "通知内容の最新取得日時を表示します。リセットすると、次回更新時に当日00:00:00からの通知内容を取得します。",
     "unset": "未設定",
     "reset": "リセット"
   },

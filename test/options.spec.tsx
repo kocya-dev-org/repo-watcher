@@ -97,8 +97,11 @@ describe('options App', () => {
     const draftCheckbox = view.container.querySelector('input[type="checkbox"]') as HTMLInputElement;
     expect(draftCheckbox.checked).toBe(false);
     expect(view.container.textContent).toContain('通知設定');
-    expect(view.container.textContent).toContain('ドラフトPRも通知する');
+    expect(view.container.textContent).toContain('ドラフトPRを通知対象に含める');
     expect(view.container.textContent).toContain('Closeされた項目を自動的に削除する');
+    expect(view.container.textContent).toContain(
+      '通知内容の最新取得日時を表示します。リセットすると、次回更新時に当日の00:00:00を基準に通知内容を再取得します。',
+    );
     expect(view.container.textContent).toContain(expectedLastCheckedAt);
 
     await view.unmount();

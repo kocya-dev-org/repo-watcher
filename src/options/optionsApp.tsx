@@ -335,6 +335,7 @@ const OptionsApp: React.FC = () => {
         <Card sx={{ mb: 2 }}>
           <CardHeader titleTypographyProps={{ fontSize: '14px', fontWeight: 600 }} title={t('lastChecked.heading')} />
           <CardContent>
+            <p style={descriptionStyle}>{t('lastChecked.description')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span aria-label="lastCheckedAt">{formatLastCheckedAt(lastCheckedAt) ?? t('lastChecked.unset')}</span>
               <button
