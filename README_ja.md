@@ -16,7 +16,6 @@ Repo Watcher は、GitHub 上の Issue / Pull Request の更新を監視する C
 - 自分へのメンションを含むかどうかの通知
 - 自分がアサインされているかどうかの通知
 - 通知件数のバッジ表示
-- Chrome のデスクトップ通知表示
 - Popup 画面での通知一覧表示と既読管理
 - Options 画面での監視対象リポジトリ、監視間隔、通知設定、PAT 管理
 
@@ -26,7 +25,7 @@ Repo Watcher は GitHub API を定期的に確認し、指定したリポジト�
 
 主な構成は次のとおりです。
 
-- background service worker: GitHub GraphQL API を呼び出し、通知候補の収集、重複排除、バッジ更新、OS 通知を担当
+- background service worker: GitHub GraphQL API を呼び出し、通知候補の収集、重複排除、バッジ更新を担当
 - popup: 保存済み通知の一覧表示、既読化、手動更新、一時停止状態の確認を担当
 - options: PAT、監視対象リポジトリ、監視間隔、通知オプションの設定を担当
 
@@ -94,7 +93,6 @@ npm run format
 manifest では主に次の権限を使います。
 
 - storage
-- notifications
 - alarms
 - https://api.github.com/* へのアクセス
 
