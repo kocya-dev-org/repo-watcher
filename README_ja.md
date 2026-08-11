@@ -1,6 +1,7 @@
 # Repo Watcher
 
 [![Build Status](https://github.com/kocya-dev/repo-watcher/actions/workflows/build-artifact.yml/badge.svg)](https://github.com/kocya-dev/repo-watcher/actions/workflows/build-artifact.yml)
+![MIT License](https://img.shields.io/badge/license-MIT-blue)
 
 [English](README.md) | [日本語](README_ja.md)
 
