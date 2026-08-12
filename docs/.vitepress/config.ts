@@ -19,7 +19,10 @@ export default defineConfig({
       themeConfig: {
         sidebar: [
           {
-            items: [{ text: 'Manual', link: '/en/' }],
+            items: [
+              { text: 'Manual', link: '/en/' },
+              { text: 'OSS', link: '/en/oss' },
+            ],
           },
         ],
       },
@@ -31,7 +34,10 @@ export default defineConfig({
       themeConfig: {
         sidebar: [
           {
-            items: [{ text: 'Manual', link: '/ja/' }],
+            items: [
+              { text: 'Manual', link: '/ja/' },
+              { text: 'OSS', link: '/ja/oss' },
+            ],
           },
         ],
       },
