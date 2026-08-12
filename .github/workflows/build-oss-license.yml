@@ -62,7 +62,9 @@ jobs:
           const sections = packageNames.map((packageName) => {
             const entry = summary[packageName] ?? {};
             const licenseFilePath = entry.licenseFile;
-            const licenseText = licenseFilePath ? readFileSync(licenseFilePath, 'utf8').trimEnd() : '';
+            let licenseText = licenseFilePath ? readFileSync(licenseFilePath, 'utf8').trimEnd() : '';
+            // Escape angle brackets so emails like <name@host> are not treated as HTML tags
+            licenseText = licenseText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
             return [
               `## ${packageName}`,
