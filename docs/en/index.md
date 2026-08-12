@@ -1,152 +1,150 @@
-# Repo Watcher マニュアル
+# Repo Watcher Manual
 
-## この拡張機能でできること
+## What this extension does
 
-Repo Watcher は、指定した GitHub リポジトリの Issue と Pull Request を監視する Chrome 拡張です。
+Repo Watcher is a Chrome extension that monitors Issues and Pull Requests in configured GitHub repositories.
 
-主に次の通知を確認できます。
+It primarily detects the following notifications:
 
-- 新しい Issue / Pull Request
-- 自分へのメンション
-- 自分が担当者の Issue / Pull Request への新しいコメント
+- New Issue / Pull Request
+- Mentions of you
+- New comments on Issues / Pull Requests where you are the assignee
 
-通知は拡張アイコンのバッジ、ポップアップ画面で確認できます。
+Notifications are shown via the extension icon badge and in the popup window.
 
-![画像:Chrome ツールバー上の Repo Watcher アイコンと未読件数バッジ](./assets/01_toolbar_icon_badge.png)
+![Image: Repo Watcher icon and unread badge on the Chrome toolbar](./assets/01_toolbar_icon_badge.png)
 
-## 事前に用意するもの
+## Prerequisites
 
-- Chrome または Chromium 系ブラウザ
+- Chrome or a Chromium-based browser
 - GitHub Personal Access Token (PAT)
-- 監視したいリポジトリの owner/repository 名
+- The owner/repository names of the repositories you want to watch
 
-PAT は fine-grained PAT を推奨します。必要な権限は次のとおりです。
+A fine-grained PAT is recommended. Required permissions:
 
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
 
-## 初期設定
+## Initial setup
 
-拡張機能を読み込んだら、まず設定画面を開きます。
+After loading the extension, open the settings page.
 
-開き方:
+How to open:
 
-- 拡張アイコンをクリックする
-- ポップアップ右上のメニューを開く
-- Open Settings を選ぶ
+- Click the extension icon
+- Open the popup menu in the top-right
+- Select "Open Settings"
 
-![画像:ポップアップ右上メニューから Open Settings を選ぶ画面](./assets/02_popup_menu_open_settings.png)
+![Image: Select "Open Settings" from the popup menu](./assets/02_popup_menu_open_settings.png)
 
-![画像:Open Settings画面](./assets/03_options_page.png)
+![Image: Options page (Open Settings)](./assets/03_options_page.png)
 
-### API キー (PAT)
+### API Key (PAT)
 
-1. API キー (PAT) 欄に GitHub PAT を入力します。
-2. 保存 を押します。
+1.  Enter your GitHub PAT in the "API Key (PAT)" field.
+2.  Press "Save".
 
-PAT は拡張機能の local storage に暗号化して保存されます。
+The PAT is encrypted and stored in the extension's local storage.
 
-### 通知設定
+### Notification settings
 
-設定できる項目は次の 2 つです。
+The following two settings are available:
 
-- ドラフトPRも通知する
-  OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。
-- Closeされた項目を自動的に削除する
-  ON にすると、更新時にすでに Close 済みの PR / Issue を通知一覧から削除します。
+- "Notify about draft PRs": Draft PRs are included in the badge and the notification list when enabled.
+- "Automatically remove closed items": PRs/Issues that are already closed are automatically removed from the notification list on update when enabled.
 
-### 監視対象リポジトリ
+### Watched repositories
 
-1. リポジトリ設定 を押します。
-2. 監視したいリポジトリを owner/repository 形式で追加します。
-3. 必要に応じて表示色を設定します。
-4. OK を押します。
-5. 最後に設定画面で 保存 を押します。
+1.  Click "Repository settings".
+2.  Add repositories to watch using the owner/repository format.
+3.  Optionally set a display color for each repository.
+4.  Click "OK".
+5.  Finally, press "Save" on the settings page.
 
-表示色はポップアップ内の通知左端のライン色として使われます。
+The chosen display color is shown as a left stripe on each notification in the popup.
 
-![画像:リポジトリ設定ダイアログで owner repository 名と表示色を設定する画面](./assets/04_repository_settings_dialog.png)
+![Image: Repository settings dialog where you enter owner/repository and set display color](./assets/04_repository_settings_dialog.png)
 
-### 監視間隔
+### Watch interval
 
-監視間隔 は分単位で設定します。最小値は 15 分です。
+Specify the notification detection interval in minutes. The minimum is 15 minutes.
 
-### 最終チェック日
+### Last checked
 
-最終チェック日 には、最後に監視した日時が表示されます。
+The "Last checked" field shows the most recent time the notifications were fetched.
 
-リセット を押すと保存済みの時刻を消します。次回の監視では、当日の 0:00 を基準に再取得します。
+Press "Reset" to clear the stored time. The next update will re-fetch notifications using 00:00:00 of the current day as the baseline.
 
-## 通知の見方
+## Viewing notifications
 
-ポップアップでは通知を Pull Request と Issue のタブで切り替えられます。
+In the popup you can switch between Pull Request and Issue tabs.
 
-各通知では主に次の情報を確認できます。
+Each notification shows the following information:
 
-- タイトル: PR / Issue のタイトルです。選択すると GitHub 上の該当ページを開きます
-- 通知種別ラベル: PR / Issue の状態や自分へのメンションなどを示すラベルです
-- リポジトリ色: 設定済みリポジトリの表示色が通知左端に表示されます
-- コメント数: PR / Issue のコメント数です。選択すると GitHub 上の最新コメントの該当ページを開きます
-- 既読 / 未読の状態: チェックしてポップアップ画面を閉じると、次回ポップアップ画面では一覧から除外されます
+- Title: The PR/Issue title; selecting it opens the corresponding page on GitHub.
+- Notification kind label: Shows status such as a mention or update.
+- Repository color: The configured color is displayed as a stripe at the left of the notification.
+- Comment count: The number of comments; selecting it opens the latest comment on GitHub ("Open latest comment").
+- Read / Unread state: Mark items read to exclude them from the list on the next popup open.
 
-通知種別ラベルの意味:
+Notification kind labels and their meanings:
 
-- 新規: 前回チェック後に作成された項目
-- 更新: 既存項目に更新があった項目
-- メンション: 自分へのメンションを検出した項目
-- スレッド: 自分への過去メンションを含む未解決レビュー スレッドに新しいコメントが付いた項目
-- 担当: 自分が担当者で、新しいコメントが付いた項目
-- ドラフト: ドラフト PR
-- 承認済み: レビュー承認済みの PR
-- 変更要求: 変更要求が付いている PR
+- New: Item created since the last check
+- Updated: Existing item with updates
+- Mention: A mention of you was detected
+- Thread: New comment on an unresolved review thread that previously mentioned you
+- Assignee: You are the assignee and a new comment was posted
+- Approved: PR has a review approval
+- Changes requested: PR has a changes requested review
+- Draft: Draft PR
 
-![画像:Pull Request と Issue のタブ、通知ラベル、コメント数、既読切り替えが見えるポップアップ画面](./assets/05_popup_tabs_labels_comments_read.png)
+![Image: Popup showing Pull Request and Issue tabs, labels, comment counts, and read/unread toggles](./assets/05_popup_tabs_labels_comments_read.png)
 
-## アイコンメニュー
+## Icon menu
 
-### 定期監視の一時停止と再開
+### Pause and resume periodic watching
 
-ポップアップ右上の一時停止ボタンを押すと定期監視を止められます。再度押すと再開します。
+Press the pause button in the popup's top-right to stop periodic watching. Press again to resume.
 
-一時停止中でも、更新ボタンによる手動更新は実行できます。
+Manual refresh via the update button is still available while paused.
 
-### 手動更新
+### Manual refresh
 
-ポップアップ右上の更新ボタンを押すと、その場で監視処理を実行できます。
+Press the refresh button in the popup's top-right to run the watch cycle immediately.
 
-### 既読と未読の切り替え
+### Toggle read/unread
 
-- 各通知の左側ボタンで既読 / 未読を切り替えます。
-- 右上のチェックボタンで、現在表示中の一覧をまとめて既読または未読にできます。
+- Use the left button on each notification to toggle Read / Unread.
+- Use the check button in the top-right to mark all items in the current view as read or unread.
 
-既読にした通知は未読件数から除外されます。
+Read items are excluded from the unread count.
 
-ポップアップを開いている間は既読のまま表示されます。ポップアップを開き直すと一覧から除外されます。
+Items marked read remain visible while the popup is open; reopening the popup will remove them from the list.
 
-### メニュー
+### Menu
 
-- ポップアップ右上のメニューから Repository を開くと、設定済みリポジトリ単位で表示を絞り込めます。
-- オプションを開くと、設定画面に移動できます。
-- バージョン情報が確認できます。
+- Open "Repository" from the popup menu to filter the view by configured repositories.
+- Open "Options" to go to the settings page.
+- View version information.
 
-![画像:ポップアップの Repository フィルターで複数リポジトリを選択している画面](./assets/06_popup_repository_filter.png)
+![Image: Popup repository filter with multiple repositories selected](./assets/06_popup_repository_filter.png)
 
-## 通知が来ないときの確認項目
+## Troubleshooting: notifications not appearing
 
-次を順に確認してください。
+Check the following in order:
 
-1. PAT が設定済みか
-2. PAT に必要な権限があるか
-3. 監視対象リポジトリが正しく設定されているか
-4. 定期監視が一時停止になっていないか
-5. 監視間隔が長すぎないか
-6. 手動更新でエラーが出ないか
+1.  Is a PAT configured?
+2.  Does the PAT have the required permissions?
+3.  Are the watched repositories configured correctly?
+4.  Is periodic watching paused?
+5.  Is the watch interval set too long?
+6.  Does a manual refresh produce an error?
 
-最終チェック日 をリセットしてから手動更新すると、当日 0:00 以降の更新を基準に再確認できます。
+Reset the "Last checked" time and run a manual refresh to re-check using 00:00:00 of the current day as the baseline.
 
-## 補足
+## Notes
 
-- 通知一覧は未読中心で管理されます。既読にした通知は保持されません。
-- ドラフト PR の表示有無は 通知設定 の内容に従います。
-- 設定変更後は 保存 を押さないと反映されません。
+- The notification list is managed around unread items; read notifications are not retained.
+- Whether draft PRs are shown depends on the "Notify about draft PRs" setting.
+- Remember to press "Save" after changing settings for them to take effect.
