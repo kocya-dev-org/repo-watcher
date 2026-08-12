@@ -1,6 +1,7 @@
 name: Build OSS License
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
