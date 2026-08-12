@@ -4,7 +4,9 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
   title: 'Repo Watcher',
   description: '',
-  base: '/',
+  // GitHub Pages project site: set to "/<repo>/" so built assets use correct absolute URLs.
+  // For example, this repo is published at https://<org>.github.io/repo-watcher/
+  base: '/repo-watcher/',
 
   themeConfig: {
     socialLinks: [{ icon: 'github', link: 'https://github.com/kocya-dev-org/repo-watcher' }],
