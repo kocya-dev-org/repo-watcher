@@ -72,9 +72,9 @@ jobs:
               `- publisher: ${renderValue(entry.publisher)}`,
               `- email: ${renderValue(entry.email)}`,
               '',
-              '```',
+              '<pre>',
               licenseText,
-              '```',
+              '</pre>',
             ].join('\n');
           });
 
