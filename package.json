@@ -14,7 +14,10 @@
     "cov": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "lint": "oxlint src",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [],
   "author": "",
@@ -38,10 +41,12 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^27.2.0",
+    "license-checker": "^25.0.1",
     "oxlint": "^1.76.0",
     "prettier": "^3.4.2",
     "typescript": "^5.9.3",
     "vite": "^8.2.1",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.10"
   }
 }

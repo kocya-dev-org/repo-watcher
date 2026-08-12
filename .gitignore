@@ -5,3 +5,6 @@ coverage
 
 .docs
 security-reports
+
+**/.vitepress/cache/**
+
