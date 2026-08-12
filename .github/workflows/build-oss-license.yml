@@ -1,101 +1,101 @@
 name: Build OSS License
 
 on:
-    push:
-        branches:
-            - main
-        paths:
-            - package.json
-            - package-lock.json
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - package-lock.json
 
 permissions:
-    contents: write
-    pull-requests: write
+  contents: write
+  pull-requests: write
 
 env:
-    NODE_VERSION: "24"
-    OSS_DOC_PATH: docs/en/oss.md
+  NODE_VERSION: "24"
+  OSS_DOC_PATH: docs/en/oss.md
 
 jobs:
-    update-oss-license:
-        name: Update OSS license document
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v7
+  update-oss-license:
+    name: Update OSS license document
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v7
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: npm
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Export production license summary
-              run: |
-                  mkdir -p tmp
-                  npx license-checker --summary --production --json > tmp/license-checker-summary.json
+      - name: Export production license summary
+        run: |
+          mkdir -p tmp
+          npx license-checker --summary --production --json > tmp/license-checker-summary.json
 
-            - name: Rebuild OSS document
-              env:
-                  LICENSE_SUMMARY_PATH: tmp/license-checker-summary.json
-              run: |
-                  node --input-type=module <<'EOF'
-                  import { readFileSync, writeFileSync } from 'node:fs';
+      - name: Rebuild OSS document
+        env:
+          LICENSE_SUMMARY_PATH: tmp/license-checker-summary.json
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync, writeFileSync } from 'node:fs';
 
-                  const summaryPath = process.env.LICENSE_SUMMARY_PATH;
-                  const outputPath = process.env.OSS_DOC_PATH;
+          const summaryPath = process.env.LICENSE_SUMMARY_PATH;
+          const outputPath = process.env.OSS_DOC_PATH;
 
-                  if (!summaryPath || !outputPath) {
-                    throw new Error('LICENSE_SUMMARY_PATH または OSS_DOC_PATH が未設定です。');
-                  }
+          if (!summaryPath || !outputPath) {
+            throw new Error('LICENSE_SUMMARY_PATH または OSS_DOC_PATH が未設定です。');
+          }
 
-                  const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
-                  const packageNames = Object.keys(summary).sort((left, right) => left.localeCompare(right));
+          const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
+          const packageNames = Object.keys(summary).sort((left, right) => left.localeCompare(right));
 
-                  const renderValue = (value) =>
-                    value === undefined || value === null || value === '' ? '' : String(value);
+          const renderValue = (value) =>
+            value === undefined || value === null || value === '' ? '' : String(value);
 
-                  const sections = packageNames.map((packageName) => {
-                    const entry = summary[packageName] ?? {};
-                    const licenseFilePath = entry.licenseFile;
-                    const licenseText = licenseFilePath ? readFileSync(licenseFilePath, 'utf8').trimEnd() : '';
+          const sections = packageNames.map((packageName) => {
+            const entry = summary[packageName] ?? {};
+            const licenseFilePath = entry.licenseFile;
+            const licenseText = licenseFilePath ? readFileSync(licenseFilePath, 'utf8').trimEnd() : '';
 
-                    return [
-                      `## ${packageName}`,
-                      '',
-                      `- licenses: ${renderValue(entry.licenses)}`,
-                      `- repository: ${renderValue(entry.repository)}`,
-                      `- publisher: ${renderValue(entry.publisher)}`,
-                      `- email: ${renderValue(entry.email)}`,
-                      '',
-                      '```',
-                      licenseText,
-                      '```',
-                    ].join('\n');
-                  });
+            return [
+              `## ${packageName}`,
+              '',
+              `- licenses: ${renderValue(entry.licenses)}`,
+              `- repository: ${renderValue(entry.repository)}`,
+              `- publisher: ${renderValue(entry.publisher)}`,
+              `- email: ${renderValue(entry.email)}`,
+              '',
+              '```',
+              licenseText,
+              '```',
+            ].join('\n');
+          });
 
-                  const documentBody = ['# OSS', '', ...sections].join('\n\n');
-                  writeFileSync(outputPath, `${documentBody}\n`, 'utf8');
-                  EOF
+          const documentBody = ['# OSS', '', ...sections].join('\n\n');
+          writeFileSync(outputPath, `${documentBody}\n`, 'utf8');
+          EOF
 
-            - name: Compute branch name
-              id: branch
-              run: echo "name=feature/update-oss-license-$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
+      - name: Compute branch name
+        id: branch
+        run: echo "name=feature/update-oss-license-$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
 
-            - name: Create Pull Request
-              uses: peter-evans/create-pull-request@v7
-              with:
-                  commit-message: "docs: update OSS license document"
-                  title: "docs: update OSS license document"
-                  body: |
-                      ## 概要
-                      - package.json または package-lock.json の変更に合わせて OSS ライセンス一覧を更新
-                      - license-checker の production サマリーを元に docs/en/oss.md を再生成
-                  branch: ${{ steps.branch.outputs.name }}
-                  base: main
-                  delete-branch: true
-                  add-paths: |
-                      docs/en/oss.md
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "docs: update OSS license document"
+          title: "docs: update OSS license document"
+          body: |
+            ## 概要
+            - package.json または package-lock.json の変更に合わせて OSS ライセンス一覧を更新
+            - license-checker の production サマリーを元に docs/en/oss.md を再生成
+          branch: ${{ steps.branch.outputs.name }}
+          base: main
+          delete-branch: true
+          add-paths: |
+            docs/en/oss.md
