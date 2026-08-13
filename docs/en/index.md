@@ -1,3 +1,5 @@
+![](../assets/marquee.png)
+
 # Repo Watcher Manual
 
 ## What this extension does

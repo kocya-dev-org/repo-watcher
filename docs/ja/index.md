@@ -1,3 +1,5 @@
+![](../assets/marquee.png)
+
 # Repo Watcher マニュアル
 
 ## この拡張機能でできること
