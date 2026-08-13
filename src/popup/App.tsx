@@ -23,6 +23,7 @@ import { REFRESH_WATCH_CYCLE_MESSAGE, type RefreshWatchCycleResponse } from '../
 import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
 import { COLORS } from '../shared/colors';
 import NotificationItem from './NotificationItem';
+import { getHelpUrl } from '../shared/linkUrls';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -305,6 +306,7 @@ const App: React.FC = () => {
 
   const manifestVersion = chrome.runtime.getManifest().version;
   const popupIconUrl = chrome.runtime.getURL('icon48.png');
+  const helpUrl = getHelpUrl();
 
   useEffect(() => {
     const menuPopover = menuPopoverRef.current;
@@ -441,6 +443,15 @@ const App: React.FC = () => {
 
   const openOptions = () => {
     chrome.runtime.openOptionsPage();
+    document.getElementById('menu-popover')?.hidePopover();
+    setIsRepositoryMenuOpen(false);
+  };
+
+  /**
+   * ヘルプページを新規タブで開き、メニューを閉じる。
+   */
+  const openHelp = () => {
+    chrome.tabs.create({ url: helpUrl });
     document.getElementById('menu-popover')?.hidePopover();
     setIsRepositoryMenuOpen(false);
   };
@@ -689,6 +700,9 @@ const App: React.FC = () => {
           )}
           <button type="button" onClick={openOptions} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
             Open Settings
+          </button>
+          <button type="button" onClick={openHelp} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
+            Help
           </button>
           <div
             style={{

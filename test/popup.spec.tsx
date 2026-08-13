@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import App from '../src/popup/App';
+import { getHelpUrl } from '../src/shared/linkUrls';
 import type { StoredNotification } from '../src/shared/notifications';
 import { createChromeMock, type ChromeMockController } from './helpers/chromeMock';
 import { flushPromises, renderReact } from './helpers/react';
@@ -881,6 +882,31 @@ describe('popup App', () => {
     });
     await flushPromises();
 
+    expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
+
+    await view.unmount();
+  });
+
+  it('Help ボタンを押すとヘルプ URL を新規タブで開いてメニューを閉じる', async () => {
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const menuPopover = view.container.querySelector('#menu-popover');
+    expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
+
+    const helpButton = findButton(view.container, 'Help');
+    await act(async () => {
+      helpButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledTimes(1);
+    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({ url: getHelpUrl() });
     expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
 
     await view.unmount();
