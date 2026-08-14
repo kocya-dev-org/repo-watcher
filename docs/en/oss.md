@@ -2492,7 +2492,7 @@ SOFTWARE.
 
 ## repo-watcher@1.0.0
 
-- licenses: ISC
+- licenses: MIT
 - repository: 
 - publisher: 
 - email: 
