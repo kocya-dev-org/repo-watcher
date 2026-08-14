@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import '../shared/i18n';
 import OptionsApp from './optionsApp';
 
 /**

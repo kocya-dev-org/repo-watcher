@@ -1,8 +1,14 @@
 import { vi } from 'vitest';
+import jaMessages from '../../public/_locales/ja/messages.json';
 
 type StorageAreaName = 'local' | 'sync';
 type StorageChanges = Record<string, { oldValue: unknown; newValue: unknown }>;
 type StorageState = Record<string, unknown>;
+type ChromeMessageEntry = {
+  message: string;
+  placeholders?: Record<string, { content: string; example?: string }>;
+};
+type ChromeMessages = Record<string, ChromeMessageEntry>;
 
 type AlarmListener = (alarm: { name: string }) => void;
 type EmptyListener = () => void;
@@ -54,9 +60,44 @@ function buildChanges(items: StorageState, state: StorageState): StorageChanges 
   );
 }
 
+function resolvePlaceholderContent(content: string, substitutions: string[]): string {
+  const match = /^\$(\d)$/.exec(content);
+  if (match) {
+    return substitutions[Number(match[1]) - 1] ?? '';
+  }
+
+  return content;
+}
+
+function formatChromeMessage(entry: ChromeMessageEntry, substitutions?: unknown): string {
+  const substitutionList = Array.isArray(substitutions)
+    ? substitutions.map((value) => String(value))
+    : substitutions === undefined
+      ? []
+      : [String(substitutions)];
+
+  return entry.message.replace(/\$([a-zA-Z0-9_@]+)\$/g, (full, name: string) => {
+    const placeholder = entry.placeholders?.[name] ?? entry.placeholders?.[name.toLowerCase()];
+    if (placeholder) {
+      return resolvePlaceholderContent(placeholder.content, substitutionList);
+    }
+
+    if (/^\d+$/.test(name)) {
+      return substitutionList[Number(name) - 1] ?? '';
+    }
+
+    return full;
+  });
+}
+
 export type ChromeMockController = ReturnType<typeof createChromeMock>;
 
-export function createChromeMock(initial?: { local?: StorageState; sync?: StorageState }) {
+export function createChromeMock(initial?: {
+  local?: StorageState;
+  sync?: StorageState;
+  uiLanguage?: string;
+  messages?: ChromeMessages;
+}) {
   const alarmsListeners: AlarmListener[] = [];
   const runtimeInstalledListeners: EmptyListener[] = [];
   const runtimeStartupListeners: EmptyListener[] = [];
@@ -65,6 +106,8 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
 
   const localState: StorageState = { ...(initial?.local ?? {}) };
   const syncState: StorageState = { ...(initial?.sync ?? {}) };
+  let uiLanguage = initial?.uiLanguage ?? 'ja';
+  let messages: ChromeMessages = structuredClone((initial?.messages ?? jaMessages) as ChromeMessages);
 
   const emitStorageChange = (changes: StorageChanges, areaName: StorageAreaName) => {
     for (const listener of storageChangedListeners) {
@@ -157,6 +200,13 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
         }),
       },
     },
+    i18n: {
+      getMessage: vi.fn((messageName: string, substitutions?: unknown) => {
+        const entry = messages[messageName];
+        return entry ? formatChromeMessage(entry, substitutions) : '';
+      }),
+      getUILanguage: vi.fn(() => uiLanguage),
+    },
   } as const;
 
   return {
@@ -174,6 +224,12 @@ export function createChromeMock(initial?: { local?: StorageState; sync?: Storag
         delete syncState[key];
       });
       Object.assign(syncState, cloneValue(nextState));
+    },
+    setUiLanguage: (nextUiLanguage: string) => {
+      uiLanguage = nextUiLanguage;
+    },
+    setMessages: (nextMessages: ChromeMessages) => {
+      messages = structuredClone(nextMessages);
     },
     triggerAlarm: (name: string) => {
       for (const listener of alarmsListeners) {

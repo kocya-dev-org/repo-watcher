@@ -1,7 +1,3 @@
-import i18n from '../../src/shared/i18n';
-
-await i18n.changeLanguage('ja');
-
 if (!('showPopover' in HTMLElement.prototype)) {
   const dispatchToggleEvent = (element: HTMLElement, newState: 'open' | 'closed') => {
     const event = new Event('toggle');

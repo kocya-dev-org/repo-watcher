@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -7,6 +6,7 @@ import CardHeader from '@mui/material/CardHeader';
 import Tooltip from '@mui/material/Tooltip';
 
 import { COLORS } from '../shared/colors';
+import { getMessage } from '../shared/i18n';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
 import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
@@ -54,7 +54,7 @@ function formatLastCheckedAt(value: string | null): string | null {
  * - 監視対象リポジトリ設定を sync storage から読み込む
  */
 const OptionsApp: React.FC = () => {
-  const { t } = useTranslation();
+  const t = getMessage;
   const [form, setForm] = useState<SettingsForm>({
     pat: '',
     repos: [],
@@ -246,9 +246,7 @@ const OptionsApp: React.FC = () => {
           />
           <CardContent>
             <p style={{ margin: '4px 0', color: hasSavedPat ? COLORS.success : COLORS.fgMuted }}>
-              {t('pat.status', {
-                status: hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'),
-              })}
+              {t('pat.status', hasSavedPat ? t('pat.statusConfigured') : t('pat.statusNotConfigured'))}
             </p>
             <input
               type="password"

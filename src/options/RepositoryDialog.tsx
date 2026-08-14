@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import { COLORS } from '../shared/colors';
+import { getMessage } from '../shared/i18n';
 import { DEFAULT_REPO_COLOR, type WatchTargetRepo } from '../shared/repositories';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
@@ -23,7 +23,7 @@ const generateRandomColor = (): string =>
     .padStart(6, '0')}`;
 
 const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCancel }) => {
-  const { t } = useTranslation();
+  const t = getMessage;
   const [editableRepos, setEditableRepos] = useState<EditableRepository[]>(() =>
     repos.map((repo) => ({
       text: `${repo.owner}/${repo.name}`,
@@ -74,7 +74,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
         {editableRepos.map((repo, index) => (
           <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <input
-              aria-label={t('repoDialog.repoAriaLabel', { index: index + 1 })}
+              aria-label={t('repoDialog.repoAriaLabel', String(index + 1))}
               type="text"
               value={repo.text}
               onChange={(event) => updateRepo(index, { text: event.target.value })}
@@ -89,7 +89,7 @@ const RepositoryDialog: React.FC<RepositoryDialogProps> = ({ repos, onOk, onCanc
               }}
             />
             <input
-              aria-label={t('repoDialog.colorAriaLabel', { index: index + 1 })}
+              aria-label={t('repoDialog.colorAriaLabel', String(index + 1))}
               type="color"
               value={repo.color ?? DEFAULT_REPO_COLOR}
               onChange={(event) => updateRepo(index, { color: event.target.value })}

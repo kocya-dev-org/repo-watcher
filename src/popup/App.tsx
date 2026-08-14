@@ -22,6 +22,7 @@ import {
 import { REFRESH_WATCH_CYCLE_MESSAGE, type RefreshWatchCycleResponse } from '../shared/runtimeMessages';
 import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared/repositories';
 import { COLORS } from '../shared/colors';
+import { getMessage } from '../shared/i18n';
 import NotificationItem from './NotificationItem';
 import { getHelpUrl } from '../shared/linkUrls';
 
@@ -272,7 +273,7 @@ function requestWatchCycleRefresh(): Promise<RefreshWatchCycleResponse> {
       }
 
       if (!response) {
-        reject(new Error('background から応答がありませんでした。'));
+        reject(new Error(getMessage('popup.refresh.noResponse')));
         return;
       }
 
@@ -289,6 +290,7 @@ function requestWatchCycleRefresh(): Promise<RefreshWatchCycleResponse> {
  * - クリックした通知を既読にする
  */
 const App: React.FC = () => {
+  const t = getMessage;
   const [notifications, setNotifications] = useState<StoredNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<PopupSettings | null>(null);
@@ -469,7 +471,7 @@ const App: React.FC = () => {
 
       await reloadPopupState();
     } catch (error) {
-      setRefreshError(error instanceof Error ? error.message : '更新に失敗しました。');
+      setRefreshError(error instanceof Error ? error.message : t('popup.refresh.errorFallback'));
     } finally {
       setIsRefreshing(false);
     }
@@ -514,12 +516,12 @@ const App: React.FC = () => {
 
   const bulkReadButtonLabel =
     bulkReadState === 'all_read'
-      ? 'Mark all as unread'
+      ? t('popup.bulkRead.markAllUnread')
       : bulkReadState === 'partial'
-        ? 'Mark visible list as read'
-        : 'Mark all as read';
-  const watchPauseButtonLabel = settings?.isWatchPaused ? 'Resume scheduled watch' : 'Pause scheduled watch';
-  const refreshButtonLabel = isRefreshing ? 'Updating...' : 'Update';
+        ? t('popup.bulkRead.markVisibleRead')
+        : t('popup.bulkRead.markAllRead');
+  const watchPauseButtonLabel = settings?.isWatchPaused ? t('popup.watch.resume') : t('popup.watch.pause');
+  const refreshButtonLabel = isRefreshing ? t('popup.refresh.pending') : t('popup.refresh.idle');
 
   /**
    * 定期監視の一時停止状態を反転して保存する。
@@ -560,7 +562,7 @@ const App: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <img src={popupIconUrl} alt="" width={32} height={32} aria-hidden="true" />
-          <h1 style={{ fontSize: '14px', margin: 0 }}>Repo Watcher</h1>
+          <h1 style={{ fontSize: '14px', margin: 0 }}>{t('popup.title')}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <IconButton
@@ -615,7 +617,7 @@ const App: React.FC = () => {
             )}
           </IconButton>
           <IconButton
-            aria-label="Menu"
+            aria-label={t('popup.menu')}
             popoverTarget="menu-popover"
             size="small"
             sx={headerIconButtonSx}
@@ -641,7 +643,7 @@ const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsRepositoryMenuOpen((current) => !current)}
-            aria-label="Repository"
+            aria-label={t('popup.menu.repository')}
             style={{
               ...menuButtonBaseStyle,
               padding: '6px 4px',
@@ -650,7 +652,7 @@ const App: React.FC = () => {
               justifyContent: 'space-between',
             }}
           >
-            <span>Repository</span>
+            <span>{t('popup.menu.repository')}</span>
             <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>{isRepositoryMenuOpen ? '▲' : '▼'}</span>
           </button>
           {isRepositoryMenuOpen && (
@@ -666,7 +668,7 @@ const App: React.FC = () => {
             >
               {repositoryOptions.length === 0 ? (
                 <div style={{ padding: '6px 4px', fontSize: '11px', color: COLORS.fgMuted }}>
-                  No configured repositories
+                  {t('popup.menu.noRepositories')}
                 </div>
               ) : (
                 repositoryOptions.map((option) => (
@@ -674,7 +676,7 @@ const App: React.FC = () => {
                     key={option.value}
                     type="button"
                     onClick={() => toggleRepositorySelection(option.value)}
-                    aria-label={`Repository:${option.value}`}
+                    aria-label={t('popup.repository.itemAriaLabel', option.value)}
                     style={{
                       ...menuButtonBaseStyle,
                       padding: '3px 4px',
@@ -699,10 +701,10 @@ const App: React.FC = () => {
             </div>
           )}
           <button type="button" onClick={openOptions} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
-            Open Settings
+            {t('popup.menu.openSettings')}
           </button>
           <button type="button" onClick={openHelp} style={{ ...menuButtonBaseStyle, padding: '6px 4px' }}>
-            Help
+            {t('popup.menu.help')}
           </button>
           <div
             style={{
@@ -713,7 +715,7 @@ const App: React.FC = () => {
               color: COLORS.fgMuted,
             }}
           >
-            Version: {manifestVersion}
+            {t('popup.version.label', manifestVersion)}
           </div>
         </div>
       </header>
@@ -721,16 +723,16 @@ const App: React.FC = () => {
       {refreshError && <p style={{ margin: '0 0 8px', color: COLORS.dangerAlt }}>{refreshError}</p>}
 
       {isLoading ? (
-        <p style={{ margin: 0 }}>Loading...</p>
+        <p style={{ margin: 0 }}>{t('popup.loading')}</p>
       ) : notifications.length === 0 ? (
-        <p style={{ margin: 0 }}>No notifications available.</p>
+        <p style={{ margin: 0 }}>{t('popup.empty.all')}</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
           <Box sx={{ mb: 1.25, borderBottom: 1, borderColor: 'divider' }}>
             <Tabs
               value={selectedTab}
               onChange={handleTabChange}
-              aria-label="Notification Type Tabs"
+              aria-label={t('popup.tabs.notificationTypeAriaLabel')}
               variant="fullWidth"
               sx={{
                 minHeight: 0,
@@ -741,7 +743,7 @@ const App: React.FC = () => {
               }}
             >
               <Tab
-                label="Pull Request"
+                label={t('popup.tabs.pullRequest')}
                 value="pull_request"
                 sx={{
                   minHeight: 0,
@@ -753,7 +755,7 @@ const App: React.FC = () => {
                 }}
               />
               <Tab
-                label="Issue"
+                label={t('popup.tabs.issue')}
                 value="issue"
                 sx={{
                   minHeight: 0,
@@ -768,7 +770,7 @@ const App: React.FC = () => {
           </Box>
 
           {activeNotifications.length === 0 ? (
-            <p style={{ margin: 0 }}>No notifications available for this tab.</p>
+            <p style={{ margin: 0 }}>{t('popup.empty.tab')}</p>
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

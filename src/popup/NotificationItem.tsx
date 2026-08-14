@@ -1,11 +1,11 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import IconButton from '@mui/material/IconButton';
 
 import { COLORS } from '../shared/colors';
+import { getMessage } from '../shared/i18n';
 import { formatNotificationKindLabel, getNotificationKinds, type StoredNotification } from '../shared/notifications';
 
 type NotificationItemProps = {
@@ -23,11 +23,11 @@ type NotificationItemProps = {
  * @param onToggleRead 既読/未読切り替えハンドラ
  */
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRead, repositoryColor, onToggleRead }) => {
-  const { t } = useTranslation();
+  const t = getMessage;
   const isMissingFromLatestResult = notification.isPresentInLatestResult === false;
   const kindLabels = getNotificationKinds(notification).map((kind) => t(formatNotificationKindLabel(kind)));
   const commentCount = Math.min(99, Math.max(0, notification.commentCount ?? 0));
-  const commentCountLabel = `コメント数:${commentCount}`;
+  const commentCountLabel = t('popup.commentCountLabel', String(commentCount));
   // 最新コメント URL が取得できている場合のみリンクとして扱う
   const hasComments = (notification.commentCount ?? 0) > 0 && Boolean(notification.latestCommentUrl);
   const commentStyle: React.CSSProperties = {
@@ -41,7 +41,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, isRea
 
   return (
     <li
-      aria-label={`リポジトリ色:${repositoryColor}`}
+      aria-label={t('popup.notification.repositoryColorAriaLabel', repositoryColor)}
       style={{
         padding: '6px 8px 6px 5px',
         borderLeft: `3px solid ${repositoryColor}`,

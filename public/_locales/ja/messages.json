@@ -1,0 +1,348 @@
+{
+  "appTitle": {
+    "message": "Repo Watcher 設定",
+    "description": "options 画面のタイトル"
+  },
+  "pat_heading": {
+    "message": "API キー (PAT)",
+    "description": "PAT セクション見出し"
+  },
+  "pat_description1": {
+    "message": "GitHub Personal Access Token を入力してください。",
+    "description": "PAT の説明 1 行目"
+  },
+  "pat_description2": {
+    "message": "fine-grained PAT を推奨します。",
+    "description": "PAT の説明 2 行目"
+  },
+  "pat_description3": {
+    "message": "権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull requests: Read-only` が必要です。",
+    "description": "PAT の必要権限説明"
+  },
+  "pat_status": {
+    "message": "現在の状態: $status$",
+    "description": "PAT の状態表示",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "PAT 設定済み"
+      }
+    }
+  },
+  "pat_statusConfigured": {
+    "message": "PAT 設定済み",
+    "description": "PAT が設定済みの状態"
+  },
+  "pat_statusNotConfigured": {
+    "message": "PAT 未設定",
+    "description": "PAT が未設定の状態"
+  },
+  "pat_placeholderChange": {
+    "message": "変更する場合のみ新しい PAT を入力",
+    "description": "PAT 入力欄の変更時プレースホルダー"
+  },
+  "pat_placeholderEnter": {
+    "message": "PAT を入力",
+    "description": "PAT 入力欄の初期プレースホルダー"
+  },
+  "pat_clearButton": {
+    "message": "保存済み PAT を削除",
+    "description": "PAT 削除ボタン"
+  },
+  "pat_deleteConfirm": {
+    "message": "PAT を削除しますがよろしいですか？",
+    "description": "PAT 削除確認"
+  },
+  "pat_deleteSuccess": {
+    "message": "PAT を削除しました",
+    "description": "PAT 削除成功メッセージ"
+  },
+  "pat_deleteError": {
+    "message": "PAT の削除に失敗しました",
+    "description": "PAT 削除失敗メッセージ"
+  },
+  "notifySettings_heading": {
+    "message": "通知設定",
+    "description": "通知設定セクション見出し"
+  },
+  "notifySettings_draftLabel": {
+    "message": "ドラフトPRを通知対象に含める",
+    "description": "ドラフト PR 設定ラベル"
+  },
+  "notifySettings_draftDescription": {
+    "message": "ドラフト PR もバッジと通知一覧に含めます。",
+    "description": "ドラフト PR 設定説明"
+  },
+  "notifySettings_autoRemoveClosedLabel": {
+    "message": "Closeされた項目を自動的に削除する",
+    "description": "クローズ済み項目自動削除ラベル"
+  },
+  "notifySettings_autoRemoveClosedDescription": {
+    "message": "更新時に既に Close 済みの PR / Issue を通知一覧から自動的に削除します。",
+    "description": "クローズ済み項目自動削除説明"
+  },
+  "repos_heading": {
+    "message": "監視対象リポジトリ",
+    "description": "監視対象リポジトリ見出し"
+  },
+  "repos_description": {
+    "message": "監視対象リポジトリと表示色を設定してください。",
+    "description": "監視対象リポジトリ説明"
+  },
+  "repos_settingsButton": {
+    "message": "リポジトリ設定",
+    "description": "リポジトリ設定ボタン"
+  },
+  "repos_listAriaLabel": {
+    "message": "監視対象リポジトリ一覧",
+    "description": "監視対象リポジトリ一覧の aria-label"
+  },
+  "interval_heading": {
+    "message": "監視間隔",
+    "description": "監視間隔見出し"
+  },
+  "interval_description": {
+    "message": "通知の検出間隔を分単位で指定します。最低 15 分です。",
+    "description": "監視間隔説明"
+  },
+  "interval_unit": {
+    "message": "分",
+    "description": "監視間隔の単位"
+  },
+  "lastChecked_heading": {
+    "message": "最新取得日時",
+    "description": "最終チェック日時見出し"
+  },
+  "lastChecked_description": {
+    "message": "通知内容の最新取得日時を表示します。リセットすると、次回更新時に当日00:00:00からの通知内容を取得します。",
+    "description": "最終チェック日時説明"
+  },
+  "lastChecked_unset": {
+    "message": "未設定",
+    "description": "最終チェック日時未設定表示"
+  },
+  "lastChecked_reset": {
+    "message": "リセット",
+    "description": "最終チェック日時リセットボタン"
+  },
+  "save_submit": {
+    "message": "保存",
+    "description": "保存ボタン"
+  },
+  "save_success": {
+    "message": "保存しました",
+    "description": "保存成功メッセージ"
+  },
+  "save_error": {
+    "message": "保存に失敗しました",
+    "description": "保存失敗メッセージ"
+  },
+  "repoDialog_title": {
+    "message": "リポジトリ設定",
+    "description": "リポジトリダイアログタイトル"
+  },
+  "repoDialog_repoAriaLabel": {
+    "message": "リポジトリ $index$",
+    "description": "リポジトリ入力欄の aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_colorAriaLabel": {
+    "message": "表示色 $index$",
+    "description": "色入力欄の aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_delete": {
+    "message": "削除",
+    "description": "リポジトリ削除ボタン"
+  },
+  "repoDialog_add": {
+    "message": "追加",
+    "description": "リポジトリ追加ボタン"
+  },
+  "repoDialog_cancel": {
+    "message": "キャンセル",
+    "description": "リポジトリダイアログキャンセル"
+  },
+  "repoDialog_ok": {
+    "message": "OK",
+    "description": "リポジトリダイアログ OK"
+  },
+  "notificationKind_new": {
+    "message": "新規",
+    "description": "新規通知ラベル"
+  },
+  "notificationKind_updated": {
+    "message": "更新",
+    "description": "更新通知ラベル"
+  },
+  "notificationKind_mention": {
+    "message": "メンション",
+    "description": "メンション通知ラベル"
+  },
+  "notificationKind_thread": {
+    "message": "スレッド",
+    "description": "スレッド通知ラベル"
+  },
+  "notificationKind_assignee": {
+    "message": "担当",
+    "description": "担当通知ラベル"
+  },
+  "notificationKind_approved": {
+    "message": "承認済み",
+    "description": "承認済みラベル"
+  },
+  "notificationKind_changesRequested": {
+    "message": "変更要求",
+    "description": "変更要求ラベル"
+  },
+  "notificationKind_draft": {
+    "message": "ドラフト",
+    "description": "ドラフトラベル"
+  },
+  "commentLink_open": {
+    "message": "最新コメントを開く",
+    "description": "最新コメントリンクのタイトル"
+  },
+  "readState_read": {
+    "message": "既読",
+    "description": "既読状態ラベル"
+  },
+  "readState_unread": {
+    "message": "未読",
+    "description": "未読状態ラベル"
+  },
+  "popup_title": {
+    "message": "Repo Watcher",
+    "description": "popup タイトル"
+  },
+  "popup_bulkRead_markAllRead": {
+    "message": "すべて既読にする",
+    "description": "全件既読ボタンラベル"
+  },
+  "popup_bulkRead_markVisibleRead": {
+    "message": "表示中を既読にする",
+    "description": "表示中一覧を既読にするボタンラベル"
+  },
+  "popup_bulkRead_markAllUnread": {
+    "message": "すべて未読にする",
+    "description": "全件未読ボタンラベル"
+  },
+  "popup_watch_resume": {
+    "message": "定期監視を再開",
+    "description": "定期監視再開ラベル"
+  },
+  "popup_watch_pause": {
+    "message": "定期監視を一時停止",
+    "description": "定期監視一時停止ラベル"
+  },
+  "popup_refresh_idle": {
+    "message": "更新",
+    "description": "更新ボタンラベル"
+  },
+  "popup_refresh_pending": {
+    "message": "更新中...",
+    "description": "更新中ラベル"
+  },
+  "popup_refresh_errorFallback": {
+    "message": "更新に失敗しました。",
+    "description": "更新失敗時のフォールバックメッセージ"
+  },
+  "popup_refresh_noResponse": {
+    "message": "background から応答がありませんでした。",
+    "description": "background 無応答時のエラーメッセージ"
+  },
+  "popup_menu": {
+    "message": "メニュー",
+    "description": "メニューボタンの aria-label"
+  },
+  "popup_menu_repository": {
+    "message": "リポジトリ",
+    "description": "リポジトリフィルターボタン"
+  },
+  "popup_menu_openSettings": {
+    "message": "設定を開く",
+    "description": "設定を開くボタン"
+  },
+  "popup_menu_help": {
+    "message": "ヘルプ",
+    "description": "ヘルプボタン"
+  },
+  "popup_menu_noRepositories": {
+    "message": "設定済みリポジトリはありません",
+    "description": "設定済みリポジトリなし表示"
+  },
+  "popup_loading": {
+    "message": "読み込み中...",
+    "description": "popup 読み込み中表示"
+  },
+  "popup_empty_all": {
+    "message": "通知はありません。",
+    "description": "通知なし表示"
+  },
+  "popup_empty_tab": {
+    "message": "このタブに表示できる通知はありません。",
+    "description": "タブ単位の通知なし表示"
+  },
+  "popup_tabs_notificationTypeAriaLabel": {
+    "message": "通知種別タブ",
+    "description": "通知種別タブの aria-label"
+  },
+  "popup_tabs_pullRequest": {
+    "message": "Pull Request",
+    "description": "PR タブラベル"
+  },
+  "popup_tabs_issue": {
+    "message": "Issue",
+    "description": "Issue タブラベル"
+  },
+  "popup_version_label": {
+    "message": "バージョン: $version$",
+    "description": "バージョン表示",
+    "placeholders": {
+      "version": {
+        "content": "$1",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "popup_repository_itemAriaLabel": {
+    "message": "リポジトリ:$repository$",
+    "description": "リポジトリフィルター項目の aria-label",
+    "placeholders": {
+      "repository": {
+        "content": "$1",
+        "example": "octo/repo"
+      }
+    }
+  },
+  "popup_notification_repositoryColorAriaLabel": {
+    "message": "リポジトリ色:$color$",
+    "description": "通知項目のリポジトリ色 aria-label",
+    "placeholders": {
+      "color": {
+        "content": "$1",
+        "example": "#ff0000"
+      }
+    }
+  },
+  "popup_commentCountLabel": {
+    "message": "コメント数:$count$",
+    "description": "コメント数の aria-label",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  }
+}

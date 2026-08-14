@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import App from '../src/popup/App';
+import { getMessage } from '../src/shared/i18n';
 import { getHelpUrl } from '../src/shared/linkUrls';
 import type { StoredNotification } from '../src/shared/notifications';
 import { createChromeMock, type ChromeMockController } from './helpers/chromeMock';
@@ -29,6 +30,10 @@ function findTab(container: HTMLElement, text: string) {
 
 function findButtonByAriaLabel(container: HTMLElement, label: string) {
   return container.querySelector(`button[aria-label="${label}"]`);
+}
+
+function t(messageName: string, substitutions?: string | string[]) {
+  return getMessage(messageName, substitutions);
 }
 
 describe('popup App', () => {
@@ -91,8 +96,8 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const pullRequestTab = findTab(view.container, 'Pull Request');
-    const issueTab = findTab(view.container, 'Issue');
+    const pullRequestTab = findTab(view.container, t('popup.tabs.pullRequest'));
+    const issueTab = findTab(view.container, t('popup.tabs.issue'));
     expect(pullRequestTab).toBeTruthy();
     expect(issueTab).toBeTruthy();
     expect(pullRequestTab?.getAttribute('aria-selected')).toBe('true');
@@ -299,11 +304,11 @@ describe('popup App', () => {
     await flushPromises();
 
     const bulkToggleButton = () =>
-      findButtonByAriaLabel(view.container, 'Mark all as read') ??
-      findButtonByAriaLabel(view.container, 'Mark visible list as read') ??
-      findButtonByAriaLabel(view.container, 'Mark all as unread');
+      findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllRead')) ??
+      findButtonByAriaLabel(view.container, t('popup.bulkRead.markVisibleRead')) ??
+      findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllUnread'));
 
-    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllRead'))).toBeTruthy();
 
     await act(async () => {
       bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -314,7 +319,7 @@ describe('popup App', () => {
       readNotificationIds: ['PR_1', 'PR_2'],
       badgeCount: 1,
     });
-    expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllUnread'))).toBeTruthy();
 
     await act(async () => {
       bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -325,7 +330,7 @@ describe('popup App', () => {
       readNotificationIds: [],
       badgeCount: 3,
     });
-    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllRead'))).toBeTruthy();
 
     const prItem = findClickableItem(view.container, 'PR 通知 1');
     const unreadIcon = prItem?.querySelector('button[title="未読"]');
@@ -336,7 +341,7 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(findButtonByAriaLabel(view.container, 'Mark visible list as read')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markVisibleRead'))).toBeTruthy();
 
     await act(async () => {
       bulkToggleButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -347,15 +352,15 @@ describe('popup App', () => {
       readNotificationIds: ['PR_1', 'PR_2'],
       badgeCount: 1,
     });
-    expect(findButtonByAriaLabel(view.container, 'Mark all as unread')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllUnread'))).toBeTruthy();
 
-    const issueTab = findTab(view.container, 'Issue');
+    const issueTab = findTab(view.container, t('popup.tabs.issue'));
     await act(async () => {
       issueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
-    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllRead'))).toBeTruthy();
 
     await view.unmount();
   });
@@ -814,7 +819,7 @@ describe('popup App', () => {
 
     const view = await renderReact(<App />);
 
-    expect(view.container.textContent).toContain('Loading...');
+    expect(view.container.textContent).toContain(t('popup.loading'));
 
     await act(async () => {
       localCallback?.({
@@ -836,9 +841,9 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('No notifications available for this tab.');
+    expect(view.container.textContent).toContain(t('popup.empty.tab'));
 
-    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
     expect(menuButton).toBeTruthy();
 
     await act(async () => {
@@ -846,13 +851,13 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('Version: 1.0.0');
-    expect(view.container.textContent).toContain('Repository');
+    expect(view.container.textContent).toContain(t('popup.version.label', '1.0.0'));
+    expect(view.container.textContent).toContain(t('popup.menu.repository'));
 
     const menuPopover = view.container.querySelector('#menu-popover');
     expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
 
-    const openOptionsButton = findButton(view.container, 'Open Settings');
+    const openOptionsButton = findButton(view.container, t('popup.menu.openSettings'));
     await act(async () => {
       openOptionsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -867,7 +872,7 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
     await act(async () => {
       menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -891,7 +896,7 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
     await act(async () => {
       menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -900,7 +905,7 @@ describe('popup App', () => {
     const menuPopover = view.container.querySelector('#menu-popover');
     expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
 
-    const helpButton = findButton(view.container, 'Help');
+    const helpButton = findButton(view.container, t('popup.menu.help'));
     await act(async () => {
       helpButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -980,12 +985,12 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    expect(findButtonByAriaLabel(view.container, 'Pause scheduled watch')).toBeTruthy();
-    expect(findButtonByAriaLabel(view.container, 'Update')).toBeTruthy();
-    expect(findButtonByAriaLabel(view.container, 'Mark all as read')).toBeTruthy();
-    expect(findButtonByAriaLabel(view.container, 'Menu')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.watch.pause'))).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.refresh.idle'))).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.bulkRead.markAllRead'))).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.menu'))).toBeTruthy();
 
-    const refreshButton = findButtonByAriaLabel(view.container, 'Update');
+    const refreshButton = findButtonByAriaLabel(view.container, t('popup.refresh.idle'));
     expect(refreshButton).toBeTruthy();
 
     await act(async () => {
@@ -997,7 +1002,7 @@ describe('popup App', () => {
       { type: 'refresh-watch-cycle' },
       expect.any(Function),
     );
-    expect(view.container.textContent).toContain('No notifications available for this tab.');
+    expect(view.container.textContent).toContain(t('popup.empty.tab'));
 
     const issueTab = findTab(view.container, 'Issue');
     await act(async () => {
@@ -1024,7 +1029,7 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
 
-    const resumeButton = findButtonByAriaLabel(view.container, 'Resume scheduled watch');
+    const resumeButton = findButtonByAriaLabel(view.container, t('popup.watch.resume'));
     expect(resumeButton).toBeTruthy();
 
     await act(async () => {
@@ -1035,9 +1040,9 @@ describe('popup App', () => {
     expect(chromeMock.getSyncState()).toMatchObject({
       isWatchPaused: false,
     });
-    expect(findButtonByAriaLabel(view.container, 'Pause scheduled watch')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.watch.pause'))).toBeTruthy();
 
-    const pauseButton = findButtonByAriaLabel(view.container, 'Pause scheduled watch');
+    const pauseButton = findButtonByAriaLabel(view.container, t('popup.watch.pause'));
     await act(async () => {
       pauseButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
@@ -1046,7 +1051,7 @@ describe('popup App', () => {
     expect(chromeMock.getSyncState()).toMatchObject({
       isWatchPaused: true,
     });
-    expect(findButtonByAriaLabel(view.container, 'Resume scheduled watch')).toBeTruthy();
+    expect(findButtonByAriaLabel(view.container, t('popup.watch.resume'))).toBeTruthy();
 
     await view.unmount();
   });
@@ -1114,13 +1119,13 @@ describe('popup App', () => {
     expect(view.container.textContent).toContain('repo-a の PR');
     expect(view.container.textContent).toContain('repo-b の PR');
 
-    const menuButton = findButtonByAriaLabel(view.container, 'Menu');
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
     await act(async () => {
       menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
-    const repositoryButton = findButtonByAriaLabel(view.container, 'Repository');
+    const repositoryButton = findButtonByAriaLabel(view.container, t('popup.menu.repository'));
     expect(repositoryButton).toBeTruthy();
 
     await act(async () => {
@@ -1132,7 +1137,7 @@ describe('popup App', () => {
     expect(view.container.textContent).toContain('octo/repo-b');
     expect(view.container.textContent).toContain('octo/repo-c');
 
-    const repoAOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-a');
+    const repoAOption = findButtonByAriaLabel(view.container, t('popup.repository.itemAriaLabel', 'octo/repo-a'));
     expect(repoAOption).toBeTruthy();
 
     await act(async () => {
@@ -1158,13 +1163,13 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    const reopenedRepositoryButton = findButtonByAriaLabel(view.container, 'Repository');
+    const reopenedRepositoryButton = findButtonByAriaLabel(view.container, t('popup.menu.repository'));
     await act(async () => {
       reopenedRepositoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await flushPromises();
 
-    const repoBOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-b');
+    const repoBOption = findButtonByAriaLabel(view.container, t('popup.repository.itemAriaLabel', 'octo/repo-b'));
     expect(repoBOption).toBeTruthy();
 
     await act(async () => {
@@ -1175,7 +1180,10 @@ describe('popup App', () => {
     expect(view.container.textContent).toContain('repo-a の Issue');
     expect(view.container.textContent).toContain('repo-b の Issue');
 
-    const selectedRepoAOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-a');
+    const selectedRepoAOption = findButtonByAriaLabel(
+      view.container,
+      t('popup.repository.itemAriaLabel', 'octo/repo-a'),
+    );
     expect(selectedRepoAOption).toBeTruthy();
 
     await act(async () => {
@@ -1186,7 +1194,10 @@ describe('popup App', () => {
     expect(view.container.textContent).not.toContain('repo-a の Issue');
     expect(view.container.textContent).toContain('repo-b の Issue');
 
-    const selectedRepoBOption = findButtonByAriaLabel(view.container, 'Repository:octo/repo-b');
+    const selectedRepoBOption = findButtonByAriaLabel(
+      view.container,
+      t('popup.repository.itemAriaLabel', 'octo/repo-b'),
+    );
     expect(selectedRepoBOption).toBeTruthy();
 
     await act(async () => {
@@ -1375,7 +1386,7 @@ describe('popup App', () => {
     });
     await flushPromises();
 
-    expect(view.container.textContent).toContain('No notifications available for this tab.');
+    expect(view.container.textContent).toContain(t('popup.empty.tab'));
     expect(view.container.querySelectorAll('button[aria-expanded]')).toHaveLength(0);
     expect(view.container.textContent).not.toContain('octo/repo');
 

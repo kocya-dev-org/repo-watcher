@@ -1,0 +1,348 @@
+{
+  "appTitle": {
+    "message": "Repo Watcher Settings",
+    "description": "Options page title"
+  },
+  "pat_heading": {
+    "message": "API Key (PAT)",
+    "description": "PAT section heading"
+  },
+  "pat_description1": {
+    "message": "Enter your GitHub Personal Access Token.",
+    "description": "PAT description line 1"
+  },
+  "pat_description2": {
+    "message": "A fine-grained PAT is recommended.",
+    "description": "PAT description line 2"
+  },
+  "pat_description3": {
+    "message": "The following permissions are required: `Metadata: Read-only`, `Issues: Read-only`, `Pull requests: Read-only`.",
+    "description": "PAT permissions description"
+  },
+  "pat_status": {
+    "message": "Current status: $status$",
+    "description": "PAT status label",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "PAT configured"
+      }
+    }
+  },
+  "pat_statusConfigured": {
+    "message": "PAT configured",
+    "description": "PAT configured status"
+  },
+  "pat_statusNotConfigured": {
+    "message": "PAT not configured",
+    "description": "PAT not configured status"
+  },
+  "pat_placeholderChange": {
+    "message": "Enter a new PAT only if you want to change it",
+    "description": "PAT placeholder when a value already exists"
+  },
+  "pat_placeholderEnter": {
+    "message": "Enter a PAT",
+    "description": "PAT placeholder when empty"
+  },
+  "pat_clearButton": {
+    "message": "Delete saved PAT",
+    "description": "Delete PAT button"
+  },
+  "pat_deleteConfirm": {
+    "message": "Are you sure you want to delete the PAT?",
+    "description": "PAT delete confirmation"
+  },
+  "pat_deleteSuccess": {
+    "message": "Deleted the PAT",
+    "description": "PAT delete success"
+  },
+  "pat_deleteError": {
+    "message": "Failed to delete the PAT",
+    "description": "PAT delete error"
+  },
+  "notifySettings_heading": {
+    "message": "Notification settings",
+    "description": "Notification settings heading"
+  },
+  "notifySettings_draftLabel": {
+    "message": "Notify about draft PRs",
+    "description": "Draft PR setting label"
+  },
+  "notifySettings_draftDescription": {
+    "message": "Draft PRs are included in the badge and the notification list.",
+    "description": "Draft PR setting description"
+  },
+  "notifySettings_autoRemoveClosedLabel": {
+    "message": "Automatically remove closed items",
+    "description": "Closed items removal label"
+  },
+  "notifySettings_autoRemoveClosedDescription": {
+    "message": "PRs/Issues that are already closed are automatically removed from the notification list on update.",
+    "description": "Closed items removal description"
+  },
+  "repos_heading": {
+    "message": "Watched repositories",
+    "description": "Watched repositories heading"
+  },
+  "repos_description": {
+    "message": "Configure the repositories to watch and their display colors.",
+    "description": "Watched repositories description"
+  },
+  "repos_settingsButton": {
+    "message": "Repository settings",
+    "description": "Repository settings button"
+  },
+  "repos_listAriaLabel": {
+    "message": "Watched repository list",
+    "description": "Watched repository list aria-label"
+  },
+  "interval_heading": {
+    "message": "Watch interval",
+    "description": "Watch interval heading"
+  },
+  "interval_description": {
+    "message": "Specify the notification detection interval in minutes. Minimum is 15 minutes.",
+    "description": "Watch interval description"
+  },
+  "interval_unit": {
+    "message": "min",
+    "description": "Watch interval unit"
+  },
+  "lastChecked_heading": {
+    "message": "Last checked",
+    "description": "Last checked heading"
+  },
+  "lastChecked_description": {
+    "message": "Displays the latest time the notification content was fetched. If you reset it, the next update re-fetches notifications using 00:00:00 of the current day as the baseline.",
+    "description": "Last checked description"
+  },
+  "lastChecked_unset": {
+    "message": "Not set",
+    "description": "Last checked unset text"
+  },
+  "lastChecked_reset": {
+    "message": "Reset",
+    "description": "Reset last checked button"
+  },
+  "save_submit": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "save_success": {
+    "message": "Saved",
+    "description": "Save success message"
+  },
+  "save_error": {
+    "message": "Failed to save",
+    "description": "Save error message"
+  },
+  "repoDialog_title": {
+    "message": "Repository settings",
+    "description": "Repository dialog title"
+  },
+  "repoDialog_repoAriaLabel": {
+    "message": "Repository $index$",
+    "description": "Repository input aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_colorAriaLabel": {
+    "message": "Display color $index$",
+    "description": "Color input aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_delete": {
+    "message": "Delete",
+    "description": "Repository delete button"
+  },
+  "repoDialog_add": {
+    "message": "Add",
+    "description": "Repository add button"
+  },
+  "repoDialog_cancel": {
+    "message": "Cancel",
+    "description": "Repository dialog cancel"
+  },
+  "repoDialog_ok": {
+    "message": "OK",
+    "description": "Repository dialog OK"
+  },
+  "notificationKind_new": {
+    "message": "New",
+    "description": "New notification label"
+  },
+  "notificationKind_updated": {
+    "message": "Updated",
+    "description": "Updated notification label"
+  },
+  "notificationKind_mention": {
+    "message": "Mention",
+    "description": "Mention notification label"
+  },
+  "notificationKind_thread": {
+    "message": "Thread",
+    "description": "Thread notification label"
+  },
+  "notificationKind_assignee": {
+    "message": "Assignee",
+    "description": "Assignee notification label"
+  },
+  "notificationKind_approved": {
+    "message": "Approved",
+    "description": "Approved label"
+  },
+  "notificationKind_changesRequested": {
+    "message": "Changes requested",
+    "description": "Changes requested label"
+  },
+  "notificationKind_draft": {
+    "message": "Draft",
+    "description": "Draft label"
+  },
+  "commentLink_open": {
+    "message": "Open latest comment",
+    "description": "Latest comment link title"
+  },
+  "readState_read": {
+    "message": "Read",
+    "description": "Read state label"
+  },
+  "readState_unread": {
+    "message": "Unread",
+    "description": "Unread state label"
+  },
+  "popup_title": {
+    "message": "Repo Watcher",
+    "description": "Popup title"
+  },
+  "popup_bulkRead_markAllRead": {
+    "message": "Mark all as read",
+    "description": "Mark all as read label"
+  },
+  "popup_bulkRead_markVisibleRead": {
+    "message": "Mark visible list as read",
+    "description": "Mark visible list as read label"
+  },
+  "popup_bulkRead_markAllUnread": {
+    "message": "Mark all as unread",
+    "description": "Mark all as unread label"
+  },
+  "popup_watch_resume": {
+    "message": "Resume scheduled watch",
+    "description": "Resume scheduled watch label"
+  },
+  "popup_watch_pause": {
+    "message": "Pause scheduled watch",
+    "description": "Pause scheduled watch label"
+  },
+  "popup_refresh_idle": {
+    "message": "Update",
+    "description": "Refresh button label"
+  },
+  "popup_refresh_pending": {
+    "message": "Updating...",
+    "description": "Refresh in progress label"
+  },
+  "popup_refresh_errorFallback": {
+    "message": "Failed to update.",
+    "description": "Refresh fallback error"
+  },
+  "popup_refresh_noResponse": {
+    "message": "No response from background.",
+    "description": "No response from background error"
+  },
+  "popup_menu": {
+    "message": "Menu",
+    "description": "Menu button aria-label"
+  },
+  "popup_menu_repository": {
+    "message": "Repository",
+    "description": "Repository filter button"
+  },
+  "popup_menu_openSettings": {
+    "message": "Open Settings",
+    "description": "Open settings button"
+  },
+  "popup_menu_help": {
+    "message": "Help",
+    "description": "Help button"
+  },
+  "popup_menu_noRepositories": {
+    "message": "No configured repositories",
+    "description": "No repositories text"
+  },
+  "popup_loading": {
+    "message": "Loading...",
+    "description": "Popup loading text"
+  },
+  "popup_empty_all": {
+    "message": "No notifications available.",
+    "description": "No notifications text"
+  },
+  "popup_empty_tab": {
+    "message": "No notifications available for this tab.",
+    "description": "No notifications for current tab"
+  },
+  "popup_tabs_notificationTypeAriaLabel": {
+    "message": "Notification Type Tabs",
+    "description": "Notification tabs aria-label"
+  },
+  "popup_tabs_pullRequest": {
+    "message": "Pull Request",
+    "description": "Pull Request tab label"
+  },
+  "popup_tabs_issue": {
+    "message": "Issue",
+    "description": "Issue tab label"
+  },
+  "popup_version_label": {
+    "message": "Version: $version$",
+    "description": "Version label",
+    "placeholders": {
+      "version": {
+        "content": "$1",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "popup_repository_itemAriaLabel": {
+    "message": "Repository:$repository$",
+    "description": "Repository filter item aria-label",
+    "placeholders": {
+      "repository": {
+        "content": "$1",
+        "example": "octo/repo"
+      }
+    }
+  },
+  "popup_notification_repositoryColorAriaLabel": {
+    "message": "Repository color:$color$",
+    "description": "Notification repository color aria-label",
+    "placeholders": {
+      "color": {
+        "content": "$1",
+        "example": "#ff0000"
+      }
+    }
+  },
+  "popup_commentCountLabel": {
+    "message": "Comment count:$count$",
+    "description": "Comment count aria-label",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  }
+}

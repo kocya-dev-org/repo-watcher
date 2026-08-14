@@ -1,6 +1,6 @@
-import { resolveInitialLanguage } from './i18n';
+import { resolveHelpLocale } from './i18n';
 
 export const getHelpUrl = () => {
-  const lang = resolveInitialLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined);
+  const lang = resolveHelpLocale();
   return `https://kocya-dev-org.github.io/repo-watcher/${lang}/`;
 };
