@@ -11,6 +11,9 @@ Repo Watcher は、GitHub 上の Issue / Pull Request の更新を監視する C
 
 このリポジトリは Chrome 拡張そのもののソースコードであり、単体の CLI やデスクトップアプリとして利用するものではありません。利用するには Chrome 系ブラウザに拡張として読み込み、GitHub Personal Access Token と監視対象リポジトリを設定する必要があります。
 
+Chrome ウェブストアで公開中です。  
+https://chromewebstore.google.com/detail/repo-watcher/pkdlkkifdpmkifnbjkminaakjebbhdao
+
 ## できること
 
 - 新しい Issue / Pull Request の通知
