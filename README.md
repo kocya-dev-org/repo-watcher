@@ -11,6 +11,9 @@ Repo Watcher is a Chrome extension that monitors updates to GitHub issues and pu
 
 This repository contains the source code for the Chrome extension itself. It is not a standalone CLI tool or desktop application. To use it, you need to load it as an extension in a Chromium-based browser and configure a GitHub Personal Access Token and the repositories you want to watch.
 
+It's now available on the Chrome Web Store.  
+https://chromewebstore.google.com/detail/repo-watcher/pkdlkkifdpmkifnbjkminaakjebbhdao
+
 ## Features
 
 - Notifications for new issues and pull requests
