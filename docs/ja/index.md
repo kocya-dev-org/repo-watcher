@@ -22,11 +22,14 @@ Repo Watcher は、指定した GitHub リポジトリの Issue と Pull Request
 - GitHub Personal Access Token (PAT)
 - 監視したいリポジトリの owner/repository 名
 
-PAT は fine-grained PAT を推奨します。必要な権限は次のとおりです。
+PAT は GitHubの`Settings` > `Developer Settings`より作成してください。 (fine-grained PAT を推奨します。)  
+`All repositories`や`Only select repositories`を選択する場合、必要な権限は次のとおりです。
 
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
+
+![](./assets/generate_token.png)
 
 ## 初期設定
 
@@ -53,9 +56,9 @@ PAT は拡張機能の local storage に暗号化して保存されます。
 
 設定できる項目は次の 2 つです。
 
-- ドラフトPRも通知する
-  OFF にすると、ドラフト PR はバッジと通知一覧から除外されます。
-- Closeされた項目を自動的に削除する
+- ドラフトPRを通知対象に含める
+  ON にすると、ドラフト PR もバッジと通知一覧に含まれます。
+- Closeされた項目を自動的に削除する  
   ON にすると、更新時にすでに Close 済みの PR / Issue を通知一覧から削除します。
 
 ### 監視対象リポジトリ

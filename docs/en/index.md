@@ -22,11 +22,14 @@ Notifications are shown via the extension icon badge and in the popup window.
 - GitHub Personal Access Token (PAT)
 - The owner/repository names of the repositories you want to watch
 
-A fine-grained PAT is recommended. Required permissions:
+A fine-grained PAT is recommended. You can create a PAT in GitHub's `Settings` > `Developer Settings`. Required permissions:
 
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
+- Pull requests: Read-only
+
+![](./assets/generate_token.png)
 
 ## Initial setup
 
