@@ -19,6 +19,7 @@ import {
   calculateUnreadCount,
   formatBadgeText,
   filterNotificationsByDraftSetting,
+  filterNotificationsByIssueSettings,
   reconcileNotificationState,
   type StoredNotification,
 } from '../shared/notifications';
@@ -42,6 +43,8 @@ type SyncSettings = {
   isWatchPaused: boolean;
   notifyDraftPr: boolean;
   autoRemoveClosed: boolean;
+  notifyIssues: boolean;
+  notifyAssignedIssuesOnly: boolean;
 };
 
 /** 1 件以上の要素を持つことが型で保証されたリポジトリ一覧。 */
@@ -214,6 +217,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
         isWatchPaused: false,
         notifyDraftPr: true,
         autoRemoveClosed: true,
+        notifyIssues: true,
+        notifyAssignedIssuesOnly: false,
       },
       (items: {
         repos?: unknown;
@@ -221,6 +226,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
         isWatchPaused?: unknown;
         notifyDraftPr?: unknown;
         autoRemoveClosed?: unknown;
+        notifyIssues?: unknown;
+        notifyAssignedIssuesOnly?: unknown;
       }) => {
         const settings: SyncSettings = {
           repos: items.repos as WatchTargetRepo[],
@@ -228,6 +235,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
           isWatchPaused: Boolean(items.isWatchPaused),
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
           autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
+          notifyIssues: items.notifyIssues === undefined ? true : Boolean(items.notifyIssues),
+          notifyAssignedIssuesOnly: Boolean(items.notifyAssignedIssuesOnly),
         };
 
         resolve(settings);
@@ -533,7 +542,11 @@ async function reconcileAndPersistNotifications(
   const notificationsWithLatestStatus = settings.autoRemoveClosed
     ? removeClosedNotifications(reconciled.notifications, latestStatus)
     : applyLatestResultStatus(reconciled.notifications, latestStatus);
-  const badgeNotifications = filterNotificationsByDraftSetting(notificationsWithLatestStatus, settings.notifyDraftPr);
+  const badgeNotifications = filterNotificationsByIssueSettings(
+    filterNotificationsByDraftSetting(notificationsWithLatestStatus, settings.notifyDraftPr),
+    settings.notifyIssues,
+    settings.notifyAssignedIssuesOnly,
+  );
   const badgeCount = calculateUnreadCount(badgeNotifications, []);
 
   debugLog('watch cycle notification summary', {
@@ -651,7 +664,11 @@ export function setupAlarms() {
 export async function restoreBadge() {
   const localState = await loadLocalRuntimeStorage();
   const settings = await loadSyncSettings();
-  const notifications = filterNotificationsByDraftSetting(localState.notifications, settings.notifyDraftPr);
+  const notifications = filterNotificationsByIssueSettings(
+    filterNotificationsByDraftSetting(localState.notifications, settings.notifyDraftPr),
+    settings.notifyIssues,
+    settings.notifyAssignedIssuesOnly,
+  );
   const badgeCount = calculateUnreadCount(notifications, localState.readNotificationIds);
   if (badgeCount !== localState.badgeCount) {
     await saveLocalRuntimeStorage({ badgeCount });

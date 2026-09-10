@@ -14,6 +14,7 @@ import Tabs from '@mui/material/Tabs';
 import {
   calculateUnreadCount,
   filterNotificationsByDraftSetting,
+  filterNotificationsByIssueSettings,
   formatBadgeText,
   pruneReadNotifications,
   toggleNotificationRead,
@@ -37,7 +38,35 @@ type PopupSettings = {
   repos: WatchTargetRepo[];
   isWatchPaused: boolean;
   notifyDraftPr: boolean;
+  notifyIssues: boolean;
+  notifyAssignedIssuesOnly: boolean;
 };
+
+/** バッジ・表示の絞り込みに使う通知設定。 */
+type NotificationFilterSettings = Pick<PopupSettings, 'notifyDraftPr' | 'notifyIssues' | 'notifyAssignedIssuesOnly'>;
+
+const DEFAULT_FILTER_SETTINGS: NotificationFilterSettings = {
+  notifyDraftPr: true,
+  notifyIssues: true,
+  notifyAssignedIssuesOnly: false,
+};
+
+/**
+ * ドラフト PR 設定と Issue 設定の両方を適用して通知一覧を絞り込む。
+ * @param items 通知一覧
+ * @param filterSettings 通知設定
+ * @returns 設定に応じた通知一覧
+ */
+function filterNotificationsBySettings(
+  items: StoredNotification[],
+  filterSettings: NotificationFilterSettings,
+): StoredNotification[] {
+  return filterNotificationsByIssueSettings(
+    filterNotificationsByDraftSetting(items, filterSettings.notifyDraftPr),
+    filterSettings.notifyIssues,
+    filterSettings.notifyAssignedIssuesOnly,
+  );
+}
 
 type PopupLocalState = {
   notifications: StoredNotification[];
@@ -250,6 +279,8 @@ function loadPopupSettings(): Promise<PopupSettings> {
         repos: [],
         isWatchPaused: false,
         notifyDraftPr: true,
+        notifyIssues: true,
+        notifyAssignedIssuesOnly: false,
       },
       (items) => {
         const repos = Array.isArray(items.repos) ? items.repos.filter(isValidRepo) : [];
@@ -258,6 +289,8 @@ function loadPopupSettings(): Promise<PopupSettings> {
           repos,
           isWatchPaused: Boolean(items.isWatchPaused),
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
+          notifyIssues: items.notifyIssues === undefined ? true : Boolean(items.notifyIssues),
+          notifyAssignedIssuesOnly: Boolean(items.notifyAssignedIssuesOnly),
         });
       },
     );
@@ -303,7 +336,7 @@ const App: React.FC = () => {
   const [collapsedRepositories, setCollapsedRepositories] = useState<Set<string>>(new Set());
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
-  const notifyDraftPrRef = useRef(true);
+  const filterSettingsRef = useRef<NotificationFilterSettings>(DEFAULT_FILTER_SETTINGS);
   const menuPopoverRef = useRef<HTMLDivElement>(null);
 
   const manifestVersion = chrome.runtime.getManifest().version;
@@ -330,12 +363,9 @@ const App: React.FC = () => {
 
   const reloadPopupState = useCallback(async () => {
     const [localState, popupSettings] = await Promise.all([loadPopupLocalState(), loadPopupSettings()]);
-    notifyDraftPrRef.current = popupSettings.notifyDraftPr;
+    filterSettingsRef.current = popupSettings;
     const finalizedLocalState = pruneReadNotifications(localState.notifications, localState.readNotificationIds);
-    const badgeNotifications = filterNotificationsByDraftSetting(
-      finalizedLocalState.notifications,
-      popupSettings.notifyDraftPr,
-    );
+    const badgeNotifications = filterNotificationsBySettings(finalizedLocalState.notifications, popupSettings);
     const badgeCount = calculateUnreadCount(badgeNotifications, finalizedLocalState.readNotificationIds);
 
     if (
@@ -393,7 +423,7 @@ const App: React.FC = () => {
   useEffect(
     () => () => {
       const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
-      const badgeNotifications = filterNotificationsByDraftSetting(finalized.notifications, notifyDraftPrRef.current);
+      const badgeNotifications = filterNotificationsBySettings(finalized.notifications, filterSettingsRef.current);
       const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
 
       chrome.storage.local.set({ ...finalized, badgeCount });
@@ -407,7 +437,7 @@ const App: React.FC = () => {
    * @param nextReadIds 更新後の既読通知 ID 一覧
    */
   const applyReadIds = (nextReadIds: string[]) => {
-    const badgeNotifications = filterNotificationsByDraftSetting(notificationsRef.current, notifyDraftPrRef.current);
+    const badgeNotifications = filterNotificationsBySettings(notificationsRef.current, filterSettingsRef.current);
     const newBadgeCount = calculateUnreadCount(badgeNotifications, nextReadIds);
 
     readIdsRef.current = new Set(nextReadIds);
@@ -435,8 +465,11 @@ const App: React.FC = () => {
 
   const repositoryOptions = settings ? listRepositoryOptions(settings.repos) : [];
   const repositoryColorMap = settings ? buildRepositoryColorMap(settings.repos) : new Map<string, string>();
-  const draftFilteredNotifications = filterNotificationsByDraftSetting(notifications, settings?.notifyDraftPr ?? true);
-  const filteredNotifications = filterNotificationsByRepositories(draftFilteredNotifications, selectedRepositories);
+  const settingsFilteredNotifications = filterNotificationsBySettings(
+    notifications,
+    settings ?? DEFAULT_FILTER_SETTINGS,
+  );
+  const filteredNotifications = filterNotificationsByRepositories(settingsFilteredNotifications, selectedRepositories);
   const { prs, issues } = groupByType(filteredNotifications);
   const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
   const notificationGroups = groupByRepository(activeNotifications);

@@ -81,6 +81,22 @@
     "message": "PRs/Issues that are already closed are automatically removed from the notification list on update.",
     "description": "Closed items removal description"
   },
+  "notifySettings_notifyIssuesLabel": {
+    "message": "Enable notifications for all issues",
+    "description": "Issue notification setting label"
+  },
+  "notifySettings_notifyIssuesDescription": {
+    "message": "When off, issues are excluded from the badge and the notification list.",
+    "description": "Issue notification setting description"
+  },
+  "notifySettings_assignedIssuesOnlyLabel": {
+    "message": "Only notify about issues assigned to me",
+    "description": "Assigned-only issue notification setting label"
+  },
+  "notifySettings_assignedIssuesOnlyDescription": {
+    "message": "When on, only issues where you are an assignee are included in the badge and the notification list.",
+    "description": "Assigned-only issue notification setting description"
+  },
   "repos_heading": {
     "message": "Watched repositories",
     "description": "Watched repositories heading"

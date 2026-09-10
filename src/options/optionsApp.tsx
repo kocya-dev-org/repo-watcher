@@ -19,6 +19,8 @@ type SettingsForm = {
   intervalMinutes: number;
   notifyDraftPr: boolean;
   autoRemoveClosed: boolean;
+  notifyIssues: boolean;
+  notifyAssignedIssuesOnly: boolean;
 };
 
 /** 説明文の共通スタイル */
@@ -61,6 +63,8 @@ const OptionsApp: React.FC = () => {
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
     notifyDraftPr: true,
     autoRemoveClosed: true,
+    notifyIssues: true,
+    notifyAssignedIssuesOnly: false,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -103,8 +107,17 @@ const OptionsApp: React.FC = () => {
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         notifyDraftPr: true,
         autoRemoveClosed: true,
+        notifyIssues: true,
+        notifyAssignedIssuesOnly: false,
       },
-      (items: { repos?: unknown; intervalMinutes?: unknown; notifyDraftPr?: unknown; autoRemoveClosed?: unknown }) => {
+      (items: {
+        repos?: unknown;
+        intervalMinutes?: unknown;
+        notifyDraftPr?: unknown;
+        autoRemoveClosed?: unknown;
+        notifyIssues?: unknown;
+        notifyAssignedIssuesOnly?: unknown;
+      }) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
         setForm({
           pat: '',
@@ -112,6 +125,8 @@ const OptionsApp: React.FC = () => {
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
           autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
+          notifyIssues: items.notifyIssues === undefined ? true : Boolean(items.notifyIssues),
+          notifyAssignedIssuesOnly: Boolean(items.notifyAssignedIssuesOnly),
         });
       },
     );
@@ -152,6 +167,8 @@ const OptionsApp: React.FC = () => {
               intervalMinutes,
               notifyDraftPr: form.notifyDraftPr,
               autoRemoveClosed: form.autoRemoveClosed,
+              notifyIssues: form.notifyIssues,
+              notifyAssignedIssuesOnly: form.notifyIssues && form.notifyAssignedIssuesOnly,
             },
             () => resolve(),
           );
@@ -292,6 +309,31 @@ const OptionsApp: React.FC = () => {
               {t('notifySettings.autoRemoveClosedLabel')}
             </label>
             <p style={descriptionStyle}>{t('notifySettings.autoRemoveClosedDescription')}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.notifyIssues}
+                onChange={(e) =>
+                  handleChange(
+                    e.target.checked
+                      ? { notifyIssues: true }
+                      : { notifyIssues: false, notifyAssignedIssuesOnly: false },
+                  )
+                }
+              />{' '}
+              {t('notifySettings.notifyIssuesLabel')}
+            </label>
+            <p style={descriptionStyle}>{t('notifySettings.notifyIssuesDescription')}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.notifyAssignedIssuesOnly}
+                disabled={!form.notifyIssues}
+                onChange={(e) => handleChange({ notifyAssignedIssuesOnly: e.target.checked })}
+              />{' '}
+              {t('notifySettings.assignedIssuesOnlyLabel')}
+            </label>
+            <p style={descriptionStyle}>{t('notifySettings.assignedIssuesOnlyDescription')}</p>
           </CardContent>
         </Card>
 
