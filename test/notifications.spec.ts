@@ -10,6 +10,7 @@ import {
   mergeStoredNotifications,
   pruneReadNotifications,
   reconcileNotificationState,
+  removeExpiredNotifications,
   toggleNotificationRead,
   type NotificationKind,
   type StoredNotification,
@@ -192,6 +193,44 @@ describe('mergeStoredNotifications', () => {
 
     expect(mergeStoredNotifications(current, incoming).commentCount).toBe(9);
     expect(mergeStoredNotifications(current, incomingUndefined).commentCount).toBe(3);
+  });
+});
+
+describe('removeExpiredNotifications', () => {
+  const now = new Date('2026-05-31T10:00:00.000Z');
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  it('保持日数を超えた通知だけを削除する', () => {
+    const expired = createStoredNotification({ id: 'OLD', detectedAt: daysAgo(31) });
+    const fresh = createStoredNotification({ id: 'FRESH', detectedAt: daysAgo(10) });
+
+    expect(removeExpiredNotifications([expired, fresh], now, 30).map((notification) => notification.id)).toEqual([
+      'FRESH',
+    ]);
+  });
+
+  it('ちょうど保持日数に達した通知は削除しない', () => {
+    const boundary = createStoredNotification({ id: 'BOUNDARY', detectedAt: daysAgo(30) });
+
+    expect(removeExpiredNotifications([boundary], now, 30)).toEqual([boundary]);
+  });
+
+  it('retentionDays が 0 以下または NaN のときは何も削除しない', () => {
+    const expired = createStoredNotification({ id: 'OLD', detectedAt: daysAgo(365) });
+
+    expect(removeExpiredNotifications([expired], now, 0)).toEqual([expired]);
+    expect(removeExpiredNotifications([expired], now, -5)).toEqual([expired]);
+    expect(removeExpiredNotifications([expired], now, NaN)).toEqual([expired]);
+  });
+
+  it('detectedAt が不正な日付の通知は削除しない', () => {
+    const invalid = createStoredNotification({ id: 'INVALID', detectedAt: 'not-a-date' });
+
+    expect(removeExpiredNotifications([invalid], now, 30)).toEqual([invalid]);
+  });
+
+  it('空配列では空配列を返す', () => {
+    expect(removeExpiredNotifications([], now, 30)).toEqual([]);
   });
 });
 

@@ -13,3 +13,6 @@ export const DEFAULT_INTERVAL_MINUTES = 15;
  * 既定値と同値だが、下限クランプの意図を明確化するため別定数として定義する。
  */
 export const MIN_INTERVAL_MINUTES = 15;
+
+/** 期限切れ通知を自動削除するまでの保持日数の既定値 (日)。 */
+export const DEFAULT_EXPIRED_RETENTION_DAYS = 30;

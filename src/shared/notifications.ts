@@ -160,6 +160,39 @@ export function filterNotificationsByIssueSettings(
 }
 
 /**
+ * 最終更新日から一定日数を経過した通知を一覧から取り除く。
+ *
+ * `detectedAt` は更新検知のたびに新しい値へ更新されるため、事実上の最終更新日として扱う。
+ * `now - detectedAt` が `retentionDays` 日を超えた通知だけを削除し、ちょうど同日数の通知は残す。
+ * 誤削除を避けるため、`retentionDays` が 0 以下または数値として解釈できない場合は何も削除せず、
+ * `detectedAt` が日付として解釈できない通知もそのまま残す。
+ * @param notifications 通知一覧
+ * @param now 判定基準となる現在時刻
+ * @param retentionDays 保持日数。この日数を超えて経過した通知を削除する
+ * @returns 期限切れ通知を除いた通知一覧
+ */
+export function removeExpiredNotifications(
+  notifications: StoredNotification[],
+  now: Date,
+  retentionDays: number,
+): StoredNotification[] {
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+    return notifications;
+  }
+
+  const retentionMillis = retentionDays * 24 * 60 * 60 * 1000;
+
+  return notifications.filter((notification) => {
+    const detectedAtMillis = new Date(notification.detectedAt).getTime();
+    if (Number.isNaN(detectedAtMillis)) {
+      return true;
+    }
+
+    return now.getTime() - detectedAtMillis <= retentionMillis;
+  });
+}
+
+/**
  * 通知一覧と既読 ID から未読件数を数える。
  * @param notifications 通知一覧
  * @param readNotificationIds 既読通知 ID 一覧

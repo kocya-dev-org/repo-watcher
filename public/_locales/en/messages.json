@@ -97,6 +97,22 @@
     "message": "When on, only issues where you are an assignee are included in the badge and the notification list.",
     "description": "Assigned-only issue notification setting description"
   },
+  "notifySettings_autoRemoveExpiredLabel": {
+    "message": "Automatically remove expired notifications",
+    "description": "Expired notifications removal label"
+  },
+  "notifySettings_autoRemoveExpiredDescription": {
+    "message": "On extension startup, notifications that have passed the specified number of days since their last update are automatically removed.",
+    "description": "Expired notifications removal description"
+  },
+  "notifySettings_expiredRetentionDaysLabel": {
+    "message": "Days to keep notifications",
+    "description": "Notification retention days input label"
+  },
+  "notifySettings_expiredRetentionDaysUnit": {
+    "message": "days",
+    "description": "Unit for notification retention days"
+  },
   "repos_heading": {
     "message": "Watched repositories",
     "description": "Watched repositories heading"

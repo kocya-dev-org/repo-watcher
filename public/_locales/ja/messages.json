@@ -97,6 +97,22 @@
     "message": "ON にすると自分が assignee に設定されている Issue だけをバッジと通知一覧に含めます。",
     "description": "assignee 限定 Issue 通知設定説明"
   },
+  "notifySettings_autoRemoveExpiredLabel": {
+    "message": "一定期間経過した通知を自動的に削除する",
+    "description": "期限切れ通知自動削除ラベル"
+  },
+  "notifySettings_autoRemoveExpiredDescription": {
+    "message": "拡張機能の起動時に、最終更新から指定した日数を経過した通知を自動的に削除します。",
+    "description": "期限切れ通知自動削除説明"
+  },
+  "notifySettings_expiredRetentionDaysLabel": {
+    "message": "通知を保持する日数",
+    "description": "通知保持日数入力のラベル"
+  },
+  "notifySettings_expiredRetentionDaysUnit": {
+    "message": "日",
+    "description": "通知保持日数の単位"
+  },
   "repos_heading": {
     "message": "監視対象リポジトリ",
     "description": "監視対象リポジトリ見出し"
