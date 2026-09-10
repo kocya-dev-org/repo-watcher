@@ -220,6 +220,8 @@ describe('options App', () => {
         intervalMinutes: 30,
         notifyDraftPr: true,
         autoRemoveClosed: true,
+        notifyIssues: true,
+        notifyAssignedIssuesOnly: false,
       },
       expect.any(Function),
     );
@@ -227,6 +229,49 @@ describe('options App', () => {
     expect(passwordInput.value).toBe('');
     expect(view.container.textContent).toContain('保存しました');
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
+
+    await view.unmount();
+  });
+
+  it('notifyIssues が OFF のとき assignee 限定チェックボックスを disabled にして false へリセットする', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo1' }],
+      notifyIssues: true,
+      notifyAssignedIssuesOnly: true,
+    });
+
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+
+    const findCheckbox = (labelText: string) =>
+      Array.from(view.container.querySelectorAll('label'))
+        .find((label) => label.textContent?.includes(labelText))
+        ?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const notifyIssuesCheckbox = findCheckbox('全てのissueの通知を有効にする');
+    const assignedOnlyCheckbox = findCheckbox('自分がassigneeに設定されたissueだけを通知する');
+
+    expect(notifyIssuesCheckbox.checked).toBe(true);
+    expect(assignedOnlyCheckbox.checked).toBe(true);
+    expect(assignedOnlyCheckbox.disabled).toBe(false);
+
+    await act(async () => {
+      notifyIssuesCheckbox.click();
+    });
+
+    expect(notifyIssuesCheckbox.checked).toBe(false);
+    expect(assignedOnlyCheckbox.disabled).toBe(true);
+    expect(assignedOnlyCheckbox.checked).toBe(false);
+
+    const form = view.container.querySelector('form') as HTMLFormElement;
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
+      expect.objectContaining({ notifyIssues: false, notifyAssignedIssuesOnly: false }),
+      expect.any(Function),
+    );
 
     await view.unmount();
   });

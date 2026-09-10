@@ -10,6 +10,7 @@ export type StoredNotification = {
   isDraft?: boolean;
   isApproved?: boolean;
   isChangesRequested?: boolean;
+  isViewerAssignee?: boolean;
   owner: string;
   repo: string;
   number: number;
@@ -110,6 +111,7 @@ export function mergeStoredNotifications(
         : current.detectedAt,
     isPresentInLatestResult: incoming.isPresentInLatestResult ?? current.isPresentInLatestResult,
     isDraft: incoming.isDraft ?? current.isDraft,
+    isViewerAssignee: incoming.isViewerAssignee ?? current.isViewerAssignee,
     commentCount: incoming.commentCount ?? current.commentCount,
     latestCommentUrl: incoming.latestCommentUrl ?? current.latestCommentUrl,
   };
@@ -130,6 +132,31 @@ export function filterNotificationsByDraftSetting(
   }
 
   return notifications.filter((notification) => !(notification.isPullRequest && notification.isDraft));
+}
+
+/**
+ * Issue 通知の表示設定に応じて通知一覧を絞り込む。
+ *
+ * PR は設定に関わらず常に残す。
+ * @param notifications 通知一覧
+ * @param notifyIssues Issue を通知対象にする設定
+ * @param notifyAssignedIssuesOnly 自分が assignee の Issue だけを通知対象にする設定
+ * @returns 設定に応じた通知一覧
+ */
+export function filterNotificationsByIssueSettings(
+  notifications: StoredNotification[],
+  notifyIssues: boolean,
+  notifyAssignedIssuesOnly: boolean,
+): StoredNotification[] {
+  if (!notifyIssues) {
+    return notifications.filter((notification) => notification.isPullRequest);
+  }
+
+  if (!notifyAssignedIssuesOnly) {
+    return notifications;
+  }
+
+  return notifications.filter((notification) => notification.isPullRequest || notification.isViewerAssignee === true);
 }
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateUnreadCount,
+  filterNotificationsByIssueSettings,
   formatBadgeText,
   formatNotificationKindLabel,
   getNotificationKinds,
@@ -30,6 +31,32 @@ function createStoredNotification(overrides: Partial<StoredNotification> = {}): 
     ...overrides,
   };
 }
+
+describe('filterNotificationsByIssueSettings', () => {
+  const assignedIssue = createStoredNotification({ id: 'ISSUE_A', sourceNodeId: 'ISSUE_A', isViewerAssignee: true });
+  const otherIssue = createStoredNotification({ id: 'ISSUE_B', sourceNodeId: 'ISSUE_B', isViewerAssignee: false });
+  const legacyIssue = createStoredNotification({ id: 'ISSUE_C', sourceNodeId: 'ISSUE_C' });
+  const pullRequest = createStoredNotification({
+    id: 'PR_1',
+    sourceNodeId: 'PR_1',
+    isPullRequest: true,
+    isDraft: true,
+  });
+  const all = [assignedIssue, otherIssue, legacyIssue, pullRequest];
+
+  it('notifyIssues が ON で assignedOnly が OFF ならすべて残す', () => {
+    expect(filterNotificationsByIssueSettings(all, true, false)).toEqual(all);
+  });
+
+  it('notifyIssues が OFF なら Issue をすべて除外し PR だけ残す', () => {
+    expect(filterNotificationsByIssueSettings(all, false, false)).toEqual([pullRequest]);
+    expect(filterNotificationsByIssueSettings(all, false, true)).toEqual([pullRequest]);
+  });
+
+  it('assignedOnly が ON なら viewer が assignee の Issue と PR だけ残す', () => {
+    expect(filterNotificationsByIssueSettings(all, true, true)).toEqual([assignedIssue, pullRequest]);
+  });
+});
 
 describe('toggleNotificationRead', () => {
   it('未既読 ID を渡すと既読一覧へ追加する', () => {

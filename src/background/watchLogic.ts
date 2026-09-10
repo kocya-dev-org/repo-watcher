@@ -290,12 +290,14 @@ export function hasMentionThreadNotification(
  * @param node 通知元の Issue / Pull Request / review thread 付き PR
  * @param kinds 通知の種別一覧
  * @param detectedAt 検知時刻
+ * @param viewerLogin ログイン名 (Issue の assignee 判定に使う)
  * @returns 保存用通知データ、生成できない場合は null
  */
 export function toStoredNotification(
   node: IssueOrPullRequestNode | PullRequestReviewThreadsNode,
   kinds: NotificationKind[],
   detectedAt: string,
+  viewerLogin?: string,
 ): StoredNotification | null {
   if (!node.repository) {
     return null;
@@ -318,7 +320,11 @@ export function toStoredNotification(
           // approved と排他になるよう変更要求も true/false を必ず確定させる
           isChangesRequested: (node as IssueOrPullRequestNode).reviewDecision === 'CHANGES_REQUESTED',
         }
-      : {}),
+      : {
+          isViewerAssignee:
+            (node as IssueOrPullRequestNode).assignees?.nodes?.some((assignee) => assignee.login === viewerLogin) ??
+            false,
+        }),
     owner,
     repo,
     number: typeof node.number === 'number' ? node.number : 0,
@@ -381,7 +387,7 @@ export function collectNotifications(
       kinds.push('assignee');
     }
 
-    const storedNotification = toStoredNotification(node, resolveNotificationKinds(kinds), detectedAt);
+    const storedNotification = toStoredNotification(node, resolveNotificationKinds(kinds), detectedAt, viewerLogin);
     if (storedNotification) {
       collected.push(storedNotification);
     }

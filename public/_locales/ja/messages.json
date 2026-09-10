@@ -81,6 +81,22 @@
     "message": "更新時に既に Close 済みの PR / Issue を通知一覧から自動的に削除します。",
     "description": "クローズ済み項目自動削除説明"
   },
+  "notifySettings_notifyIssuesLabel": {
+    "message": "全てのissueの通知を有効にする",
+    "description": "Issue 通知設定ラベル"
+  },
+  "notifySettings_notifyIssuesDescription": {
+    "message": "OFF にすると Issue をバッジと通知一覧に含めません。",
+    "description": "Issue 通知設定説明"
+  },
+  "notifySettings_assignedIssuesOnlyLabel": {
+    "message": "自分がassigneeに設定されたissueだけを通知する",
+    "description": "assignee 限定 Issue 通知設定ラベル"
+  },
+  "notifySettings_assignedIssuesOnlyDescription": {
+    "message": "ON にすると自分が assignee に設定されている Issue だけをバッジと通知一覧に含めます。",
+    "description": "assignee 限定 Issue 通知設定説明"
+  },
   "repos_heading": {
     "message": "監視対象リポジトリ",
     "description": "監視対象リポジトリ見出し"

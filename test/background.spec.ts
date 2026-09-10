@@ -562,6 +562,7 @@ describe('background notification logic helpers', () => {
       kinds: ['mention'],
       sourceNodeId: 'ISSUE_1',
       isPullRequest: false,
+      isViewerAssignee: false,
       owner: 'octo',
       repo: 'repo',
       number: 42,
@@ -571,6 +572,24 @@ describe('background notification logic helpers', () => {
       commentCount: 0,
       isPresentInLatestResult: true,
     });
+  });
+
+  it('toStoredNotification は Issue の viewer assignee 状態を反映する', () => {
+    const assigned = toStoredNotification(
+      { ...baseNode, assignees: { nodes: [{ login: 'viewer' }] } },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+      'viewer',
+    );
+    const notAssigned = toStoredNotification(
+      { ...baseNode, assignees: { nodes: [{ login: 'someone' }] } },
+      ['new'],
+      '2026-03-21T10:06:00.000Z',
+      'viewer',
+    );
+
+    expect(assigned?.isViewerAssignee).toBe(true);
+    expect(notAssigned?.isViewerAssignee).toBe(false);
   });
 
   it('toStoredNotification は Pull Request の isDraft を反映する', () => {

@@ -839,6 +839,107 @@ describe('background integration', () => {
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
   });
 
+  function mockIssueSearch(issues: Array<{ id: string; number: number; assigneeLogins: string[] }>) {
+    backgroundMocks.client.mockImplementation(
+      async (query: string, variables?: { repoQuery?: string; nodeIds?: string[] }) => {
+        if (query.includes('GetViewer')) {
+          return { viewer: { login: 'viewer' } };
+        }
+        if (query.includes('WatchIssuesAndPRs')) {
+          return {
+            search: {
+              nodes: variables?.repoQuery?.includes('is:issue')
+                ? issues.map((issue) => ({
+                    __typename: 'Issue',
+                    id: issue.id,
+                    number: issue.number,
+                    title: `Issue ${issue.number}`,
+                    url: `https://example.com/issues/${issue.number}`,
+                    createdAt: '2026-05-06T08:30:00.000Z',
+                    updatedAt: '2026-05-06T08:30:00.000Z',
+                    repository: { name: 'repo', owner: { login: 'octo' } },
+                    assignees: { nodes: issue.assigneeLogins.map((login) => ({ login })) },
+                    body: '',
+                    comments: { totalCount: 0, nodes: [] },
+                  }))
+                : [],
+            },
+          };
+        }
+        if (query.includes('WatchReviewThreads')) {
+          return { nodes: [] };
+        }
+        if (query.includes('WatchNotificationStatuses')) {
+          return {
+            nodes: (variables?.nodeIds ?? []).map((nodeId) => ({
+              __typename: 'Issue',
+              id: nodeId,
+              closed: false,
+              comments: { totalCount: 0 },
+            })),
+          };
+        }
+
+        throw new Error(`Unexpected query: ${query}`);
+      },
+    );
+  }
+
+  it('notifyIssues が OFF のとき Issue を保存しつつ badge から除外する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      notifyIssues: false,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+    mockIssueSearch([{ id: 'ISSUE_1', number: 1, assigneeLogins: ['viewer'] }]);
+
+    await importBackground();
+    chromeMock.triggerAlarm('repo-watcher-watch');
+    await waitForCondition(() => chromeMock.getLocalState().notifications.length === 1);
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 0,
+      notifications: [expect.objectContaining({ id: 'ISSUE_1', isViewerAssignee: true })],
+    });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '' });
+  });
+
+  it('notifyAssignedIssuesOnly が ON のとき assignee でない Issue を保存しつつ badge から除外する', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      notifyIssues: true,
+      notifyAssignedIssuesOnly: true,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: '2026-05-06T07:00:00.000Z',
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+    mockIssueSearch([
+      { id: 'ISSUE_1', number: 1, assigneeLogins: ['viewer'] },
+      { id: 'ISSUE_2', number: 2, assigneeLogins: ['someone'] },
+    ]);
+
+    await importBackground();
+    chromeMock.triggerAlarm('repo-watcher-watch');
+    await waitForCondition(() => chromeMock.getLocalState().notifications.length === 2);
+
+    expect(chromeMock.getLocalState()).toMatchObject({
+      badgeCount: 1,
+      notifications: expect.arrayContaining([
+        expect.objectContaining({ id: 'ISSUE_1', isViewerAssignee: true }),
+        expect.objectContaining({ id: 'ISSUE_2', isViewerAssignee: false }),
+      ]),
+    });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+  });
+
   it('manual refresh message は PAT が読めないとき失敗を返す', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
