@@ -9,7 +9,7 @@ import { COLORS } from '../shared/colors';
 import { getMessage } from '../shared/i18n';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
-import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
+import { DEFAULT_EXPIRED_RETENTION_DAYS, DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 import RepositoryDialog from './RepositoryDialog';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
@@ -21,6 +21,8 @@ type SettingsForm = {
   autoRemoveClosed: boolean;
   notifyIssues: boolean;
   notifyAssignedIssuesOnly: boolean;
+  autoRemoveExpired: boolean;
+  expiredRetentionDays: number;
 };
 
 /** 説明文の共通スタイル */
@@ -65,6 +67,8 @@ const OptionsApp: React.FC = () => {
     autoRemoveClosed: true,
     notifyIssues: true,
     notifyAssignedIssuesOnly: false,
+    autoRemoveExpired: true,
+    expiredRetentionDays: DEFAULT_EXPIRED_RETENTION_DAYS,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -109,6 +113,8 @@ const OptionsApp: React.FC = () => {
         autoRemoveClosed: true,
         notifyIssues: true,
         notifyAssignedIssuesOnly: false,
+        autoRemoveExpired: true,
+        expiredRetentionDays: DEFAULT_EXPIRED_RETENTION_DAYS,
       },
       (items: {
         repos?: unknown;
@@ -117,6 +123,8 @@ const OptionsApp: React.FC = () => {
         autoRemoveClosed?: unknown;
         notifyIssues?: unknown;
         notifyAssignedIssuesOnly?: unknown;
+        autoRemoveExpired?: unknown;
+        expiredRetentionDays?: unknown;
       }) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
         setForm({
@@ -127,6 +135,8 @@ const OptionsApp: React.FC = () => {
           autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
           notifyIssues: items.notifyIssues === undefined ? true : Boolean(items.notifyIssues),
           notifyAssignedIssuesOnly: Boolean(items.notifyAssignedIssuesOnly),
+          autoRemoveExpired: items.autoRemoveExpired === undefined ? true : Boolean(items.autoRemoveExpired),
+          expiredRetentionDays: Number(items.expiredRetentionDays) || DEFAULT_EXPIRED_RETENTION_DAYS,
         });
       },
     );
@@ -169,6 +179,8 @@ const OptionsApp: React.FC = () => {
               autoRemoveClosed: form.autoRemoveClosed,
               notifyIssues: form.notifyIssues,
               notifyAssignedIssuesOnly: form.notifyIssues && form.notifyAssignedIssuesOnly,
+              autoRemoveExpired: form.autoRemoveExpired,
+              expiredRetentionDays: form.expiredRetentionDays,
             },
             () => resolve(),
           );
@@ -334,6 +346,25 @@ const OptionsApp: React.FC = () => {
               {t('notifySettings.assignedIssuesOnlyLabel')}
             </label>
             <p style={descriptionStyle}>{t('notifySettings.assignedIssuesOnlyDescription')}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.autoRemoveExpired}
+                onChange={(e) => handleChange({ autoRemoveExpired: e.target.checked })}
+              />{' '}
+              {t('notifySettings.autoRemoveExpiredLabel')}
+            </label>
+            <p style={descriptionStyle}>{t('notifySettings.autoRemoveExpiredDescription')}</p>
+            <input
+              type="number"
+              min={1}
+              aria-label={t('notifySettings.expiredRetentionDaysLabel')}
+              value={form.expiredRetentionDays}
+              disabled={!form.autoRemoveExpired}
+              onChange={(e) => handleChange({ expiredRetentionDays: Number(e.target.value) || 1 })}
+              style={{ width: '80px', padding: '4px' }}
+            />{' '}
+            {t('notifySettings.expiredRetentionDaysUnit')}
           </CardContent>
         </Card>
 
@@ -364,6 +395,7 @@ const OptionsApp: React.FC = () => {
             <input
               type="number"
               min={MIN_INTERVAL_MINUTES}
+              aria-label={t('interval.heading')}
               value={form.intervalMinutes}
               onChange={(e) => handleChange({ intervalMinutes: Number(e.target.value) || 1 })}
               style={{ width: '80px', padding: '4px' }}

@@ -21,6 +21,7 @@ import {
   filterNotificationsByDraftSetting,
   filterNotificationsByIssueSettings,
   reconcileNotificationState,
+  removeExpiredNotifications,
   type StoredNotification,
 } from '../shared/notifications';
 import type { WatchTargetRepo } from '../shared/repositories';
@@ -32,7 +33,7 @@ import {
 } from './queries';
 import { loadLocalRuntimeStorage, saveLocalRuntimeStorage, type LocalRuntimeStorage } from './runtimeStorage';
 import { debugLog } from './logging';
-import { DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
+import { DEFAULT_EXPIRED_RETENTION_DAYS, DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 
 /** PAT を設定済みの GitHub GraphQL クライアント。 */
 type GithubGraphqlClient = ReturnType<typeof graphql.defaults>;
@@ -45,6 +46,8 @@ type SyncSettings = {
   autoRemoveClosed: boolean;
   notifyIssues: boolean;
   notifyAssignedIssuesOnly: boolean;
+  autoRemoveExpired: boolean;
+  expiredRetentionDays: number;
 };
 
 /** 1 件以上の要素を持つことが型で保証されたリポジトリ一覧。 */
@@ -219,6 +222,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
         autoRemoveClosed: true,
         notifyIssues: true,
         notifyAssignedIssuesOnly: false,
+        autoRemoveExpired: true,
+        expiredRetentionDays: DEFAULT_EXPIRED_RETENTION_DAYS,
       },
       (items: {
         repos?: unknown;
@@ -228,6 +233,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
         autoRemoveClosed?: unknown;
         notifyIssues?: unknown;
         notifyAssignedIssuesOnly?: unknown;
+        autoRemoveExpired?: unknown;
+        expiredRetentionDays?: unknown;
       }) => {
         const settings: SyncSettings = {
           repos: items.repos as WatchTargetRepo[],
@@ -237,6 +244,8 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
           autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
           notifyIssues: items.notifyIssues === undefined ? true : Boolean(items.notifyIssues),
           notifyAssignedIssuesOnly: Boolean(items.notifyAssignedIssuesOnly),
+          autoRemoveExpired: items.autoRemoveExpired === undefined ? true : Boolean(items.autoRemoveExpired),
+          expiredRetentionDays: Number(items.expiredRetentionDays) || DEFAULT_EXPIRED_RETENTION_DAYS,
         };
 
         resolve(settings);
@@ -664,13 +673,19 @@ export function setupAlarms() {
 export async function restoreBadge() {
   const localState = await loadLocalRuntimeStorage();
   const settings = await loadSyncSettings();
+  // 拡張機能の読み込み時だけ期限切れ通知を取り除き、滞留を防ぐ
+  const storedNotifications = settings.autoRemoveExpired
+    ? removeExpiredNotifications(localState.notifications, new Date(), settings.expiredRetentionDays)
+    : localState.notifications;
   const notifications = filterNotificationsByIssueSettings(
-    filterNotificationsByDraftSetting(localState.notifications, settings.notifyDraftPr),
+    filterNotificationsByDraftSetting(storedNotifications, settings.notifyDraftPr),
     settings.notifyIssues,
     settings.notifyAssignedIssuesOnly,
   );
   const badgeCount = calculateUnreadCount(notifications, localState.readNotificationIds);
-  if (badgeCount !== localState.badgeCount) {
+  if (storedNotifications.length !== localState.notifications.length) {
+    await saveLocalRuntimeStorage({ notifications: storedNotifications, badgeCount });
+  } else if (badgeCount !== localState.badgeCount) {
     await saveLocalRuntimeStorage({ badgeCount });
   }
   setBadge(badgeCount);

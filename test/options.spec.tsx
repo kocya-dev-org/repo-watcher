@@ -88,7 +88,7 @@ describe('options App', () => {
 
     const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
     const repoList = view.container.querySelector('[aria-label="監視対象リポジトリ一覧"]') as HTMLElement;
-    const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
+    const numberInput = view.container.querySelector('input[aria-label="監視間隔"]') as HTMLInputElement;
 
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
     expect(passwordInput.placeholder).toContain('変更する場合のみ新しい PAT を入力');
@@ -201,7 +201,7 @@ describe('options App', () => {
     expect(view.container.textContent).not.toContain('changed/repo');
 
     const passwordInput = view.container.querySelector('input[type="password"]') as HTMLInputElement;
-    const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
+    const numberInput = view.container.querySelector('input[aria-label="監視間隔"]') as HTMLInputElement;
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(passwordInput, 'github_pat_new_value');
@@ -222,6 +222,8 @@ describe('options App', () => {
         autoRemoveClosed: true,
         notifyIssues: true,
         notifyAssignedIssuesOnly: false,
+        autoRemoveExpired: true,
+        expiredRetentionDays: 30,
       },
       expect.any(Function),
     );
@@ -287,7 +289,7 @@ describe('options App', () => {
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
 
-    const numberInput = view.container.querySelector('input[type="number"]') as HTMLInputElement;
+    const numberInput = view.container.querySelector('input[aria-label="監視間隔"]') as HTMLInputElement;
     const form = view.container.querySelector('form') as HTMLFormElement;
 
     await setTextValue(numberInput, '5');
@@ -302,6 +304,53 @@ describe('options App', () => {
       expect.any(Function),
     );
     expect(numberInput.value).toBe('15');
+
+    await view.unmount();
+  });
+
+  it('期限切れ通知の自動削除設定を表示して保存できる', async () => {
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo1' }],
+      autoRemoveExpired: true,
+      expiredRetentionDays: 45,
+    });
+
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+
+    const autoRemoveCheckbox = Array.from(view.container.querySelectorAll('label'))
+      .find((label) => label.textContent?.includes('一定期間経過した通知を自動的に削除する'))
+      ?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const retentionInput = view.container.querySelector('input[aria-label="通知を保持する日数"]') as HTMLInputElement;
+
+    expect(autoRemoveCheckbox).toBeTruthy();
+    expect(retentionInput).toBeTruthy();
+    expect(autoRemoveCheckbox.checked).toBe(true);
+    expect(retentionInput.value).toBe('45');
+    expect(retentionInput.disabled).toBe(false);
+
+    await act(async () => {
+      autoRemoveCheckbox.click();
+    });
+
+    expect(autoRemoveCheckbox.checked).toBe(false);
+    expect(retentionInput.disabled).toBe(true);
+
+    await act(async () => {
+      autoRemoveCheckbox.click();
+    });
+    await setTextValue(retentionInput, '60');
+
+    const form = view.container.querySelector('form') as HTMLFormElement;
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    await flushPromises();
+
+    expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
+      expect.objectContaining({ autoRemoveExpired: true, expiredRetentionDays: 60 }),
+      expect.any(Function),
+    );
 
     await view.unmount();
   });

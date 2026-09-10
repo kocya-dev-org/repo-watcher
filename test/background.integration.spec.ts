@@ -519,6 +519,7 @@ describe('background integration', () => {
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
       autoRemoveClosed: false,
+      autoRemoveExpired: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -617,6 +618,7 @@ describe('background integration', () => {
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
       autoRemoveClosed: false,
+      autoRemoveExpired: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -687,6 +689,7 @@ describe('background integration', () => {
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
       autoRemoveClosed: true,
+      autoRemoveExpired: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -757,6 +760,7 @@ describe('background integration', () => {
       repos: [{ owner: 'octo', name: 'repo' }],
       intervalMinutes: 5,
       autoRemoveClosed: true,
+      autoRemoveExpired: false,
     });
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
@@ -1204,6 +1208,9 @@ describe('background integration', () => {
   });
 
   it('起動時に PAT rotation を実行し、badge を再計算して復元する', async () => {
+    chromeMock.setSyncState({
+      autoRemoveExpired: false,
+    });
     chromeMock.setLocalState({
       notifications: [
         {
@@ -1242,5 +1249,99 @@ describe('background integration', () => {
       badgeCount: 1,
     });
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+  });
+
+  it('autoRemoveExpired が ON のとき読み込み時に期限切れ通知を削除して badge を再計算する', async () => {
+    const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      notifyIssues: false,
+      autoRemoveExpired: true,
+      expiredRetentionDays: 30,
+    });
+    chromeMock.setLocalState({
+      lastCheckedAt: daysAgo(1),
+      notifications: [
+        {
+          id: 'ISSUE_EXPIRED',
+          kinds: ['new'],
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'old issue',
+          url: 'https://example.com/issues/1',
+          detectedAt: daysAgo(40),
+        },
+        {
+          id: 'PR_EXPIRED',
+          kinds: ['mention'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 2,
+          title: 'old pr',
+          url: 'https://example.com/pulls/2',
+          detectedAt: daysAgo(31),
+        },
+        {
+          id: 'PR_FRESH',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 3,
+          title: 'fresh pr',
+          url: 'https://example.com/pulls/3',
+          detectedAt: daysAgo(1),
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 3,
+    });
+
+    await importBackground();
+    await waitForCondition(
+      () =>
+        Array.isArray(chromeMock.getLocalState().notifications) &&
+        (chromeMock.getLocalState().notifications as Array<unknown>).length === 1,
+    );
+
+    // issue 表示 OFF で溜まり続けていた Issue 通知も含めて期限切れ分は除去される
+    expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'PR_FRESH' }]);
+    expect(chromeMock.getLocalState()).toMatchObject({ badgeCount: 1 });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+  });
+
+  it('autoRemoveExpired が OFF のとき期限切れ通知を削除しない', async () => {
+    const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    chromeMock.setSyncState({
+      repos: [{ owner: 'octo', name: 'repo' }],
+      autoRemoveExpired: false,
+    });
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'ISSUE_EXPIRED',
+          kinds: ['new'],
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 1,
+          title: 'old issue',
+          url: 'https://example.com/issues/1',
+          detectedAt: daysAgo(40),
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+
+    await importBackground();
+    await flushPromises();
+
+    expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'ISSUE_EXPIRED' }]);
+    expect(chromeMock.getLocalState()).toMatchObject({ badgeCount: 1 });
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
   });
 });
