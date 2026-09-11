@@ -125,6 +125,50 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('notifyIssues が OFF のとき Issue タブを表示せず PR タブを選択する', async () => {
+    chromeMock.setLocalState({
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'PR 通知',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+        {
+          id: 'ISSUE_1',
+          kinds: ['mention'],
+          isPullRequest: false,
+          owner: 'octo',
+          repo: 'repo',
+          number: 11,
+          title: 'Issue 通知',
+          url: 'https://example.com/issues/11',
+          detectedAt: '2026-05-06T07:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 2,
+    });
+    chromeMock.setSyncState({ notifyIssues: false });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const pullRequestTab = findTab(view.container, t('popup.tabs.pullRequest'));
+    expect(pullRequestTab).toBeTruthy();
+    expect(findTab(view.container, t('popup.tabs.issue'))).toBeUndefined();
+    expect(pullRequestTab?.getAttribute('aria-selected')).toBe('true');
+    expect(view.container.textContent).toContain('PR 通知');
+    expect(view.container.textContent).not.toContain('Issue 通知');
+
+    await view.unmount();
+  });
+
   it('ヘッダーのタイトル左側に拡張アイコンを表示する', async () => {
     chromeMock.setLocalState({
       notifications: [],
