@@ -420,6 +420,12 @@ const App: React.FC = () => {
   }, [reloadPopupState]);
 
   useEffect(() => {
+    if (settings?.notifyIssues === false && selectedTab === 'issue') {
+      setSelectedTab('pull_request');
+    }
+  }, [settings?.notifyIssues, selectedTab]);
+
+  useEffect(() => {
     let isActive = true;
 
     queueMicrotask(() => {
@@ -838,18 +844,20 @@ const App: React.FC = () => {
                   textTransform: 'none',
                 }}
               />
-              <Tab
-                label={t('popup.tabs.issue')}
-                value="issue"
-                sx={{
-                  minHeight: 0,
-                  py: 0.75,
-                  px: 1,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                }}
-              />
+              {settings?.notifyIssues !== false && (
+                <Tab
+                  label={t('popup.tabs.issue')}
+                  value="issue"
+                  sx={{
+                    minHeight: 0,
+                    py: 0.75,
+                    px: 1,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                  }}
+                />
+              )}
             </Tabs>
           </Box>
 
