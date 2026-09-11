@@ -6,6 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
@@ -677,7 +678,14 @@ const App: React.FC = () => {
             sx={headerIconButtonSx}
             className="menu-anchor-button"
           >
-            <MenuIcon fontSize="small" />
+            <Badge
+              variant="dot"
+              invisible={!hasUpdate}
+              overlap="circular"
+              sx={{ '& .MuiBadge-badge': { backgroundColor: COLORS.accent } }}
+            >
+              <MenuIcon fontSize="small" />
+            </Badge>
           </IconButton>
         </div>
         <style>{menuPopoverStyle}</style>
