@@ -998,6 +998,60 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('新しいバージョンがあるときメニューアイコンに青いドットを表示する', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      latestReleaseVersion: '9.9.9',
+      latestReleaseCheckedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    const badgeDot = menuButton?.querySelector('.MuiBadge-badge');
+    expect(badgeDot).toBeTruthy();
+    expect(badgeDot?.classList.contains('MuiBadge-invisible')).toBe(false);
+    // NEW ラベルと同じアクセント色で描画される
+    expect(getComputedStyle(badgeDot as Element).backgroundColor).toBe('rgb(9, 105, 218)');
+
+    await view.unmount();
+  });
+
+  it('確認済みの最新バージョンが現行以下ならメニューアイコンのドットを表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      latestReleaseVersion: '0.9.9',
+      latestReleaseCheckedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    const badgeDot = menuButton?.querySelector('.MuiBadge-badge');
+    expect(badgeDot).toBeTruthy();
+    expect(badgeDot?.classList.contains('MuiBadge-invisible')).toBe(true);
+
+    await view.unmount();
+  });
+
+  it('最新リリース未確認のときメニューアイコンのドットを表示しない', async () => {
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    const badgeDot = menuButton?.querySelector('.MuiBadge-badge');
+    expect(badgeDot).toBeTruthy();
+    expect(badgeDot?.classList.contains('MuiBadge-invisible')).toBe(true);
+
+    await view.unmount();
+  });
+
   it('updated 通知も一覧に表示できる', async () => {
     chromeMock.setLocalState({
       notifications: [
