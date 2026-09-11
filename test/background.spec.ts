@@ -143,11 +143,17 @@ describe('background watch logic (sanity)', () => {
   beforeEach(() => {
     chromeMock = setupChromeMock();
     vi.resetModules();
+    // background 読み込み時の最新リリース確認が実際の GitHub API を叩かないようスタブ化する
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 404 })),
+    );
   });
 
   afterEach(() => {
     // 汚染を避けるため削除
     delete (global as any).chrome;
+    vi.unstubAllGlobals();
   });
 
   it('WatchTargetRepo 型が期待通りに扱える', () => {

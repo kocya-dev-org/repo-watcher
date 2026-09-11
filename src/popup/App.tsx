@@ -25,7 +25,8 @@ import { DEFAULT_REPO_COLOR, isValidRepo, type WatchTargetRepo } from '../shared
 import { COLORS } from '../shared/colors';
 import { getMessage } from '../shared/i18n';
 import NotificationItem from './NotificationItem';
-import { getHelpUrl } from '../shared/linkUrls';
+import { getHelpUrl, getWebStoreUrl } from '../shared/linkUrls';
+import { isNewerVersion } from '../shared/releaseCheck';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -334,6 +335,7 @@ const App: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<NotificationTab>('pull_request');
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>([]);
   const [collapsedRepositories, setCollapsedRepositories] = useState<Set<string>>(new Set());
+  const [hasUpdate, setHasUpdate] = useState(false);
   const notificationsRef = useRef<StoredNotification[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
   const filterSettingsRef = useRef<NotificationFilterSettings>(DEFAULT_FILTER_SETTINGS);
@@ -342,6 +344,16 @@ const App: React.FC = () => {
   const manifestVersion = chrome.runtime.getManifest().version;
   const popupIconUrl = chrome.runtime.getURL('icon48.png');
   const helpUrl = getHelpUrl();
+
+  useEffect(() => {
+    chrome.storage.local.get({ latestReleaseVersion: null }, (items) => {
+      setHasUpdate(
+        typeof items.latestReleaseVersion === 'string' &&
+          items.latestReleaseVersion.length > 0 &&
+          isNewerVersion(items.latestReleaseVersion, manifestVersion),
+      );
+    });
+  }, [manifestVersion]);
 
   useEffect(() => {
     const menuPopover = menuPopoverRef.current;
@@ -487,6 +499,15 @@ const App: React.FC = () => {
    */
   const openHelp = () => {
     chrome.tabs.create({ url: helpUrl });
+    document.getElementById('menu-popover')?.hidePopover();
+    setIsRepositoryMenuOpen(false);
+  };
+
+  /**
+   * Chrome ウェブストアの拡張ページを新規タブで開き、メニューを閉じる。
+   */
+  const openWebStore = () => {
+    chrome.tabs.create({ url: getWebStoreUrl() });
     document.getElementById('menu-popover')?.hidePopover();
     setIsRepositoryMenuOpen(false);
   };
@@ -746,9 +767,31 @@ const App: React.FC = () => {
               borderTop: `1px solid ${COLORS.borderMuted}`,
               fontSize: '11px',
               color: COLORS.fgMuted,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            {t('popup.version.label', manifestVersion)}
+            <span>{t('popup.version.label', manifestVersion)}</span>
+            {hasUpdate && (
+              <button
+                type="button"
+                onClick={openWebStore}
+                aria-label={t('popup.update.newLabelAriaLabel')}
+                title={t('popup.update.newLabelAriaLabel')}
+                style={{
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  color: COLORS.bgDefault,
+                  backgroundColor: COLORS.accent,
+                  borderRadius: '10px',
+                  padding: '1px 6px',
+                }}
+              >
+                {t('popup.update.newLabel')}
+              </button>
+            )}
           </div>
         </div>
       </header>

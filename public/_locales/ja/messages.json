@@ -347,6 +347,14 @@
       }
     }
   },
+  "popup_update_newLabel": {
+    "message": "NEW",
+    "description": "新バージョンあり表示ラベル"
+  },
+  "popup_update_newLabelAriaLabel": {
+    "message": "最新バージョンがあります。Chrome ウェブストアを開きます。",
+    "description": "新バージョンありラベルの aria-label"
+  },
   "popup_repository_itemAriaLabel": {
     "message": "リポジトリ:$repository$",
     "description": "リポジトリフィルター項目の aria-label",

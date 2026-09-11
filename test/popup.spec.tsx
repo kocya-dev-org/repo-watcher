@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import App from '../src/popup/App';
 import { getMessage } from '../src/shared/i18n';
-import { getHelpUrl } from '../src/shared/linkUrls';
+import { getHelpUrl, getWebStoreUrl } from '../src/shared/linkUrls';
 import type { StoredNotification } from '../src/shared/notifications';
 import { createChromeMock, type ChromeMockController } from './helpers/chromeMock';
 import { flushPromises, renderReact } from './helpers/react';
@@ -810,8 +810,12 @@ describe('popup App', () => {
 
   it('読み込み中・空状態・メニュー表示を扱える', async () => {
     let localCallback: ((items: unknown) => void) | null = null;
-    chromeMock.chrome.storage.local.get.mockImplementationOnce((query: unknown, callback: (items: unknown) => void) => {
-      localCallback = callback;
+    chromeMock.chrome.storage.local.get.mockImplementation((query: unknown, callback: (items: unknown) => void) => {
+      if (typeof query === 'object' && query !== null && 'notifications' in query) {
+        localCallback = callback;
+        return;
+      }
+      callback(query);
     });
     chromeMock.setSyncState({
       repos: [],
@@ -913,6 +917,83 @@ describe('popup App', () => {
     expect(chromeMock.chrome.tabs.create).toHaveBeenCalledTimes(1);
     expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({ url: getHelpUrl() });
     expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
+
+    await view.unmount();
+  });
+
+  it('新しいバージョンがあるときバージョン横に NEW ラベルを表示し、クリックで Chrome ウェブストアを開く', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      latestReleaseVersion: '9.9.9',
+      latestReleaseCheckedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    const menuPopover = view.container.querySelector('#menu-popover');
+    expect(menuPopover?.getAttribute('data-popover-open')).toBe('true');
+
+    const newLabel = findButton(view.container, t('popup.update.newLabel'));
+    expect(newLabel).toBeTruthy();
+    expect(newLabel?.getAttribute('aria-label')).toBe(t('popup.update.newLabelAriaLabel'));
+    // 通知種別ラベルと同じアクセント色で描画される
+    expect(newLabel?.style.backgroundColor).toBe('rgb(9, 105, 218)');
+
+    await act(async () => {
+      newLabel?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledTimes(1);
+    expect(chromeMock.chrome.tabs.create).toHaveBeenCalledWith({ url: getWebStoreUrl() });
+    expect(menuPopover?.getAttribute('data-popover-open')).toBeNull();
+
+    await view.unmount();
+  });
+
+  it('確認済みの最新バージョンが現行以下なら NEW ラベルを表示しない', async () => {
+    chromeMock.setLocalState({
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 0,
+      latestReleaseVersion: '0.9.9',
+      latestReleaseCheckedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(view.container.textContent).toContain(t('popup.version.label', '1.0.0'));
+    expect(findButton(view.container, t('popup.update.newLabel'))).toBeUndefined();
+
+    await view.unmount();
+  });
+
+  it('最新リリース未確認のとき NEW ラベルを表示しない', async () => {
+    const view = await renderReact(<App />);
+    await flushPromises();
+
+    const menuButton = findButtonByAriaLabel(view.container, t('popup.menu'));
+    await act(async () => {
+      menuButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flushPromises();
+
+    expect(findButton(view.container, t('popup.update.newLabel'))).toBeUndefined();
 
     await view.unmount();
   });

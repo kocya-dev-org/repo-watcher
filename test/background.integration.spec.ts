@@ -56,11 +56,18 @@ describe('background integration', () => {
     backgroundMocks.loadDecryptedPat.mockReset();
     backgroundMocks.loadDecryptedPat.mockResolvedValue('github_pat_test_value');
     backgroundMocks.rotateEncryptedPatForStartup.mockClear();
+
+    // background 読み込み時の最新リリース確認が実際の GitHub API を叩かないよう既定でスタブ化する
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 404 })),
+    );
   });
 
   afterEach(() => {
     delete global.chrome;
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('runWatchCycle が通知保存・badge 更新・lastCheckedAt 保存まで行う', async () => {
@@ -1343,5 +1350,54 @@ describe('background integration', () => {
     expect(chromeMock.getLocalState().notifications).toMatchObject([{ id: 'ISSUE_EXPIRED' }]);
     expect(chromeMock.getLocalState()).toMatchObject({ badgeCount: 1 });
     expect(chromeMock.chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '1' });
+  });
+
+  it('最新リリース未確認のとき読み込み時に一度だけ取得して storage に保存する', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ tag_name: 'v9.9.9' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await importBackground();
+    await waitForCondition(() => typeof chromeMock.getLocalState().latestReleaseCheckedAt === 'string');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/kocya-dev-org/repo-watcher/releases/latest',
+      expect.anything(),
+    );
+    expect(chromeMock.getLocalState().latestReleaseVersion).toBe('9.9.9');
+  });
+
+  it('最新リリース確認済みのとき読み込み時に再取得しない', async () => {
+    chromeMock.setLocalState({
+      latestReleaseVersion: '9.9.9',
+      latestReleaseCheckedAt: '2026-09-10T00:00:00.000Z',
+    });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ tag_name: 'v9.9.9' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await importBackground();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('最新リリース取得に失敗しても起動処理は継続し結果を記録する', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('network failure');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await importBackground();
+    await waitForCondition(() => typeof chromeMock.getLocalState().latestReleaseCheckedAt === 'string');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(chromeMock.getLocalState().latestReleaseVersion).toBeNull();
+    expect(chromeMock.chrome.action.setBadgeText).toHaveBeenCalled();
   });
 });
