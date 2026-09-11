@@ -5,6 +5,7 @@
  * このファイルは読み込み時に配線と初期化だけを行う。
  */
 import { registerEventListeners } from './eventListeners';
+import { checkLatestReleaseOnce } from './releaseCheck';
 import { restoreBadge } from './watchCycle';
 
 export type { WatchTargetRepo } from '../shared/repositories';
@@ -12,3 +13,4 @@ export type { WatchTargetRepo } from '../shared/repositories';
 registerEventListeners();
 
 void restoreBadge();
+void checkLatestReleaseOnce();

@@ -347,6 +347,14 @@
       }
     }
   },
+  "popup_update_newLabel": {
+    "message": "NEW",
+    "description": "Label shown when a newer version is available"
+  },
+  "popup_update_newLabelAriaLabel": {
+    "message": "A newer version is available. Open the Chrome Web Store.",
+    "description": "aria-label for the new version label"
+  },
   "popup_repository_itemAriaLabel": {
     "message": "Repository:$repository$",
     "description": "Repository filter item aria-label",
