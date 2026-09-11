@@ -812,7 +812,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 </pre>
 
-## @jridgewell/sourcemap-codec@1.5.5
+## @jridgewell/sourcemap-codec@1.6.0
 
 - licenses: MIT
 - repository: https://github.com/jridgewell/sourcemaps
@@ -2500,7 +2500,7 @@ SOFTWARE.
 <pre>
 The MIT License (MIT)
 
-Copyright (c) 2026 kocya
+Copyright (c) 2026 kocya-dev
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
