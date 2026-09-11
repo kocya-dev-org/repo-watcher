@@ -54,7 +54,10 @@ jobs:
           }
 
           const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
-          const packageNames = Object.keys(summary).sort((left, right) => left.localeCompare(right));
+          const selfName = 'repo-watcher';
+          const packageNames = Object.keys(summary)
+            .filter((packageName) => !packageName.startsWith(`${selfName}@`))
+            .sort((left, right) => left.localeCompare(right));
 
           const renderValue = (value) =>
             value === undefined || value === null || value === '' ? '' : String(value);
