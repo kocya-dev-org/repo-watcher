@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Repo Watcher",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Chrome extension that monitors the status of GitHub pull requests and issues",
   "default_locale": "en",
   "permissions": ["storage", "alarms"],
