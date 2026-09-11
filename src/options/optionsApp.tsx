@@ -336,7 +336,7 @@ const OptionsApp: React.FC = () => {
               {t('notifySettings.notifyIssuesLabel')}
             </label>
             <p style={descriptionStyle}>{t('notifySettings.notifyIssuesDescription')}</p>
-            <label>
+            <label style={{ marginLeft: '20px' }}>
               <input
                 type="checkbox"
                 checked={form.notifyAssignedIssuesOnly}
@@ -345,7 +345,9 @@ const OptionsApp: React.FC = () => {
               />{' '}
               {t('notifySettings.assignedIssuesOnlyLabel')}
             </label>
-            <p style={descriptionStyle}>{t('notifySettings.assignedIssuesOnlyDescription')}</p>
+            <p style={{ ...descriptionStyle, marginLeft: '20px' }}>
+              {t('notifySettings.assignedIssuesOnlyDescription')}
+            </p>
             <label>
               <input
                 type="checkbox"
