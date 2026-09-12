@@ -1,0 +1,388 @@
+{
+  "appTitle": {
+    "message": "Configuración de Repo Watcher",
+    "description": "Options page title"
+  },
+  "pat_heading": {
+    "message": "Clave API (PAT)",
+    "description": "PAT section heading"
+  },
+  "pat_description1": {
+    "message": "Introduce tu token de acceso personal de GitHub.",
+    "description": "PAT description line 1"
+  },
+  "pat_description2": {
+    "message": "Se recomienda un PAT de granularidad fina.",
+    "description": "PAT description line 2"
+  },
+  "pat_description3": {
+    "message": "Se requieren los siguientes permisos: `Metadatos: solo lectura`, `Issues: solo lectura`, `Solicitudes de extracción: solo lectura`.",
+    "description": "PAT permissions description"
+  },
+  "pat_status": {
+    "message": "Estado actual: $status$",
+    "description": "PAT status label",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "PAT configured"
+      }
+    }
+  },
+  "pat_statusConfigured": {
+    "message": "PAT configurado",
+    "description": "PAT configured status"
+  },
+  "pat_statusNotConfigured": {
+    "message": "PAT no configurado",
+    "description": "PAT not configured status"
+  },
+  "pat_placeholderChange": {
+    "message": "Introduce un nuevo PAT solo si quieres cambiarlo",
+    "description": "PAT placeholder when a value already exists"
+  },
+  "pat_placeholderEnter": {
+    "message": "Introduce un PAT",
+    "description": "PAT placeholder when empty"
+  },
+  "pat_clearButton": {
+    "message": "Eliminar PAT guardado",
+    "description": "Delete PAT button"
+  },
+  "pat_deleteConfirm": {
+    "message": "¿Seguro que quieres eliminar el PAT?",
+    "description": "PAT delete confirmation"
+  },
+  "pat_deleteSuccess": {
+    "message": "PAT eliminado",
+    "description": "PAT delete success"
+  },
+  "pat_deleteError": {
+    "message": "No se pudo eliminar el PAT",
+    "description": "PAT delete error"
+  },
+  "notifySettings_heading": {
+    "message": "Configuración de notificaciones",
+    "description": "Notification settings heading"
+  },
+  "notifySettings_draftLabel": {
+    "message": "Notificar solicitudes de extracción en borrador",
+    "description": "Draft PR setting label"
+  },
+  "notifySettings_draftDescription": {
+    "message": "Las solicitudes de extracción en borrador se incluyen en la insignia y en la lista de notificaciones.",
+    "description": "Draft PR setting description"
+  },
+  "notifySettings_autoRemoveClosedLabel": {
+    "message": "Eliminar automáticamente los elementos cerrados",
+    "description": "Closed items removal label"
+  },
+  "notifySettings_autoRemoveClosedDescription": {
+    "message": "Las solicitudes de extracción/issues ya cerradas se eliminan automáticamente de la lista de notificaciones al actualizarse.",
+    "description": "Closed items removal description"
+  },
+  "notifySettings_notifyIssuesLabel": {
+    "message": "Activar notificaciones para todas las issues",
+    "description": "Issue notification setting label"
+  },
+  "notifySettings_notifyIssuesDescription": {
+    "message": "Cuando está desactivado, las issues se excluyen de la insignia y de la lista de notificaciones.",
+    "description": "Issue notification setting description"
+  },
+  "notifySettings_assignedIssuesOnlyLabel": {
+    "message": "Notificar solo las issues asignadas a mí",
+    "description": "Assigned-only issue notification setting label"
+  },
+  "notifySettings_assignedIssuesOnlyDescription": {
+    "message": "Cuando está activado, solo las issues en las que eres asignado se incluyen en la insignia y en la lista de notificaciones.",
+    "description": "Assigned-only issue notification setting description"
+  },
+  "notifySettings_autoRemoveExpiredLabel": {
+    "message": "Eliminar automáticamente las notificaciones caducadas",
+    "description": "Expired notifications removal label"
+  },
+  "notifySettings_autoRemoveExpiredDescription": {
+    "message": "Al iniciar la extensión, las notificaciones que han superado el número de días especificado desde su última actualización se eliminan automáticamente.",
+    "description": "Expired notifications removal description"
+  },
+  "notifySettings_expiredRetentionDaysLabel": {
+    "message": "Días para conservar las notificaciones",
+    "description": "Notification retention days input label"
+  },
+  "notifySettings_expiredRetentionDaysUnit": {
+    "message": "días",
+    "description": "Unit for notification retention days"
+  },
+  "repos_heading": {
+    "message": "Repositorios vigilados",
+    "description": "Watched repositories heading"
+  },
+  "repos_description": {
+    "message": "Configura los repositorios a vigilar y sus colores de visualización.",
+    "description": "Watched repositories description"
+  },
+  "repos_settingsButton": {
+    "message": "Configuración del repositorio",
+    "description": "Repository settings button"
+  },
+  "repos_listAriaLabel": {
+    "message": "Lista de repositorios vigilados",
+    "description": "Watched repository list aria-label"
+  },
+  "interval_heading": {
+    "message": "Intervalo de vigilancia",
+    "description": "Watch interval heading"
+  },
+  "interval_description": {
+    "message": "Especifica el intervalo de detección de notificaciones en minutos. El mínimo es de 15 minutos.",
+    "description": "Watch interval description"
+  },
+  "interval_unit": {
+    "message": "min",
+    "description": "Watch interval unit"
+  },
+  "lastChecked_heading": {
+    "message": "Última comprobación",
+    "description": "Last checked heading"
+  },
+  "lastChecked_description": {
+    "message": "Muestra la última hora en la que se recuperó el contenido de la notificación. Si la restableces, la próxima actualización volverá a recuperar las notificaciones usando las 00:00:00 del día actual como base.",
+    "description": "Last checked description"
+  },
+  "lastChecked_unset": {
+    "message": "No establecido",
+    "description": "Last checked unset text"
+  },
+  "lastChecked_reset": {
+    "message": "Restablecer",
+    "description": "Reset last checked button"
+  },
+  "save_submit": {
+    "message": "Guardar",
+    "description": "Save button"
+  },
+  "save_success": {
+    "message": "Guardado",
+    "description": "Save success message"
+  },
+  "save_error": {
+    "message": "No se pudo guardar",
+    "description": "Save error message"
+  },
+  "repoDialog_title": {
+    "message": "Configuración del repositorio",
+    "description": "Repository dialog title"
+  },
+  "repoDialog_repoAriaLabel": {
+    "message": "Repositorio $index$",
+    "description": "Repository input aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_colorAriaLabel": {
+    "message": "Color de visualización $index$",
+    "description": "Color input aria-label",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "repoDialog_delete": {
+    "message": "Eliminar",
+    "description": "Repository delete button"
+  },
+  "repoDialog_add": {
+    "message": "Añadir",
+    "description": "Repository add button"
+  },
+  "repoDialog_cancel": {
+    "message": "Cancelar",
+    "description": "Repository dialog cancel"
+  },
+  "repoDialog_ok": {
+    "message": "Aceptar",
+    "description": "Repository dialog OK"
+  },
+  "notificationKind_new": {
+    "message": "Nuevo",
+    "description": "New notification label"
+  },
+  "notificationKind_updated": {
+    "message": "Actualizado",
+    "description": "Updated notification label"
+  },
+  "notificationKind_mention": {
+    "message": "Mención",
+    "description": "Mention notification label"
+  },
+  "notificationKind_thread": {
+    "message": "Discusión",
+    "description": "Thread notification label"
+  },
+  "notificationKind_assignee": {
+    "message": "Asignado",
+    "description": "Assignee notification label"
+  },
+  "notificationKind_approved": {
+    "message": "Aprobado",
+    "description": "Approved label"
+  },
+  "notificationKind_changesRequested": {
+    "message": "Cambios solicitados",
+    "description": "Changes requested label"
+  },
+  "notificationKind_draft": {
+    "message": "Borrador",
+    "description": "Draft label"
+  },
+  "commentLink_open": {
+    "message": "Abrir el último comentario",
+    "description": "Latest comment link title"
+  },
+  "readState_read": {
+    "message": "Leído",
+    "description": "Read state label"
+  },
+  "readState_unread": {
+    "message": "No leído",
+    "description": "Unread state label"
+  },
+  "popup_title": {
+    "message": "Repo Watcher",
+    "description": "Popup title"
+  },
+  "popup_bulkRead_markAllRead": {
+    "message": "Marcar todo como leído",
+    "description": "Mark all as read label"
+  },
+  "popup_bulkRead_markVisibleRead": {
+    "message": "Marcar la lista visible como leída",
+    "description": "Mark visible list as read label"
+  },
+  "popup_bulkRead_markAllUnread": {
+    "message": "Marcar todo como no leído",
+    "description": "Mark all as unread label"
+  },
+  "popup_watch_resume": {
+    "message": "Reanudar la vigilancia programada",
+    "description": "Resume scheduled watch label"
+  },
+  "popup_watch_pause": {
+    "message": "Pausar la vigilancia programada",
+    "description": "Pause scheduled watch label"
+  },
+  "popup_refresh_idle": {
+    "message": "Actualizar",
+    "description": "Refresh button label"
+  },
+  "popup_refresh_pending": {
+    "message": "Actualizando...",
+    "description": "Refresh in progress label"
+  },
+  "popup_refresh_errorFallback": {
+    "message": "No se pudo actualizar.",
+    "description": "Refresh fallback error"
+  },
+  "popup_refresh_noResponse": {
+    "message": "No hubo respuesta del fondo.",
+    "description": "No response from background error"
+  },
+  "popup_menu": {
+    "message": "Menú",
+    "description": "Menu button aria-label"
+  },
+  "popup_menu_repository": {
+    "message": "Repositorio",
+    "description": "Repository filter button"
+  },
+  "popup_menu_openSettings": {
+    "message": "Abrir configuración",
+    "description": "Open settings button"
+  },
+  "popup_menu_help": {
+    "message": "Ayuda",
+    "description": "Help button"
+  },
+  "popup_menu_noRepositories": {
+    "message": "No hay repositorios configurados",
+    "description": "No repositories text"
+  },
+  "popup_loading": {
+    "message": "Cargando...",
+    "description": "Popup loading text"
+  },
+  "popup_empty_all": {
+    "message": "No hay notificaciones disponibles.",
+    "description": "No notifications text"
+  },
+  "popup_empty_tab": {
+    "message": "No hay notificaciones disponibles para esta pestaña.",
+    "description": "No notifications for current tab"
+  },
+  "popup_tabs_notificationTypeAriaLabel": {
+    "message": "Pestañas de tipo de notificación",
+    "description": "Notification tabs aria-label"
+  },
+  "popup_tabs_pullRequest": {
+    "message": "Solicitud de extracción",
+    "description": "Pull Request tab label"
+  },
+  "popup_tabs_issue": {
+    "message": "Issue",
+    "description": "Issue tab label"
+  },
+  "popup_version_label": {
+    "message": "Versión: $version$",
+    "description": "Version label",
+    "placeholders": {
+      "version": {
+        "content": "$1",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "popup_update_newLabel": {
+    "message": "NUEVO",
+    "description": "Label shown when a newer version is available"
+  },
+  "popup_update_newLabelAriaLabel": {
+    "message": "Hay una versión más reciente disponible. Abre la Chrome Web Store.",
+    "description": "aria-label for the new version label"
+  },
+  "popup_repository_itemAriaLabel": {
+    "message": "Repositorio:$repository$",
+    "description": "Repository filter item aria-label",
+    "placeholders": {
+      "repository": {
+        "content": "$1",
+        "example": "octo/repo"
+      }
+    }
+  },
+  "popup_notification_repositoryColorAriaLabel": {
+    "message": "Color del repositorio:$color$",
+    "description": "Notification repository color aria-label",
+    "placeholders": {
+      "color": {
+        "content": "$1",
+        "example": "#ff0000"
+      }
+    }
+  },
+  "popup_commentCountLabel": {
+    "message": "Número de comentarios:$count$",
+    "description": "Comment count aria-label",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  }
+}
