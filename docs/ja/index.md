@@ -31,6 +31,11 @@ PAT は GitHubの`Settings` > `Developer Settings`より作成してください
 
 ![](./assets/generate_token.png)
 
+> [!note]
+>
+> - Organization以下のInternal/Privateリポジトリを監視する場合は、Resource ownerにOrganizationを設定してください。
+> - Classic な PAT を作成する場合は、`repo`権限を付与してください。
+
 ## 初期設定
 
 拡張機能を読み込んだら、まず設定画面を開きます。
@@ -54,12 +59,20 @@ PAT は拡張機能の local storage に暗号化して保存されます。
 
 ### 通知設定
 
-設定できる項目は次の 2 つです。
+以下の項目が設定できます。
 
 - ドラフトPRを通知対象に含める
   ON にすると、ドラフト PR もバッジと通知一覧に含まれます。
 - Closeされた項目を自動的に削除する  
   ON にすると、更新時にすでに Close 済みの PR / Issue を通知一覧から削除します。
+- 全てのissueの通知を有効にする
+  OFF にすると Issue の変化をバッジと通知一覧に含めません。
+  Issueタブは常に非表示になります。
+- 自分がassigneeに設定されたissueだけを通知する
+  ON にすると自分が assignee に設定されている Issue だけをバッジと通知一覧に含めます。
+  「全てのissueの通知を有効にする」がONの場合のみ設定できます。
+- 一定期間経過した通知を自動的に削除する
+  拡張機能の起動時に、最終更新から指定した日数を経過した通知を自動的に削除します。
 
 ### 監視対象リポジトリ
 
