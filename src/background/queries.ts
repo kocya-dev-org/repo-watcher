@@ -18,7 +18,7 @@ export const WATCH_ISSUES_AND_PRS_QUERY = `
   query WatchIssuesAndPRs(
     $repoQuery: String!
   ) {
-    search(query: $repoQuery, type: ISSUE, first: 50) {
+    search(query: $repoQuery, type: ISSUE, first: 100) {
       issueCount
       nodes {
         __typename
