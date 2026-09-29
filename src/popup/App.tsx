@@ -31,6 +31,7 @@ import { isNewerVersion } from '../shared/releaseCheck';
 import type { WorkflowRunResult } from '../shared/workflows';
 import { isWorkflowFailure } from '../shared/workflows';
 import WorkflowItem from './WorkflowItem';
+import { repositoryGroupHeaderButtonStyle, repositoryGroupHeaderStyle } from './repositoryGroupHeaderStyles';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -520,6 +521,13 @@ const App: React.FC = () => {
     }, new Map<string, WorkflowRunResult[]>()),
     ([value, runs]) => ({ value, runs }),
   );
+
+  useEffect(() => {
+    if (visibleWorkflowRuns.length === 0 && selectedTab === 'workflow') {
+      setSelectedTab('pull_request');
+    }
+  }, [selectedTab, visibleWorkflowRuns.length]);
+
   const activeItemCount = selectedTab === 'workflow' ? visibleWorkflowRuns.length : activeNotifications.length;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
   const isRepositoryExpanded = (repositoryValue: string) => !collapsedRepositories.has(repositoryValue);
@@ -887,11 +895,13 @@ const App: React.FC = () => {
                   }}
                 />
               )}
-              <Tab
-                label={t('popup.tabs.workflow')}
-                value="workflow"
-                sx={{ minHeight: 0, py: 0.75, px: 1, fontSize: '12px', fontWeight: 600, textTransform: 'none' }}
-              />
+              {visibleWorkflowRuns.length > 0 && (
+                <Tab
+                  label={t('popup.tabs.workflow')}
+                  value="workflow"
+                  sx={{ minHeight: 0, py: 0.75, px: 1, fontSize: '12px', fontWeight: 600, textTransform: 'none' }}
+                />
+              )}
             </Tabs>
           </Box>
 
@@ -901,14 +911,7 @@ const App: React.FC = () => {
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {workflowGroups.map((group) => (
                 <li key={group.value}>
-                  <div
-                    style={{
-                      padding: '6px 8px',
-                      borderBottom: `1px solid ${COLORS.borderSubtle}`,
-                      background: COLORS.bgSubtle,
-                      fontWeight: 600,
-                    }}
-                  >
+                  <div style={repositoryGroupHeaderStyle}>
                     {group.value}
                   </div>
                   {group.runs.map((run, index) => (
@@ -936,21 +939,7 @@ const App: React.FC = () => {
                         });
                       }}
                       aria-expanded={isRepositoryExpanded(group.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        border: 'none',
-                        borderBottom: `1px solid ${COLORS.borderSubtle}`,
-                        background: COLORS.bgSubtle,
-                        color: COLORS.fgDefault,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        textAlign: 'left',
-                      }}
+                      style={repositoryGroupHeaderButtonStyle}
                     >
                       <span>{group.value}</span>
                       <span style={{ fontSize: '10px', color: COLORS.fgMuted }}>

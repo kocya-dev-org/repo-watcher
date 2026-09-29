@@ -398,5 +398,5 @@
   "workflows_ok": { "message": "OK", "description": "確定ボタン" },
   "workflows_resultSuccess": { "message": "成功", "description": "成功結果ラベル" },
   "workflows_resultFailure": { "message": "失敗", "description": "失敗結果ラベル" },
-  "popup_tabs_workflow": { "message": "ワークフロー", "description": "ワークフロータブ" }
+  "popup_tabs_workflow": { "message": "Workflows", "description": "ワークフロータブ" }
 }

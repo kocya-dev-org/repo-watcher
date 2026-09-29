@@ -146,7 +146,7 @@ describe('popup App', () => {
     const view = await renderReact(<App />);
     await flushPromises();
     await act(async () => {
-      findTab(view.container, 'ワークフロー')?.click();
+      findTab(view.container, 'Workflows')?.click();
     });
     await flushPromises();
     expect(view.container.textContent).toContain('octo/repo');
@@ -156,6 +156,61 @@ describe('popup App', () => {
     expect(workflowLink?.getAttribute('target')).toBe('_blank');
     const resultLink = findLinkByText(view.container, '失敗');
     expect(resultLink?.getAttribute('href')).toBe('https://github.com/octo/repo/actions/runs/99');
+    await view.unmount();
+  });
+
+  it('表示対象のワークフローがなくなるとタブを隠し、PR タブへ戻る', async () => {
+    chromeMock.setLocalState({
+      workflowRuns: [
+        {
+          workflowId: 42,
+          workflowName: 'CI',
+          conclusion: 'failure',
+          status: 'completed',
+          htmlUrl: 'https://github.com/octo/repo/actions/runs/99',
+          workflowHtmlUrl: 'https://github.com/octo/repo/actions/workflows/ci.yml',
+          owner: 'octo',
+          repo: 'repo',
+        },
+      ],
+      notifications: [
+        {
+          id: 'PR_1',
+          kinds: ['new'],
+          isPullRequest: true,
+          owner: 'octo',
+          repo: 'repo',
+          number: 10,
+          title: 'PR 通知',
+          url: 'https://example.com/pr/10',
+          detectedAt: '2026-05-06T08:00:00.000Z',
+        },
+      ],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+
+    const view = await renderReact(<App />);
+    await flushPromises();
+    await act(async () => {
+      findTab(view.container, 'Workflows')?.click();
+    });
+    await flushPromises();
+    expect(findTab(view.container, 'Workflows')?.getAttribute('aria-selected')).toBe('true');
+
+    chromeMock.setLocalState({
+      workflowRuns: [],
+      notifications: chromeMock.getLocalState().notifications,
+      readNotificationIds: [],
+      badgeCount: 0,
+    });
+    await act(async () => {
+      chromeMock.triggerStorageChanged({}, 'sync');
+    });
+    await flushPromises();
+
+    expect(findTab(view.container, 'Workflows')).toBeUndefined();
+    expect(findTab(view.container, t('popup.tabs.pullRequest'))?.getAttribute('aria-selected')).toBe('true');
     await view.unmount();
   });
 
