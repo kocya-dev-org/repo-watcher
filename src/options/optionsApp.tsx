@@ -9,13 +9,16 @@ import { COLORS } from '../shared/colors';
 import { getMessage } from '../shared/i18n';
 import { clearEncryptedPat, hasReadablePat, saveEncryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
+import type { WatchTargetWorkflow } from '../shared/workflows';
 import { DEFAULT_EXPIRED_RETENTION_DAYS, DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
 import RepositoryDialog from './RepositoryDialog';
+import WorkflowDialog from './WorkflowDialog';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
 
 type SettingsForm = {
   pat: string;
   repos: WatchTargetRepo[];
+  workflows: WatchTargetWorkflow[];
   intervalMinutes: number;
   notifyDraftPr: boolean;
   autoRemoveClosed: boolean;
@@ -62,6 +65,7 @@ const OptionsApp: React.FC = () => {
   const [form, setForm] = useState<SettingsForm>({
     pat: '',
     repos: [],
+    workflows: [],
     intervalMinutes: DEFAULT_INTERVAL_MINUTES,
     notifyDraftPr: true,
     autoRemoveClosed: true,
@@ -76,6 +80,7 @@ const OptionsApp: React.FC = () => {
   const [hasSavedPat, setHasSavedPat] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [isRepositoryDialogOpen, setIsRepositoryDialogOpen] = useState(false);
+  const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = useState(false);
 
   const loadPatStatus = () => hasReadablePat();
 
@@ -108,6 +113,7 @@ const OptionsApp: React.FC = () => {
     chrome.storage.sync.get(
       {
         repos: [],
+        workflows: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         notifyDraftPr: true,
         autoRemoveClosed: true,
@@ -118,6 +124,7 @@ const OptionsApp: React.FC = () => {
       },
       (items: {
         repos?: unknown;
+        workflows?: unknown;
         intervalMinutes?: unknown;
         notifyDraftPr?: unknown;
         autoRemoveClosed?: unknown;
@@ -127,9 +134,11 @@ const OptionsApp: React.FC = () => {
         expiredRetentionDays?: unknown;
       }) => {
         const repos = Array.isArray(items.repos) ? (items.repos as WatchTargetRepo[]) : [];
+        const workflows = Array.isArray(items.workflows) ? (items.workflows as WatchTargetWorkflow[]) : [];
         setForm({
           pat: '',
           repos,
+          workflows,
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
           autoRemoveClosed: items.autoRemoveClosed === undefined ? true : Boolean(items.autoRemoveClosed),
@@ -174,6 +183,7 @@ const OptionsApp: React.FC = () => {
           chrome.storage.sync.set(
             {
               repos: form.repos,
+              workflows: form.workflows,
               intervalMinutes,
               notifyDraftPr: form.notifyDraftPr,
               autoRemoveClosed: form.autoRemoveClosed,
@@ -381,6 +391,13 @@ const OptionsApp: React.FC = () => {
             >
               {t('repos.settingsButton')}
             </button>
+            <button
+              type="button"
+              onClick={() => setIsWorkflowDialogOpen(true)}
+              style={{ ...secondaryButtonStyle, cursor: 'pointer', marginLeft: '8px' }}
+            >
+              {t('workflows.settingsButton')}
+            </button>
             <div
               aria-label={t('repos.listAriaLabel')}
               style={{ whiteSpace: 'pre-line', marginTop: '8px', minHeight: '20px' }}
@@ -442,6 +459,17 @@ const OptionsApp: React.FC = () => {
             setIsRepositoryDialogOpen(false);
           }}
           onCancel={() => setIsRepositoryDialogOpen(false)}
+        />
+      )}
+      {isWorkflowDialogOpen && (
+        <WorkflowDialog
+          repos={form.repos}
+          workflows={form.workflows}
+          onOk={(workflows) => {
+            handleChange({ workflows });
+            setIsWorkflowDialogOpen(false);
+          }}
+          onCancel={() => setIsWorkflowDialogOpen(false)}
         />
       )}
     </div>

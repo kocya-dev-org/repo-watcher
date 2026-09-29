@@ -28,13 +28,16 @@ import { getMessage } from '../shared/i18n';
 import NotificationItem from './NotificationItem';
 import { getHelpUrl, getWebStoreUrl } from '../shared/linkUrls';
 import { isNewerVersion } from '../shared/releaseCheck';
+import type { WorkflowRunResult } from '../shared/workflows';
+import { isWorkflowFailure } from '../shared/workflows';
+import WorkflowItem from './WorkflowItem';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
   issues: StoredNotification[];
 };
 
-type NotificationTab = 'pull_request' | 'issue';
+type NotificationTab = 'pull_request' | 'issue' | 'workflow';
 
 type PopupSettings = {
   repos: WatchTargetRepo[];
@@ -73,6 +76,7 @@ function filterNotificationsBySettings(
 type PopupLocalState = {
   notifications: StoredNotification[];
   readNotificationIds: string[];
+  workflowRuns: WorkflowRunResult[];
 };
 
 type NotificationRepositoryOption = {
@@ -84,6 +88,8 @@ type NotificationRepositoryGroup = {
   value: string;
   notifications: StoredNotification[];
 };
+
+type WorkflowRepositoryGroup = { value: string; runs: WorkflowRunResult[] };
 
 type BulkReadState = 'all_read' | 'all_unread' | 'partial';
 
@@ -265,10 +271,11 @@ function getBulkReadState(items: StoredNotification[], readIds: Set<string>): Bu
 
 function loadPopupLocalState(): Promise<PopupLocalState> {
   return new Promise((resolve) => {
-    chrome.storage.local.get({ notifications: [], readNotificationIds: [] }, (items) => {
+    chrome.storage.local.get({ notifications: [], readNotificationIds: [], workflowRuns: [] }, (items) => {
       resolve({
         notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
         readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
+        workflowRuns: Array.isArray(items.workflowRuns) ? (items.workflowRuns as WorkflowRunResult[]) : [],
       });
     });
   });
@@ -327,6 +334,7 @@ function requestWatchCycleRefresh(): Promise<RefreshWatchCycleResponse> {
 const App: React.FC = () => {
   const t = getMessage;
   const [notifications, setNotifications] = useState<StoredNotification[]>([]);
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRunResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<PopupSettings | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -379,7 +387,9 @@ const App: React.FC = () => {
     filterSettingsRef.current = popupSettings;
     const finalizedLocalState = pruneReadNotifications(localState.notifications, localState.readNotificationIds);
     const badgeNotifications = filterNotificationsBySettings(finalizedLocalState.notifications, popupSettings);
-    const badgeCount = calculateUnreadCount(badgeNotifications, finalizedLocalState.readNotificationIds);
+    const workflowFailureCount = localState.workflowRuns.filter((run) => isWorkflowFailure(run.conclusion)).length;
+    const badgeCount =
+      calculateUnreadCount(badgeNotifications, finalizedLocalState.readNotificationIds) + workflowFailureCount;
 
     if (
       finalizedLocalState.readNotificationIds.length !== localState.readNotificationIds.length ||
@@ -397,6 +407,7 @@ const App: React.FC = () => {
     notificationsRef.current = finalizedLocalState.notifications;
     readIdsRef.current = new Set(finalizedLocalState.readNotificationIds);
     setNotifications(finalizedLocalState.notifications);
+    setWorkflowRuns(localState.workflowRuns);
     setReadIds(new Set(readIdsRef.current));
     setSettings(popupSettings);
     setSelectedRepositories((current) => current.filter((value) => availableRepositoryValues.has(value)));
@@ -443,12 +454,13 @@ const App: React.FC = () => {
     () => () => {
       const finalized = pruneReadNotifications(notificationsRef.current, Array.from(readIdsRef.current));
       const badgeNotifications = filterNotificationsBySettings(finalized.notifications, filterSettingsRef.current);
-      const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds);
+      const workflowFailureCount = workflowRuns.filter((run) => isWorkflowFailure(run.conclusion)).length;
+      const badgeCount = calculateUnreadCount(badgeNotifications, finalized.readNotificationIds) + workflowFailureCount;
 
       chrome.storage.local.set({ ...finalized, badgeCount });
       chrome.action.setBadgeText({ text: formatBadgeText(badgeCount) });
     },
-    [],
+    [workflowRuns],
   );
 
   /**
@@ -457,7 +469,8 @@ const App: React.FC = () => {
    */
   const applyReadIds = (nextReadIds: string[]) => {
     const badgeNotifications = filterNotificationsBySettings(notificationsRef.current, filterSettingsRef.current);
-    const newBadgeCount = calculateUnreadCount(badgeNotifications, nextReadIds);
+    const workflowFailureCount = workflowRuns.filter((run) => isWorkflowFailure(run.conclusion)).length;
+    const newBadgeCount = calculateUnreadCount(badgeNotifications, nextReadIds) + workflowFailureCount;
 
     readIdsRef.current = new Set(nextReadIds);
     setReadIds(new Set(readIdsRef.current));
@@ -490,8 +503,24 @@ const App: React.FC = () => {
   );
   const filteredNotifications = filterNotificationsByRepositories(settingsFilteredNotifications, selectedRepositories);
   const { prs, issues } = groupByType(filteredNotifications);
-  const activeNotifications = selectedTab === 'pull_request' ? prs : issues;
+  const activeNotifications = selectedTab === 'pull_request' ? prs : selectedTab === 'issue' ? issues : [];
   const notificationGroups = groupByRepository(activeNotifications);
+  const selectedRepositorySet = new Set(selectedRepositories);
+  const visibleWorkflowRuns = workflowRuns
+    .filter((run) => selectedRepositories.length === 0 || selectedRepositorySet.has(`${run.owner}/${run.repo}`))
+    .sort(
+      (a, b) =>
+        `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`) || a.workflowName.localeCompare(b.workflowName),
+    );
+  const workflowGroups: WorkflowRepositoryGroup[] = Array.from(
+    visibleWorkflowRuns.reduce((groups, run) => {
+      const key = `${run.owner}/${run.repo}`;
+      groups.set(key, [...(groups.get(key) ?? []), run]);
+      return groups;
+    }, new Map<string, WorkflowRunResult[]>()),
+    ([value, runs]) => ({ value, runs }),
+  );
+  const activeItemCount = selectedTab === 'workflow' ? visibleWorkflowRuns.length : activeNotifications.length;
   const bulkReadState = getBulkReadState(activeNotifications, readIds);
   const isRepositoryExpanded = (repositoryValue: string) => !collapsedRepositories.has(repositoryValue);
 
@@ -539,7 +568,7 @@ const App: React.FC = () => {
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, nextTab: string) => {
-    if (nextTab === 'pull_request' || nextTab === 'issue') {
+    if (nextTab === 'pull_request' || nextTab === 'issue' || nextTab === 'workflow') {
       setSelectedTab(nextTab);
     }
   };
@@ -814,7 +843,7 @@ const App: React.FC = () => {
 
       {isLoading ? (
         <p style={{ margin: 0 }}>{t('popup.loading')}</p>
-      ) : notifications.length === 0 ? (
+      ) : notifications.length === 0 && workflowRuns.length === 0 ? (
         <p style={{ margin: 0 }}>{t('popup.empty.all')}</p>
       ) : (
         <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
@@ -858,11 +887,36 @@ const App: React.FC = () => {
                   }}
                 />
               )}
+              <Tab
+                label={t('popup.tabs.workflow')}
+                value="workflow"
+                sx={{ minHeight: 0, py: 0.75, px: 1, fontSize: '12px', fontWeight: 600, textTransform: 'none' }}
+              />
             </Tabs>
           </Box>
 
-          {activeNotifications.length === 0 ? (
+          {activeItemCount === 0 ? (
             <p style={{ margin: 0 }}>{t('popup.empty.tab')}</p>
+          ) : selectedTab === 'workflow' ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {workflowGroups.map((group) => (
+                <li key={group.value}>
+                  <div
+                    style={{
+                      padding: '6px 8px',
+                      borderBottom: `1px solid ${COLORS.borderSubtle}`,
+                      background: COLORS.bgSubtle,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {group.value}
+                  </div>
+                  {group.runs.map((run, index) => (
+                    <WorkflowItem key={`${group.value}/${run.workflowId}/${index}`} run={run} />
+                  ))}
+                </li>
+              ))}
+            </ul>
           ) : (
             <section>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

@@ -10,6 +10,7 @@ const patStorageMocks = vi.hoisted(() => ({
   clearEncryptedPat: vi.fn(async () => {}),
   hasEncryptedPat: vi.fn(async () => false),
   hasReadablePat: vi.fn(async () => false),
+  loadDecryptedPat: vi.fn(async () => 'github_pat_test'),
 }));
 
 vi.mock('../src/shared/patStorage', () => ({
@@ -17,6 +18,7 @@ vi.mock('../src/shared/patStorage', () => ({
   clearEncryptedPat: patStorageMocks.clearEncryptedPat,
   hasEncryptedPat: patStorageMocks.hasEncryptedPat,
   hasReadablePat: patStorageMocks.hasReadablePat,
+  loadDecryptedPat: patStorageMocks.loadDecryptedPat,
 }));
 
 declare const global: typeof globalThis & { chrome: ChromeMockController['chrome'] };
@@ -56,6 +58,8 @@ describe('options App', () => {
     patStorageMocks.clearEncryptedPat.mockClear();
     patStorageMocks.hasEncryptedPat.mockReset();
     patStorageMocks.hasReadablePat.mockReset();
+    patStorageMocks.loadDecryptedPat.mockReset();
+    patStorageMocks.loadDecryptedPat.mockResolvedValue('github_pat_test');
     patStorageMocks.hasEncryptedPat.mockResolvedValue(false);
     patStorageMocks.hasReadablePat.mockResolvedValue(false);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -217,6 +221,7 @@ describe('options App', () => {
     expect(chromeMock.chrome.storage.sync.set).toHaveBeenCalledWith(
       {
         repos: [{ owner: 'octo', name: 'repo1', color: '#ff0000' }],
+        workflows: [],
         intervalMinutes: 30,
         notifyDraftPr: true,
         autoRemoveClosed: true,
@@ -232,6 +237,47 @@ describe('options App', () => {
     expect(view.container.textContent).toContain('保存しました');
     expect(view.container.textContent).toContain('現在の状態: PAT 設定済み');
 
+    await view.unmount();
+  });
+
+  it('ワークフローを REST API から選択し、設定として保存できる', async () => {
+    chromeMock.setSyncState({ repos: [{ owner: 'octo', name: 'repo' }] });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ workflows: [{ id: 42, name: 'CI', path: '.github/workflows/ci.yml' }] }),
+      })),
+    );
+    const view = await renderReact(<OptionsApp />);
+    await flushPromises();
+    await act(async () => {
+      findButton(view.container, 'ワークフロー設定')?.click();
+    });
+    await flushPromises();
+    const checkbox = view.container.querySelector('[role="dialog"] input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox).toBeTruthy();
+    await act(async () => {
+      checkbox.click();
+    });
+    await act(async () => {
+      findButton(view.container, 'OK')?.click();
+    });
+    await act(async () => {
+      (view.container.querySelector('form') as HTMLFormElement).dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+    });
+    await flushPromises();
+    expect(chromeMock.getSyncState().workflows).toEqual([
+      {
+        owner: 'octo',
+        name: 'repo',
+        workflowId: 42,
+        workflowName: 'CI',
+        path: '.github/workflows/ci.yml',
+      },
+    ]);
     await view.unmount();
   });
 

@@ -372,8 +372,31 @@ describe('background integration', () => {
   it('manual refresh message で runWatchCycle を 1 回実行できる', async () => {
     chromeMock.setSyncState({
       repos: [{ owner: 'octo', name: 'repo' }],
+      workflows: [
+        { owner: 'octo', name: 'repo', workflowId: 42, workflowName: 'CI', path: '.github/workflows/ci.yml' },
+      ],
       intervalMinutes: 5,
     });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/actions/workflows/42/runs')) {
+          return {
+            ok: true,
+            json: async () => ({
+              workflow_runs: [
+                {
+                  conclusion: 'failure',
+                  status: 'completed',
+                  html_url: 'https://github.com/octo/repo/actions/runs/99',
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: false, status: 404 };
+      }),
+    );
     chromeMock.setLocalState({
       lastCheckedAt: '2026-05-06T07:00:00.000Z',
       notifications: [],
@@ -438,7 +461,10 @@ describe('background integration', () => {
 
     expect(response).toEqual({ ok: true });
     expect(chromeMock.getLocalState()).toMatchObject({
-      badgeCount: 1,
+      badgeCount: 2,
+      workflowRuns: [
+        { workflowId: 42, conclusion: 'failure', htmlUrl: 'https://github.com/octo/repo/actions/runs/99' },
+      ],
     });
   });
 

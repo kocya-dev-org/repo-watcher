@@ -28,6 +28,7 @@ When you choose All repositories or Only select repositories, the required permi
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
+- Actions: Read-only
 
 ![](./assets/generate_token.png)
 
@@ -83,6 +84,14 @@ The following settings are available:
 5. Finally, click Save on the settings page.
 
 The display color is used as the left strip color for notifications in the popup.
+
+### Workflow monitoring
+
+1. Click Workflow settings.
+2. Select the GitHub Actions workflows to monitor for each repository.
+3. Click OK, then click Save on the settings page.
+
+The latest run results appear in the Workflows tab in the popup. Failed runs are also added to the unread count on the extension icon. The PAT needs `Actions: Read-only` permission to retrieve workflows and run results.
 
 ![Image: Repository settings dialog where you enter the owner/repository and display color](./assets/04_repository_settings_dialog.png)
 

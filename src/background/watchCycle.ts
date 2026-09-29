@@ -34,12 +34,16 @@ import {
 import { loadLocalRuntimeStorage, saveLocalRuntimeStorage, type LocalRuntimeStorage } from './runtimeStorage';
 import { debugLog } from './logging';
 import { DEFAULT_EXPIRED_RETENTION_DAYS, DEFAULT_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES } from '../shared/settings';
+import type { WatchTargetWorkflow, WorkflowRunResult } from '../shared/workflows';
+import { isWorkflowFailure } from '../shared/workflows';
+import { fetchLatestWorkflowRun } from '../shared/githubWorkflows';
 
 /** PAT を設定済みの GitHub GraphQL クライアント。 */
 type GithubGraphqlClient = ReturnType<typeof graphql.defaults>;
 
 type SyncSettings = {
   repos: WatchTargetRepo[];
+  workflows: WatchTargetWorkflow[];
   intervalMinutes: number;
   isWatchPaused: boolean;
   notifyDraftPr: boolean;
@@ -216,6 +220,7 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
     chrome.storage.sync.get(
       {
         repos: [],
+        workflows: [],
         intervalMinutes: DEFAULT_INTERVAL_MINUTES,
         isWatchPaused: false,
         notifyDraftPr: true,
@@ -227,6 +232,7 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
       },
       (items: {
         repos?: unknown;
+        workflows?: unknown;
         intervalMinutes?: unknown;
         isWatchPaused?: unknown;
         notifyDraftPr?: unknown;
@@ -238,6 +244,7 @@ export async function loadSyncSettings(): Promise<SyncSettings> {
       }) => {
         const settings: SyncSettings = {
           repos: items.repos as WatchTargetRepo[],
+          workflows: Array.isArray(items.workflows) ? (items.workflows as WatchTargetWorkflow[]) : [],
           intervalMinutes: Number(items.intervalMinutes) || DEFAULT_INTERVAL_MINUTES,
           isWatchPaused: Boolean(items.isWatchPaused),
           notifyDraftPr: items.notifyDraftPr === undefined ? true : Boolean(items.notifyDraftPr),
@@ -539,6 +546,7 @@ async function reconcileAndPersistNotifications(
   client: GithubGraphqlClient,
   settings: WatchSettings,
   detectedNotifications: StoredNotification[],
+  workflowRuns: WorkflowRunResult[],
 ): Promise<{ badgeCount: number }> {
   // 通信中に popup が既読化を書き込んでいる可能性があるため、統合前に最新状態を読み直す
   const localState = await loadLocalRuntimeStorage();
@@ -556,7 +564,8 @@ async function reconcileAndPersistNotifications(
     settings.notifyIssues,
     settings.notifyAssignedIssuesOnly,
   );
-  const badgeCount = calculateUnreadCount(badgeNotifications, []);
+  const workflowFailureCount = workflowRuns.filter((run) => isWorkflowFailure(run.conclusion)).length;
+  const badgeCount = calculateUnreadCount(badgeNotifications, []) + workflowFailureCount;
 
   debugLog('watch cycle notification summary', {
     addedNotifications: reconciled.addedNotifications.length,
@@ -566,6 +575,7 @@ async function reconcileAndPersistNotifications(
 
   await saveLocalRuntimeStorage({
     notifications: notificationsWithLatestStatus,
+    workflowRuns,
     readNotificationIds: reconciled.readNotificationIds,
     badgeCount,
   });
@@ -606,6 +616,14 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
   });
 
   const issuesAndPrs = await fetchUpdatedIssuesAndPullRequests(client, settings.repos, lastCheckedAt);
+  const workflowResults = await Promise.allSettled(
+    settings.workflows.map((workflow) => fetchLatestWorkflowRun(workflow, settings.pat)),
+  );
+  const workflowRuns = workflowResults.flatMap((result) => {
+    if (result.status === 'fulfilled') return result.value ? [result.value] : [];
+    debugLog('workflow run fetch failed', { message: toErrorMessage(result.reason) });
+    return [];
+  });
   const detectedAt = toUtcIsoSeconds(new Date());
   const collectedNotifications = collectNotifications(issuesAndPrs, lastCheckedAt, viewerLogin, detectedAt);
   const notificationsWithThreads = await detectThreadNotifications(
@@ -620,7 +638,7 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     (notification) => (notification.kinds?.length ?? 0) > 0,
   );
 
-  const { badgeCount } = await reconcileAndPersistNotifications(client, settings, detectedNotifications);
+  const { badgeCount } = await reconcileAndPersistNotifications(client, settings, detectedNotifications, workflowRuns);
 
   setBadge(badgeCount);
 
@@ -682,7 +700,8 @@ export async function restoreBadge() {
     settings.notifyIssues,
     settings.notifyAssignedIssuesOnly,
   );
-  const badgeCount = calculateUnreadCount(notifications, localState.readNotificationIds);
+  const workflowFailureCount = localState.workflowRuns.filter((run) => isWorkflowFailure(run.conclusion)).length;
+  const badgeCount = calculateUnreadCount(notifications, localState.readNotificationIds) + workflowFailureCount;
   if (storedNotifications.length !== localState.notifications.length) {
     await saveLocalRuntimeStorage({ notifications: storedNotifications, badgeCount });
   } else if (badgeCount !== localState.badgeCount) {

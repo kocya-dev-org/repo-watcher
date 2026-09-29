@@ -16,7 +16,7 @@
     "description": "PAT description line 2"
   },
   "pat_description3": {
-    "message": "Se requieren los siguientes permisos: `Metadatos: solo lectura`, `Issues: solo lectura`, `Solicitudes de extracción: solo lectura`.",
+    "message": "Se requieren los siguientes permisos: `Metadatos: solo lectura`, `Issues: solo lectura`, `Solicitudes de extracción: solo lectura`, `Actions: solo lectura`.",
     "description": "PAT permissions description"
   },
   "pat_status": {
@@ -384,5 +384,19 @@
         "example": "3"
       }
     }
-  }
+  },
+  "workflows_settingsButton": { "message": "Configuración de flujos", "description": "Botón de configuración" },
+  "workflows_dialogTitle": { "message": "Configuración de flujos", "description": "Diálogo de flujos" },
+  "workflows_loading": { "message": "Cargando flujos...", "description": "Carga de flujos" },
+  "workflows_error": {
+    "message": "No se pudieron obtener los flujos. Comprueba el PAT y los permisos.",
+    "description": "Error de carga"
+  },
+  "workflows_errorPat": { "message": "Configura un PAT primero.", "description": "Falta el PAT" },
+  "workflows_empty": { "message": "No hay flujos disponibles.", "description": "Sin flujos" },
+  "workflows_cancel": { "message": "Cancelar", "description": "Botón cancelar" },
+  "workflows_ok": { "message": "Aceptar", "description": "Botón aceptar" },
+  "workflows_resultSuccess": { "message": "Correcto", "description": "Etiqueta de éxito" },
+  "workflows_resultFailure": { "message": "Error", "description": "Etiqueta de fallo" },
+  "popup_tabs_workflow": { "message": "Flujos", "description": "Pestaña de flujos" }
 }
