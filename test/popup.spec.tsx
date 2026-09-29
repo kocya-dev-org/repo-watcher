@@ -125,6 +125,40 @@ describe('popup App', () => {
     await view.unmount();
   });
 
+  it('ワークフロータブでリポジトリごとに実行結果とリンクを表示する', async () => {
+    chromeMock.setLocalState({
+      workflowRuns: [
+        {
+          workflowId: 42,
+          workflowName: 'CI',
+          conclusion: 'failure',
+          status: 'completed',
+          htmlUrl: 'https://github.com/octo/repo/actions/runs/99',
+          workflowHtmlUrl: 'https://github.com/octo/repo/actions/workflows/ci.yml',
+          owner: 'octo',
+          repo: 'repo',
+        },
+      ],
+      notifications: [],
+      readNotificationIds: [],
+      badgeCount: 1,
+    });
+    const view = await renderReact(<App />);
+    await flushPromises();
+    await act(async () => {
+      findTab(view.container, 'ワークフロー')?.click();
+    });
+    await flushPromises();
+    expect(view.container.textContent).toContain('octo/repo');
+    expect(view.container.textContent).toContain('CI');
+    const workflowLink = findLinkByText(view.container, 'CI');
+    expect(workflowLink?.getAttribute('href')).toBe('https://github.com/octo/repo/actions/workflows/ci.yml');
+    expect(workflowLink?.getAttribute('target')).toBe('_blank');
+    const resultLink = findLinkByText(view.container, '失敗');
+    expect(resultLink?.getAttribute('href')).toBe('https://github.com/octo/repo/actions/runs/99');
+    await view.unmount();
+  });
+
   it('notifyIssues が OFF のとき Issue タブを表示せず PR タブを選択する', async () => {
     chromeMock.setLocalState({
       notifications: [

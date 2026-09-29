@@ -16,7 +16,7 @@
     "description": "PAT description line 2"
   },
   "pat_description3": {
-    "message": "Les autorisations suivantes sont requises : `Métadonnées : lecture seule`, `Issues : lecture seule`, `Demandes de tirage : lecture seule`.",
+    "message": "Les autorisations suivantes sont requises : `Métadonnées : lecture seule`, `Issues : lecture seule`, `Demandes de tirage : lecture seule`, `Actions : lecture seule`.",
     "description": "PAT permissions description"
   },
   "pat_status": {
@@ -384,5 +384,19 @@
         "example": "3"
       }
     }
-  }
+  },
+  "workflows_settingsButton": { "message": "Paramètres des workflows", "description": "Bouton de configuration" },
+  "workflows_dialogTitle": { "message": "Paramètres des workflows", "description": "Dialogue des workflows" },
+  "workflows_loading": { "message": "Chargement des workflows...", "description": "Chargement" },
+  "workflows_error": {
+    "message": "Impossible de récupérer les workflows. Vérifiez le PAT et les accès.",
+    "description": "Erreur de chargement"
+  },
+  "workflows_errorPat": { "message": "Configurez d’abord un PAT.", "description": "PAT manquant" },
+  "workflows_empty": { "message": "Aucun workflow disponible.", "description": "Aucun workflow" },
+  "workflows_cancel": { "message": "Annuler", "description": "Bouton annuler" },
+  "workflows_ok": { "message": "OK", "description": "Bouton confirmer" },
+  "workflows_resultSuccess": { "message": "Réussi", "description": "Libellé de réussite" },
+  "workflows_resultFailure": { "message": "Échec", "description": "Libellé d’échec" },
+  "popup_tabs_workflow": { "message": "Workflows", "description": "Onglet workflows" }
 }

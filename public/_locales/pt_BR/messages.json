@@ -16,7 +16,7 @@
     "description": "PAT description line 2"
   },
   "pat_description3": {
-    "message": "As seguintes permissões são necessárias: `Metadados: somente leitura`, `Issues: somente leitura`, `Solicitações de pull request: somente leitura`.",
+    "message": "As seguintes permissões são necessárias: `Metadados: somente leitura`, `Issues: somente leitura`, `Solicitações de pull request: somente leitura`, `Actions: somente leitura`.",
     "description": "PAT permissions description"
   },
   "pat_status": {
@@ -384,5 +384,19 @@
         "example": "3"
       }
     }
-  }
+  },
+  "workflows_settingsButton": { "message": "Configurações de workflows", "description": "Botão de configuração" },
+  "workflows_dialogTitle": { "message": "Configurações de workflows", "description": "Diálogo de workflows" },
+  "workflows_loading": { "message": "Carregando workflows...", "description": "Carregamento" },
+  "workflows_error": {
+    "message": "Não foi possível buscar os workflows. Verifique o PAT e o acesso.",
+    "description": "Erro de carregamento"
+  },
+  "workflows_errorPat": { "message": "Configure um PAT primeiro.", "description": "PAT ausente" },
+  "workflows_empty": { "message": "Nenhum workflow disponível.", "description": "Sem workflows" },
+  "workflows_cancel": { "message": "Cancelar", "description": "Botão cancelar" },
+  "workflows_ok": { "message": "OK", "description": "Botão confirmar" },
+  "workflows_resultSuccess": { "message": "Sucesso", "description": "Rótulo de sucesso" },
+  "workflows_resultFailure": { "message": "Falha", "description": "Rótulo de falha" },
+  "popup_tabs_workflow": { "message": "Workflows", "description": "Aba de workflows" }
 }

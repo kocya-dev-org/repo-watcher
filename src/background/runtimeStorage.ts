@@ -1,4 +1,5 @@
 import type { StoredNotification } from '../shared/notifications';
+import type { WorkflowRunResult } from '../shared/workflows';
 
 /**
  * chrome.storage.local に保持するランタイム状態のスキーマ。
@@ -10,6 +11,7 @@ export type LocalRuntimeStorage = {
   notifications: StoredNotification[];
   readNotificationIds: string[];
   badgeCount: number;
+  workflowRuns: WorkflowRunResult[];
 };
 
 /** local storage 読み込み時に使用する既定値。 */
@@ -20,6 +22,7 @@ export const LOCAL_RUNTIME_DEFAULTS: LocalRuntimeStorage = {
   notifications: [],
   readNotificationIds: [],
   badgeCount: 0,
+  workflowRuns: [],
 };
 
 /**
@@ -36,6 +39,7 @@ export function loadLocalRuntimeStorage(): Promise<LocalRuntimeStorage> {
         notifications: Array.isArray(items.notifications) ? (items.notifications as StoredNotification[]) : [],
         readNotificationIds: Array.isArray(items.readNotificationIds) ? (items.readNotificationIds as string[]) : [],
         badgeCount: Number(items.badgeCount ?? 0),
+        workflowRuns: Array.isArray(items.workflowRuns) ? (items.workflowRuns as WorkflowRunResult[]) : [],
       });
     });
   });

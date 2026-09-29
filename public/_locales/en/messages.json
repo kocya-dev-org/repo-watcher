@@ -16,7 +16,7 @@
     "description": "PAT description line 2"
   },
   "pat_description3": {
-    "message": "The following permissions are required: `Metadata: Read-only`, `Issues: Read-only`, `Pull requests: Read-only`.",
+    "message": "The following permissions are required: `Metadata: Read-only`, `Issues: Read-only`, `Pull requests: Read-only`, `Actions: Read-only`.",
     "description": "PAT permissions description"
   },
   "pat_status": {
@@ -384,5 +384,19 @@
         "example": "3"
       }
     }
-  }
+  },
+  "workflows_settingsButton": { "message": "Workflow settings", "description": "Workflow settings button" },
+  "workflows_dialogTitle": { "message": "Workflow settings", "description": "Workflow settings dialog" },
+  "workflows_loading": { "message": "Loading workflows...", "description": "Loading workflow list" },
+  "workflows_error": {
+    "message": "Could not fetch workflows. Check your PAT and repository access.",
+    "description": "Workflow loading error"
+  },
+  "workflows_errorPat": { "message": "Configure a PAT first.", "description": "PAT missing error" },
+  "workflows_empty": { "message": "No workflows are available.", "description": "No workflows available" },
+  "workflows_cancel": { "message": "Cancel", "description": "Cancel button" },
+  "workflows_ok": { "message": "OK", "description": "Confirm button" },
+  "workflows_resultSuccess": { "message": "Success", "description": "Successful run label" },
+  "workflows_resultFailure": { "message": "Failed", "description": "Failed run label" },
+  "popup_tabs_workflow": { "message": "Workflows", "description": "Workflow tab" }
 }

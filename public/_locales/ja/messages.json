@@ -16,7 +16,7 @@
     "description": "PAT の説明 2 行目"
   },
   "pat_description3": {
-    "message": "権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull requests: Read-only` が必要です。",
+    "message": "権限は `Metadata: Read-only`、 `Issues: Read-only`、`Pull requests: Read-only`、`Actions: Read-only` が必要です。",
     "description": "PAT の必要権限説明"
   },
   "pat_status": {
@@ -384,5 +384,19 @@
         "example": "3"
       }
     }
-  }
+  },
+  "workflows_settingsButton": { "message": "ワークフロー設定", "description": "ワークフロー設定ボタン" },
+  "workflows_dialogTitle": { "message": "ワークフロー設定", "description": "ワークフロー設定ダイアログ" },
+  "workflows_loading": { "message": "ワークフローを読み込み中...", "description": "ワークフロー一覧読込中" },
+  "workflows_error": {
+    "message": "ワークフローを取得できませんでした。PAT とリポジトリ権限を確認してください。",
+    "description": "ワークフロー取得エラー"
+  },
+  "workflows_errorPat": { "message": "PAT を設定してください。", "description": "PAT 未設定エラー" },
+  "workflows_empty": { "message": "利用可能なワークフローはありません。", "description": "ワークフローなし" },
+  "workflows_cancel": { "message": "キャンセル", "description": "キャンセルボタン" },
+  "workflows_ok": { "message": "OK", "description": "確定ボタン" },
+  "workflows_resultSuccess": { "message": "成功", "description": "成功結果ラベル" },
+  "workflows_resultFailure": { "message": "失敗", "description": "失敗結果ラベル" },
+  "popup_tabs_workflow": { "message": "ワークフロー", "description": "ワークフロータブ" }
 }

@@ -28,6 +28,7 @@ PAT は GitHubの`Settings` > `Developer Settings`より作成してください
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
+- Actions: Read-only
 
 ![](./assets/generate_token.png)
 
@@ -83,6 +84,14 @@ PAT は拡張機能の local storage に暗号化して保存されます。
 5. 最後に設定画面で 保存 を押します。
 
 表示色はポップアップ内の通知左端のライン色として使われます。
+
+### ワークフロー監視
+
+1. ワークフロー設定 を押します。
+2. リポジトリごとに監視したい GitHub Actions ワークフローを選択します。
+3. OK を押し、設定画面で 保存 を押します。
+
+ポップアップの「ワークフロー」タブに最新実行結果が表示されます。失敗した実行は拡張機能アイコンの未読件数バッジにも加算されます。ワークフロー一覧と実行結果の取得には PAT の `Actions: Read-only` 権限が必要です。
 
 ![画像:リポジトリ設定ダイアログで owner repository 名と表示色を設定する画面](./assets/04_repository_settings_dialog.png)
 
