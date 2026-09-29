@@ -10,6 +10,7 @@ export const repositoryGroupHeaderStyle: React.CSSProperties = {
 };
 
 export const repositoryGroupHeaderButtonStyle: React.CSSProperties = {
+  font: 'inherit',
   width: '100%',
   border: 'none',
   ...repositoryGroupHeaderStyle,
@@ -18,5 +19,4 @@ export const repositoryGroupHeaderButtonStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   textAlign: 'left',
-  font: 'inherit',
 };
