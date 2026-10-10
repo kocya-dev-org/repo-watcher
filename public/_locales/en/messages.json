@@ -397,6 +397,6 @@
   "workflows_cancel": { "message": "Cancel", "description": "Cancel button" },
   "workflows_ok": { "message": "OK", "description": "Confirm button" },
   "workflows_resultSuccess": { "message": "Success", "description": "Successful run label" },
-  "workflows_resultFailure": { "message": "Failed", "description": "Failed run label" },
+  "workflows_resultFailure": { "message": "Failure", "description": "Failed run label" },
   "popup_tabs_workflow": { "message": "Workflows", "description": "Workflow tab" }
 }
