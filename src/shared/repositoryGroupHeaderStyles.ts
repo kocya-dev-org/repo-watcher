@@ -1,5 +1,5 @@
 import type React from 'react';
-import { COLORS } from '../shared/colors';
+import { COLORS } from './colors';
 
 export const repositoryGroupHeaderStyle: React.CSSProperties = {
   padding: '6px 8px',

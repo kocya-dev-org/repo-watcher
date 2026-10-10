@@ -31,7 +31,7 @@ import { isNewerVersion } from '../shared/releaseCheck';
 import type { WorkflowRunResult } from '../shared/workflows';
 import { isWorkflowFailure } from '../shared/workflows';
 import WorkflowItem from './WorkflowItem';
-import { repositoryGroupHeaderButtonStyle, repositoryGroupHeaderStyle } from './repositoryGroupHeaderStyles';
+import { repositoryGroupHeaderButtonStyle, repositoryGroupHeaderStyle } from '../shared/repositoryGroupHeaderStyles';
 
 type GroupedNotifications = {
   prs: StoredNotification[];
@@ -911,9 +911,7 @@ const App: React.FC = () => {
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {workflowGroups.map((group) => (
                 <li key={group.value}>
-                  <div style={repositoryGroupHeaderStyle}>
-                    {group.value}
-                  </div>
+                  <div style={repositoryGroupHeaderStyle}>{group.value}</div>
                   {group.runs.map((run, index) => (
                     <WorkflowItem key={`${group.value}/${run.workflowId}/${index}`} run={run} />
                   ))}

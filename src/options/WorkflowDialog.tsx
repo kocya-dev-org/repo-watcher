@@ -7,7 +7,7 @@ import { loadDecryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
 import type { WatchTargetWorkflow } from '../shared/workflows';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
-import { repositoryGroupHeaderButtonStyle } from '../popup/repositoryGroupHeaderStyles';
+import { repositoryGroupHeaderButtonStyle } from '../shared/repositoryGroupHeaderStyles';
 
 type WorkflowDialogProps = {
   repos: WatchTargetRepo[];
