@@ -241,13 +241,29 @@ describe('options App', () => {
   });
 
   it('ワークフローを REST API から選択し、設定として保存できる', async () => {
-    chromeMock.setSyncState({ repos: [{ owner: 'octo', name: 'repo' }] });
+    chromeMock.setSyncState({
+      repos: [
+        { owner: 'octo', name: 'repo' },
+        { owner: 'octo', name: 'repo2' },
+      ],
+    });
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ workflows: [{ id: 42, name: 'CI', path: '.github/workflows/ci.yml' }] }),
-      })),
+      vi.fn(async (input: RequestInfo | URL) => {
+        const secondRepo = String(input).includes('/repos/octo/repo2/');
+        return {
+          ok: true,
+          json: async () => ({
+            workflows: [
+              {
+                id: secondRepo ? 43 : 42,
+                name: secondRepo ? 'Deploy' : 'CI',
+                path: secondRepo ? '.github/workflows/deploy.yml' : '.github/workflows/ci.yml',
+              },
+            ],
+          }),
+        };
+      }),
     );
     const view = await renderReact(<OptionsApp />);
     await flushPromises();
@@ -260,6 +276,37 @@ describe('options App', () => {
     await act(async () => {
       checkbox.click();
     });
+    expect(checkbox.checked).toBe(true);
+
+    const repositoryHeader = findButton(view.container, 'octo/repo');
+    expect(repositoryHeader?.getAttribute('aria-expanded')).toBe('true');
+    const workflowListId = repositoryHeader?.getAttribute('aria-controls');
+    const workflowList = Array.from(view.container.querySelectorAll('[id]')).find(
+      (element) => element.id === workflowListId,
+    ) as HTMLElement;
+    await act(async () => {
+      repositoryHeader?.click();
+    });
+    expect(repositoryHeader?.getAttribute('aria-expanded')).toBe('false');
+    expect(workflowList.querySelector('label')).toBeNull();
+    const secondRepositoryHeader = findButton(view.container, 'octo/repo2');
+    const secondWorkflowListId = secondRepositoryHeader?.getAttribute('aria-controls');
+    const secondWorkflowList = Array.from(view.container.querySelectorAll('[id]')).find(
+      (element) => element.id === secondWorkflowListId,
+    ) as HTMLElement;
+    expect(secondRepositoryHeader?.getAttribute('aria-expanded')).toBe('true');
+    expect(secondWorkflowList.querySelector('label')?.textContent).toContain('Deploy');
+
+    await act(async () => {
+      repositoryHeader?.click();
+    });
+    expect(repositoryHeader?.getAttribute('aria-expanded')).toBe('true');
+    expect((workflowList.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+
+    await act(async () => {
+      repositoryHeader?.click();
+    });
+    expect(workflowList.querySelector('label')).toBeNull();
     await act(async () => {
       findButton(view.container, 'OK')?.click();
     });
