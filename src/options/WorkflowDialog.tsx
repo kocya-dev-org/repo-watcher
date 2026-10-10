@@ -7,6 +7,7 @@ import { loadDecryptedPat } from '../shared/patStorage';
 import type { WatchTargetRepo } from '../shared/repositories';
 import type { WatchTargetWorkflow } from '../shared/workflows';
 import { primaryButtonStyle, secondaryButtonStyle } from './buttonStyles';
+import { repositoryGroupHeaderButtonStyle } from '../popup/repositoryGroupHeaderStyles';
 
 type WorkflowDialogProps = {
   repos: WatchTargetRepo[];
@@ -19,6 +20,7 @@ const WorkflowDialog: React.FC<WorkflowDialogProps> = ({ repos, workflows, onOk,
   const t = getMessage;
   const [available, setAvailable] = useState<WatchTargetWorkflow[]>([]);
   const [selected, setSelected] = useState<WatchTargetWorkflow[]>(workflows);
+  const [collapsedRepos, setCollapsedRepos] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,18 @@ const WorkflowDialog: React.FC<WorkflowDialogProps> = ({ repos, workflows, onOk,
     );
   };
 
+  const toggleRepository = (repositoryKey: string) => {
+    setCollapsedRepos((current) => {
+      const next = new Set(current);
+      if (next.has(repositoryKey)) {
+        next.delete(repositoryKey);
+      } else {
+        next.add(repositoryKey);
+      }
+      return next;
+    });
+  };
+
   return (
     <div
       role="dialog"
@@ -104,33 +118,45 @@ const WorkflowDialog: React.FC<WorkflowDialogProps> = ({ repos, workflows, onOk,
           <p>{t('workflows.empty')}</p>
         ) : (
           repos.map((repo) => {
+            const repositoryKey = `${repo.owner}/${repo.name}`;
+            const isExpanded = !collapsedRepos.has(repositoryKey);
+            const workflowsId = `workflow-list-${encodeURIComponent(repositoryKey)}`;
             const repoWorkflows = available.filter(
               (workflow) => workflow.owner === repo.owner && workflow.name === repo.name,
             );
             if (repoWorkflows.length === 0) return null;
             return (
-              <fieldset
-                key={`${repo.owner}/${repo.name}`}
-                style={{ border: `1px solid ${COLORS.border}`, margin: '8px 0', padding: 8 }}
-              >
-                <legend>
-                  {repo.owner}/{repo.name}
-                </legend>
-                {repoWorkflows.map((workflow) => {
-                  const checked = selected.some(
-                    (item) =>
-                      item.owner === workflow.owner &&
-                      item.name === workflow.name &&
-                      item.workflowId === workflow.workflowId,
-                  );
-                  return (
-                    <label key={workflow.workflowId} style={{ display: 'block', padding: '3px 0' }}>
-                      <input type="checkbox" checked={checked} onChange={() => toggle(workflow)} />{' '}
-                      {workflow.workflowName}
-                    </label>
-                  );
-                })}
-              </fieldset>
+              <section key={repositoryKey} style={{ margin: '8px 0' }}>
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-controls={workflowsId}
+                  onClick={() => toggleRepository(repositoryKey)}
+                  style={repositoryGroupHeaderButtonStyle}
+                >
+                  <span>{repositoryKey}</span>
+                  <span aria-hidden="true" style={{ fontSize: '10px', color: COLORS.fgMuted }}>
+                    {isExpanded ? '▲' : '▼'}
+                  </span>
+                </button>
+                <div id={workflowsId}>
+                  {isExpanded &&
+                    repoWorkflows.map((workflow) => {
+                      const checked = selected.some(
+                        (item) =>
+                          item.owner === workflow.owner &&
+                          item.name === workflow.name &&
+                          item.workflowId === workflow.workflowId,
+                      );
+                      return (
+                        <label key={workflow.workflowId} style={{ display: 'block', padding: '3px 8px' }}>
+                          <input type="checkbox" checked={checked} onChange={() => toggle(workflow)} />{' '}
+                          {workflow.workflowName}
+                        </label>
+                      );
+                    })}
+                </div>
+              </section>
             );
           })
         )}
