@@ -273,6 +273,13 @@ describe('options App', () => {
     await flushPromises();
     const checkbox = view.container.querySelector('[role="dialog"] input[type="checkbox"]') as HTMLInputElement;
     expect(checkbox).toBeTruthy();
+    const dialog = view.container.querySelector('[role="dialog"]') as HTMLElement;
+    const dialogPanel = dialog.firstElementChild as HTMLElement;
+    expect(dialog.style.alignItems).toBe('flex-start');
+    expect(dialog.style.justifyContent).toBe('center');
+    expect(dialog.style.paddingTop).toBe('140px');
+    expect(dialogPanel.style.maxHeight).toBe('680px');
+    expect(dialogPanel.style.overflowY).toBe('auto');
     await act(async () => {
       checkbox.click();
     });
