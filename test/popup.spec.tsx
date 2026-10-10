@@ -154,7 +154,7 @@ describe('popup App', () => {
     const workflowLink = findLinkByText(view.container, 'CI');
     expect(workflowLink?.getAttribute('href')).toBe('https://github.com/octo/repo/actions/workflows/ci.yml');
     expect(workflowLink?.getAttribute('target')).toBe('_blank');
-    const resultLink = findLinkByText(view.container, '失敗');
+    const resultLink = findLinkByText(view.container, 'Failure');
     expect(resultLink?.getAttribute('href')).toBe('https://github.com/octo/repo/actions/runs/99');
     await view.unmount();
   });
