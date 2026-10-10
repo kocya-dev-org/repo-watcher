@@ -35,7 +35,7 @@ When you choose All repositories or Only select repositories, the required permi
 > [!note]
 >
 > - If you want to monitor Internal/Private repositories under an organization, set the resource owner to the organization.
-> - If you create a classic PAT, grant the repo permission.
+> - If you create a classic PAT, grant the repo and workflow permissions.
 
 ## Initial setup
 

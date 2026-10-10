@@ -35,7 +35,7 @@ PAT は GitHubの`Settings` > `Developer Settings`より作成してください
 > [!note]
 >
 > - Organization以下のInternal/Privateリポジトリを監視する場合は、Resource ownerにOrganizationを設定してください。
-> - Classic な PAT を作成する場合は、`repo`権限を付与してください。
+> - Classic な PAT を作成する場合は、`repo`権限と`workflow`権限を付与してください。
 
 ## 初期設定
 
