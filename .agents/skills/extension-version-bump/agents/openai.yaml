@@ -1,0 +1,3 @@
+interface:
+  display_name: "拡張機能のバージョン更新"
+  short_description: "拡張機能のバージョンを指定値に更新"
