@@ -28,7 +28,7 @@ PAT は GitHubの`Settings` > `Developer Settings`より作成してください
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
-- Actions: Read-only
+- Workflows: Read and write
 
 ![](./assets/generate_token.png)
 
