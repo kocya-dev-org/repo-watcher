@@ -6,3 +6,5 @@ updates:
       interval: "weekly"
     ignore:
       - dependency-name: "esbuild"
+        versions:
+          - "<0.28.1"
