@@ -615,10 +615,10 @@ async function runWatchCycle(): Promise<WatchCycleResult> {
     viewerLogin,
   });
 
-  const issuesAndPrs = await fetchUpdatedIssuesAndPullRequests(client, settings.repos, lastCheckedAt);
-  const workflowResults = await Promise.allSettled(
-    settings.workflows.map((workflow) => fetchLatestWorkflowRun(workflow, settings.pat)),
-  );
+  const [issuesAndPrs, workflowResults] = await Promise.all([
+    fetchUpdatedIssuesAndPullRequests(client, settings.repos, lastCheckedAt),
+    Promise.allSettled(settings.workflows.map((workflow) => fetchLatestWorkflowRun(workflow, settings.pat))),
+  ]);
   const workflowRuns = workflowResults.flatMap((result) => {
     if (result.status === 'fulfilled') return result.value ? [result.value] : [];
     debugLog('workflow run fetch failed', { message: toErrorMessage(result.reason) });
