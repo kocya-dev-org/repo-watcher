@@ -28,7 +28,7 @@ When you choose All repositories or Only select repositories, the required permi
 - Metadata: Read-only
 - Issues: Read-only
 - Pull requests: Read-only
-- Workflows: Read and write
+- Actions: Read-only
 
 ![](./assets/generate_token.png)
 
